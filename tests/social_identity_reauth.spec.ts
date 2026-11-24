@@ -1,3 +1,7 @@
+import {
+  E_ACCOUNT_KIT_IDENTITY_NOT_CONFIRMED,
+  E_ACCOUNT_KIT_EMAIL_ALREADY_REGISTERED,
+} from '../src/errors.js'
 import { DateTime } from 'luxon'
 import { createHash } from 'node:crypto'
 import { test } from '@japa/runner'
@@ -224,7 +228,7 @@ test.group('social reauthentication proof atomicity', (group) => {
           actorId,
           newEmail: 'next@example.test',
         }),
-      'IdentityNotConfirmedError'
+      E_ACCOUNT_KIT_IDENTITY_NOT_CONFIRMED
     )
     const wrong = await prove('password_change')
     await assert.rejects(
@@ -254,7 +258,7 @@ test.group('social reauthentication proof atomicity', (group) => {
           recentProof: proof,
           newEmail: 'taken@example.test',
         }),
-      'EmailAlreadyRegisteredError'
+      E_ACCOUNT_KIT_EMAIL_ALREADY_REGISTERED
     )
     await account.emailPasswordManagement.requestEmailChange({
       actorId,
@@ -326,7 +330,7 @@ test.group('social reauthentication proof atomicity', (group) => {
           recentProof: result.proof,
           newPassword: 'another-Password-9!',
         }),
-      'IdentityNotConfirmedError'
+      E_ACCOUNT_KIT_IDENTITY_NOT_CONFIRMED
     )
     await account.emailPasswordManagement.changePassword({
       actorId,

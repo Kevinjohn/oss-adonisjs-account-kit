@@ -3,9 +3,9 @@ import { test } from '@japa/runner'
 import type { HttpContext } from '@adonisjs/core/http'
 import type { AccountKit } from '../src/account_kit.js'
 import {
-  EmailAlreadyRegisteredError,
-  InvitationManagementDeniedError,
-  ThrottledError,
+  E_ACCOUNT_KIT_EMAIL_ALREADY_REGISTERED,
+  E_ACCOUNT_KIT_INVITATION_MANAGEMENT_DENIED,
+  E_ACCOUNT_KIT_THROTTLED,
 } from '../src/errors.js'
 import { accountErrorResponse } from '../src/error_response.js'
 import { registerManagedRoutes } from '../src/http/managed.js'
@@ -53,7 +53,7 @@ test.group('managed HTTP translation', () => {
       managedHttp: { assertGuard: () => {}, consume: async () => {} },
       passwordReset: {
         request: async () => {
-          throw new ThrottledError(5)
+          throw new E_ACCOUNT_KIT_THROTTLED(5)
         },
       },
     })
@@ -112,7 +112,7 @@ test.group('managed HTTP translation', () => {
         },
         registration: {
           register: async () => {
-            throw new EmailAlreadyRegisteredError()
+            throw new E_ACCOUNT_KIT_EMAIL_ALREADY_REGISTERED()
           },
         },
       },
@@ -137,7 +137,9 @@ test.group('managed HTTP translation', () => {
         return identifier
       },
     }
-    const error = new InvitationManagementDeniedError('invitation 42 belongs to another account')
+    const error = new E_ACCOUNT_KIT_INVITATION_MANAGEMENT_DENIED(
+      'invitation 42 belongs to another account'
+    )
     const managed = mapManagedErrorResponse(error, { accept: 'application/json', i18n: keyed })!
     const helper = accountErrorResponse(error, { i18n: keyed })!
     assert.deepEqual(managed.body.errors, [

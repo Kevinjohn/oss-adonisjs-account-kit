@@ -1,6 +1,7 @@
+import { RuntimeException } from '@adonisjs/core/exceptions'
 // Reserve the invitation address before writing the approval bound to its replacement.
 import { DateTime } from 'luxon'
-import { EmailAlreadyRegisteredError } from './errors.js'
+import { E_ACCOUNT_KIT_EMAIL_ALREADY_REGISTERED } from './errors.js'
 import { toInvitation } from './invitation_rows.js'
 import { hashToken } from './tokens.js'
 import { sqlTimestamp } from './timestamps.js'
@@ -41,9 +42,10 @@ export async function replaceBootstrapInvitation(
   if (!locked) {
     // Surface the conflicting unique key rather than silently accepting MySQL's other target.
     await trx.table('account_invitations').insert(row)
-    throw new Error('Bootstrap invitation address reservation failed')
+    throw new RuntimeException('Bootstrap invitation address reservation failed')
   }
-  if (await config.users.findByEmail(input.email, trx)) throw new EmailAlreadyRegisteredError()
+  if (await config.users.findByEmail(input.email, trx))
+    throw new E_ACCOUNT_KIT_EMAIL_ALREADY_REGISTERED()
   // Reservation and eligibility may have waited; the committed link gets its full lifetime.
   const issuedAt = DateTime.utc()
   const fresh = {

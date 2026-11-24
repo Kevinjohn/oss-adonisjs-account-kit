@@ -1,4 +1,4 @@
-import { isCommittedFailure, PostCommitError } from './errors.js'
+import { isCommittedFailure, E_ACCOUNT_KIT_POST_COMMIT } from './errors.js'
 import { sendVerification } from './verification.js'
 import type { ServiceDependencies } from './service_dependencies.js'
 import type { UserId } from './types.js'
@@ -12,6 +12,8 @@ export async function sendSocialActivation(
     await sendVerification(deps, { userId })
   } catch (cause) {
     if (isCommittedFailure(cause)) throw cause
-    throw new PostCommitError('Social signup committed but activation issuance failed', { cause })
+    throw new E_ACCOUNT_KIT_POST_COMMIT('Social signup committed but activation issuance failed', {
+      cause,
+    })
   }
 }

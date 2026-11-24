@@ -1,8 +1,9 @@
 // Public types of the admission module.
 import type { AccountUser, AuthorizationContext, UserId } from '../types.js'
 
-/** Where a person stands on approval. `pending` means no decision has been recorded yet. */
-export type AdmissionApprovalStatus = 'pending' | 'approved' | 'rejected' | 'revoked'
+import type { AdmissionApprovalStatus } from '../admission_decision.js'
+
+export type { AdmissionApprovalStatus, AdmissionDecision } from '../admission_decision.js'
 
 /** Your rules for admission decisions. Each callback must return exactly `true` to allow. */
 export interface AdmissionAuthorizeCallbacks {
@@ -73,18 +74,6 @@ export interface ResolvedAdmissionConfig {
   invitation: boolean
   approval: { authorize: AdmissionAuthorizeCallbacks } | null
   onAdmissionEvent?: (event: AdmissionEvent) => Promise<void>
-}
-
-/** Whether a person is admitted, and the state of each enabled requirement. */
-export interface AdmissionDecision {
-  /** True only when every enabled requirement is met. */
-  admitted: boolean
-  /** Only enabled requirements appear. */
-  requirements: {
-    domain?: { met: boolean; reason?: 'unverified' | 'not_allowed' }
-    invitation?: { met: boolean }
-    approval?: { met: boolean; status: AdmissionApprovalStatus; requested: boolean }
-  }
 }
 
 /** Invitation evidence recorded for an account. */

@@ -53,8 +53,8 @@ Both operations take `{ actorId, currentPassword?, recentProof? }`, like a passw
   (`verifyFreshAuthentication`) can issue one. With the standard Ally adapters, the user sets a
   first password through password reset and then uses it.
 - Every attempt, successful or not, uses the `identity:user` limit.
-- A wrong password throws `IdentityNotConfirmedError`; a wrong, used or expired proof throws
-  `SocialProofError`.
+- A wrong password throws `E_ACCOUNT_KIT_IDENTITY_NOT_CONFIRMED`; a wrong, used or expired proof throws
+  `E_ACCOUNT_KIT_SOCIAL_PROOF_INVALID`.
 
 ## Export
 
@@ -176,8 +176,8 @@ it does not look up already soft-deleted users for purging. The invitation reten
 still applies: `keep` retains sent invitations with no inviter.
 
 After the commit, `notify.accountDeleted({ id, email })` and the lifecycle event `account.deleted`
-(`userId`, `operationId`) both run, even if one fails. A failed email throws `DeliveryError`; a
-failed observer throws `PostCommitError`. Either way the account is gone: do not retry the
+(`userId`, `operationId`) both run, even if one fails. A failed email throws `E_ACCOUNT_KIT_DELIVERY`; a
+failed observer throws `E_ACCOUNT_KIT_POST_COMMIT`. Either way the account is gone: do not retry the
 deletion.
 
 ### What stays your responsibility

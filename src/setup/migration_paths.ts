@@ -1,3 +1,5 @@
+import { RuntimeException } from '@adonisjs/core/exceptions'
+import { E_ACCOUNT_KIT_INVALID_SETUP_SOURCE, E_ACCOUNT_KIT_MIGRATION_DIRECTORY } from '../errors.js'
 import { lstat, readdir } from 'node:fs/promises'
 import { join, relative, sep } from 'node:path'
 import { inspectDatabaseConnection } from './database_inspection.js'
@@ -7,7 +9,6 @@ import {
   getExportedObject,
   hasUnsafeObjectEntries,
   getImportedBindingName,
-  InvalidSetupSourceError,
   parseSetupSource,
 } from './ts_source.js'
 import { requireSafeSetupPath } from './safe_path.js'
@@ -16,24 +17,13 @@ import { matchesAccountKitMigration, migrationNames } from './migration_definiti
 /** The AdonisJS default Lucid migration directory, relative to the application root. */
 export const defaultMigrationDirectory = 'database/migrations'
 
-/** Setup cannot choose or read the Lucid migration directory; reported as a setup diagnostic. */
-export class MigrationDirectoryError extends Error {
-  /** The setup diagnostic field: the directory at fault, or the database config that chose it. */
-  readonly field: string
-
-  constructor(message: string, field = 'config/database.ts') {
-    super(message)
-    this.field = field
-  }
-}
-
 /** Reports a failure to read or resolve a migration directory against that directory. */
 async function withinDirectory<T>(directory: string, action: () => Promise<T>): Promise<T> {
   try {
     return await action()
   } catch (error) {
-    if (error instanceof MigrationDirectoryError) throw error
-    throw new MigrationDirectoryError((error as Error).message, directory)
+    if (error instanceof E_ACCOUNT_KIT_MIGRATION_DIRECTORY) throw error
+    throw new E_ACCOUNT_KIT_MIGRATION_DIRECTORY((error as Error).message, directory)
   }
 }
 
@@ -48,7 +38,7 @@ export async function resolveDefaultMigrationDirectory(rc: string): Promise<stri
   try {
     source = await parseSetupSource(rc)
   } catch (error) {
-    if (error instanceof InvalidSetupSourceError) return defaultMigrationDirectory
+    if (error instanceof E_ACCOUNT_KIT_INVALID_SETUP_SOURCE) return defaultMigrationDirectory
     throw error
   }
   const config = getExportedObject(
@@ -58,7 +48,7 @@ export async function resolveDefaultMigrationDirectory(rc: string): Promise<stri
   // Other setup checks report an unsupported RC shape.
   if (!config) return defaultMigrationDirectory
   if (hasUnsafeObjectEntries(source, config))
-    throw new MigrationDirectoryError(
+    throw new E_ACCOUNT_KIT_MIGRATION_DIRECTORY(
       'Guided setup cannot establish directory settings from an ambiguous adonisrc.ts config; expose its directories statically before setup',
       'adonisrc.ts'
     )
@@ -66,20 +56,20 @@ export async function resolveDefaultMigrationDirectory(rc: string): Promise<stri
   if (!directories) return defaultMigrationDirectory
   const object = matchDirectObject(source, directories)
   if (!object)
-    throw new MigrationDirectoryError(
+    throw new E_ACCOUNT_KIT_MIGRATION_DIRECTORY(
       'Guided setup requires statically inspectable adonisrc.ts directories',
       'adonisrc.ts'
     )
   const configPath = getDirectProperty(source, object, 'config')?.initializer
   if (configPath && (!source.ts.isStringLiteral(configPath) || configPath.text !== 'config'))
-    throw new MigrationDirectoryError(
+    throw new E_ACCOUNT_KIT_MIGRATION_DIRECTORY(
       'Guided setup requires the conventional config directory; use configure or reconcile setup manually',
       'adonisrc.ts'
     )
   const migrationsPath = getDirectProperty(source, object, 'migrations')?.initializer
   if (!migrationsPath) return defaultMigrationDirectory
   if (!source.ts.isStringLiteral(migrationsPath))
-    throw new MigrationDirectoryError(
+    throw new E_ACCOUNT_KIT_MIGRATION_DIRECTORY(
       'Guided setup requires a literal adonisrc.ts migrations directory',
       'adonisrc.ts'
     )
@@ -89,7 +79,7 @@ export async function resolveDefaultMigrationDirectory(rc: string): Promise<stri
 /**
  * Chooses the application-relative Lucid migration directory and lists its migration files,
  * reading the database config statically and never executing it. Throws a
- * {@link MigrationDirectoryError} when the directory cannot be chosen or read.
+ * {@link E_ACCOUNT_KIT_MIGRATION_DIRECTORY} when the directory cannot be chosen or read.
  */
 export async function inspectMigrationDirectory(
   root: string,
@@ -123,12 +113,12 @@ export async function inspectMigrationDirectory(
     }
   }
   if (!directory && !explicit)
-    throw new MigrationDirectoryError(
+    throw new E_ACCOUNT_KIT_MIGRATION_DIRECTORY(
       'Unable to determine the Lucid migration directory statically; pass --migration-directory with the application-relative directory used by the selected connection'
     )
   const normalize = (name: string) => normalizeMigrationDirectory(root, name)
   if (explicit && directory && (await normalize(explicit)) !== (await normalize(directory)))
-    throw new MigrationDirectoryError(
+    throw new E_ACCOUNT_KIT_MIGRATION_DIRECTORY(
       'The explicit migration directory differs from the configured Lucid migration directory'
     )
   const path = await normalize(explicit ?? directory!)
@@ -142,7 +132,7 @@ export async function inspectMigrationDirectory(
           !`${defaultMigrationDirectory}/${name}`.startsWith(`${path}/`)
       )
     )
-      throw new MigrationDirectoryError(
+      throw new E_ACCOUNT_KIT_MIGRATION_DIRECTORY(
         'Account Kit migrations already exist in database/migrations; reconcile the migration paths and applied history manually before generating another copy',
         defaultMigrationDirectory
       )
@@ -154,7 +144,7 @@ async function normalizeMigrationDirectory(root: string, name: string) {
   // Lucid resolves these as URLs relative to the app root. Refuse references that
   // could resolve to different paths under URL and filesystem rules.
   if (/[?#%\\:]/.test(name))
-    throw new MigrationDirectoryError(
+    throw new E_ACCOUNT_KIT_MIGRATION_DIRECTORY(
       'Use a plain application-relative Lucid migration directory',
       name
     )
@@ -173,7 +163,7 @@ async function normalizeConfiguredPath(root: string, path: string): Promise<Conf
   try {
     return { path, normalized: await normalizeMigrationDirectory(root, path) }
   } catch (error) {
-    if (!(error instanceof MigrationDirectoryError)) throw error
+    if (!(error instanceof E_ACCOUNT_KIT_MIGRATION_DIRECTORY)) throw error
     return { path, problem: error.message }
   }
 }
@@ -199,7 +189,7 @@ async function selectConfiguredPath(
     const match = paths.find(({ normalized }) => normalized === selected)
     // A dynamic entry may be the named directory; it is used as given, as for one dynamic path.
     if (!match && literal.length === configured.length)
-      throw new MigrationDirectoryError(
+      throw new E_ACCOUNT_KIT_MIGRATION_DIRECTORY(
         `The explicit migration directory is not one of the configured Lucid migration paths: ${listed}`
       )
     await refuseMigrationsInOtherPaths(root, selected, paths, required)
@@ -211,7 +201,7 @@ async function selectConfiguredPath(
     if (required.every((name) => names.some((file) => matchesAccountKitMigration(file, name))))
       return path
   }
-  throw new MigrationDirectoryError(
+  throw new E_ACCOUNT_KIT_MIGRATION_DIRECTORY(
     `The Lucid connection lists several migration paths (${listed}) and Account Kit generates into one of them; pass --migration-directory with the configured path to use`
   )
 }
@@ -236,17 +226,17 @@ async function refuseMigrationsInOtherPaths(
     if (normalized === selected) continue
     let other: string[]
     try {
-      if (normalized === undefined) throw new MigrationDirectoryError(problem!, path)
+      if (normalized === undefined) throw new E_ACCOUNT_KIT_MIGRATION_DIRECTORY(problem!, path)
       other = await readMigrationNames(root, normalized)
     } catch (error) {
-      if (!(error instanceof MigrationDirectoryError)) throw error
-      throw new MigrationDirectoryError(
+      if (!(error instanceof E_ACCOUNT_KIT_MIGRATION_DIRECTORY)) throw error
+      throw new E_ACCOUNT_KIT_MIGRATION_DIRECTORY(
         `Setup cannot inspect the configured Lucid migration path ${path} (${error.message}), so it cannot rule out Account Kit migrations there that ${selected} lacks; Lucid runs every configured path. Make ${path} inspectable or reconcile the migration paths manually`,
         path
       )
     }
     if (other.some((file) => missing.some((name) => matchesAccountKitMigration(file, name))))
-      throw new MigrationDirectoryError(
+      throw new E_ACCOUNT_KIT_MIGRATION_DIRECTORY(
         `The configured Lucid migration path ${path} already holds Account Kit migrations that ${selected} lacks, and Lucid runs every configured path; select the path that holds them with --migration-directory or reconcile the migration paths manually before generating another copy`,
         path
       )
@@ -264,7 +254,8 @@ async function readDirectoryMigrationNames(root: string, directory: string): Pro
     return null
   })
   if (!stat) return []
-  if (!stat.isDirectory()) throw new Error(`Setup refuses non-directory or symlink ${path}`)
+  if (!stat.isDirectory())
+    throw new RuntimeException(`Setup refuses non-directory or symlink ${path}`)
   // Lucid walks regular script files recursively and skips hidden entries and symlinks.
   const files = await readdir(path, { recursive: true, withFileTypes: true })
   return files

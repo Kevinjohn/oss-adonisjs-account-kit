@@ -52,15 +52,15 @@ const { account, credential } = await kit.magicLink.complete({ token, verifier }
 - `inspect` checks that the stored link exists and is unexpired, and that the account's current
   email matches the link and the account is active. It is read-only; it does not call `canAccess`
   and does not guarantee that completion will sign in. Completion checks the verifier and current
-  access policy, consumes the link, and reports a failed check as `InvalidTokenError`.
+  access policy, consumes the link, and reports a failed check as `E_ACCOUNT_KIT_INVALID_TOKEN`.
 - `request` returns nothing for every address, waits out `minRequestMs`, and throttles by client
   and by email. Unknown addresses, accounts that never confirmed their email, and accounts
   `canAccess` denies get no link.
-- `complete` throws `InvalidTokenError` for an unknown, expired or used link, a wrong verifier, an
+- `complete` throws `E_ACCOUNT_KIT_INVALID_TOKEN` for an unknown, expired or used link, a wrong verifier, an
   inactive account, or a denied account. `guard` is the same adapter `kit.authentication.login`
   takes.
-- Delivery and lifecycle failures after the link is stored throw `DeliveryError` or
-  `PostCommitError`. Treat them as success and answer the client generically.
+- Delivery and lifecycle failures after the link is stored throw `E_ACCOUNT_KIT_DELIVERY` or
+  `E_ACCOUNT_KIT_POST_COMMIT`. Treat them as success and answer the client generically.
 
 ## Managed routes
 

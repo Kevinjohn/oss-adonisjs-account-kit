@@ -68,13 +68,22 @@ export interface CurrentAccountContext {
   signInId?: number
   /** The Kit-owned transaction for this callback. */
   trx: Trx
-  /** Read the live credential revision in this transaction, including this callback's writes. */
+  /**
+   * Read the live credential revision in this transaction, including this callback's writes.
+   *
+   * @example
+   * ```ts
+   * await kit.authentication.withCurrent(current, async (accountContext) => {
+   *   return accountContext.readCredentialRevision()
+   * })
+   * ```
+   */
   readCredentialRevision(): Promise<string | null>
 }
 
 /**
  * Input for caller-authorized inspection. Adapters and access callbacks must be read-only through
- * the supplied transaction and safe to retry; unavailable accounts share `AccountAccessDeniedError`.
+ * the supplied transaction and safe to retry; unavailable accounts share `E_ACCOUNT_KIT_ACCOUNT_ACCESS_DENIED`.
  */
 export interface AccountAccessInput {
   /** The account to inspect. No credential for it is needed or accepted. */
@@ -85,7 +94,7 @@ export interface AccountAccessInput {
 
 /**
  * One point-in-time read of account eligibility and credential revision, not lasting authorization.
- * A `PostCommitError` discards this result; retry is safe under the inspection dependency contract.
+ * A `E_ACCOUNT_KIT_POST_COMMIT` discards this result; retry is safe under the inspection dependency contract.
  */
 export interface AccountAccessSnapshot {
   account: CurrentAccount
@@ -146,9 +155,23 @@ export type AuthenticationGuard<Credential> =
       name: string
       /** `handle` is set when `sessionManagement` is enabled; store it in the session. */
       establish(userId: UserId, revision: string | null, handle?: string): Promise<Credential>
-      /** End the current session. */
+      /**
+       * End the current session.
+       *
+       * @example
+       * ```ts
+       * await sessionGuard.terminate()
+       * ```
+       */
       terminate(credential?: Credential): Promise<void>
-      /** Store a new revision for the current session, where `establish` stored the first one. */
+      /**
+       * Store a new revision for the current session, where `establish` stored the first one.
+       *
+       * @example
+       * ```ts
+       * await sessionGuard.refresh?.(revision)
+       * ```
+       */
       refresh?(revision: string | null): Promise<void>
       /**
        * The handle this session holds before `establish` replaces it. Its sign-in row is removed,
@@ -167,6 +190,13 @@ export type AuthenticationGuard<Credential> =
         expiresIn: string | number | null,
         options?: { name?: string }
       ): Promise<Credential>
-      /** Revoke the given token, or the one that authenticated the request. */
+      /**
+       * Revoke the given token, or the one that authenticated the request.
+       *
+       * @example
+       * ```ts
+       * await tokenGuard.forRequest(context).terminate(await tokenGuard.logoutCredential(context))
+       * ```
+       */
       terminate(credential?: Credential): Promise<void>
     }

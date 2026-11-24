@@ -21,7 +21,7 @@ export default class NewAccountController {
     try {
       await kit.registration.register({ email, password, registrationData: { fullName } })
     } catch (error) {
-      if (error instanceof errors.RegistrationEmailAlreadyRegisteredError) {
+      if (error instanceof errors.E_ACCOUNT_KIT_REGISTRATION_EMAIL_ALREADY_REGISTERED) {
         ctx.session.flash(
           'error',
           'We could not create an account with those details. Sign in or try another address.'

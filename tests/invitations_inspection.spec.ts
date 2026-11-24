@@ -1,6 +1,6 @@
 import { DateTime } from 'luxon'
 import { test } from '@japa/runner'
-import { AuthorizationError, InvalidInputError } from '../src/errors.js'
+import { E_ACCOUNT_KIT_AUTHORIZATION, E_ACCOUNT_KIT_INVALID_INPUT } from '../src/errors.js'
 import { hashToken } from '../src/tokens.js'
 import { useTestApp } from './helpers/app.js'
 import { invitationHelpers } from './helpers/invitations.js'
@@ -60,8 +60,14 @@ test.group('invitations.list and inspect', (group) => {
     const { account } = service({
       authorize: { ...allowAll, listInvitations: async () => undefined as never },
     })
-    await assert.rejects(() => account.invitations.list({ actorId: 99999 }), InvalidInputError)
-    await assert.rejects(() => account.invitations.list({ actorId: actor.id }), AuthorizationError)
+    await assert.rejects(
+      () => account.invitations.list({ actorId: 99999 }),
+      E_ACCOUNT_KIT_INVALID_INPUT
+    )
+    await assert.rejects(
+      () => account.invitations.list({ actorId: actor.id }),
+      E_ACCOUNT_KIT_AUTHORIZATION
+    )
   })
 
   test('inspect reveals only the live email and role without consuming the token', async ({

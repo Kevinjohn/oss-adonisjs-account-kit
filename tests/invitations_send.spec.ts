@@ -2,12 +2,12 @@ import { DateTime } from 'luxon'
 import { test } from '@japa/runner'
 import { defineConfig } from '../src/account_kit.js'
 import {
-  AuthorizationError,
-  DeliveryError,
-  EmailAlreadyRegisteredError,
-  InvalidInputError,
-  InvitationPendingError,
-  PostCommitError,
+  E_ACCOUNT_KIT_AUTHORIZATION,
+  E_ACCOUNT_KIT_DELIVERY,
+  E_ACCOUNT_KIT_EMAIL_ALREADY_REGISTERED,
+  E_ACCOUNT_KIT_INVALID_INPUT,
+  E_ACCOUNT_KIT_INVITATION_PENDING,
+  E_ACCOUNT_KIT_POST_COMMIT,
 } from '../src/errors.js'
 import { hashToken } from '../src/tokens.js'
 import { useTestApp } from './helpers/app.js'
@@ -96,12 +96,12 @@ test.group('invitations.send', (group) => {
     })
     await assert.rejects(
       () => account.invitations.send({ actorId: 99999, email: 'new@example.test', role: 'user' }),
-      InvalidInputError
+      E_ACCOUNT_KIT_INVALID_INPUT
     )
     await assert.rejects(
       () =>
         account.invitations.send({ actorId: actor.id, email: 'new@example.test', role: 'admin' }),
-      AuthorizationError
+      E_ACCOUNT_KIT_AUTHORIZATION
     )
     assert.deepEqual(calls, ['admin'])
     assert.lengthOf(await kit.db.from('account_invitations'), 0)
@@ -148,7 +148,7 @@ test.group('invitations.send', (group) => {
     await assert.rejects(
       () =>
         account.invitations.send({ actorId: actor.id, email: 'new@example.test', role: 'user' }),
-      AuthorizationError
+      E_ACCOUNT_KIT_AUTHORIZATION
     )
     assert.equal(calls, 2)
     assert.lengthOf(await kit.db.from('account_invitations'), 0)
@@ -186,7 +186,7 @@ test.group('invitations.send', (group) => {
       await waitForDatabaseLockWait(kit, assert, await tracked.backendId, demotionBackendId)
       await demotion.commit()
       finished = true
-      await assert.rejects(() => tracked.operation, AuthorizationError)
+      await assert.rejects(() => tracked.operation, E_ACCOUNT_KIT_AUTHORIZATION)
     } finally {
       if (!finished) await demotion.rollback()
       // Let a released send finish before the next test clears the tables.
@@ -217,7 +217,7 @@ test.group('invitations.send', (group) => {
             email: email as never,
             role: 'user',
           }),
-        InvalidInputError
+        E_ACCOUNT_KIT_INVALID_INPUT
       )
     for (const role of [null, '', 'a'.repeat(65)])
       await assert.rejects(
@@ -227,7 +227,7 @@ test.group('invitations.send', (group) => {
             email: 'new@example.test',
             role: role as never,
           }),
-        InvalidInputError
+        E_ACCOUNT_KIT_INVALID_INPUT
       )
     assert.lengthOf(await kit.db.from('account_invitations'), 0)
     assert.lengthOf(recorder.calls, 0)
@@ -252,7 +252,7 @@ test.group('invitations.send', (group) => {
           email: ' REGISTERED@EXAMPLE.TEST ',
           role: 'user',
         }),
-      EmailAlreadyRegisteredError
+      E_ACCOUNT_KIT_EMAIL_ALREADY_REGISTERED
     )
     const first = await account.invitations.send({
       actorId: actor.id,
@@ -262,7 +262,7 @@ test.group('invitations.send', (group) => {
     await assert.rejects(
       () =>
         account.invitations.send({ actorId: actor.id, email: ' NEW@EXAMPLE.TEST ', role: 'admin' }),
-      InvitationPendingError
+      E_ACCOUNT_KIT_INVITATION_PENDING
     )
     await kit.db
       .from('account_invitations')
@@ -290,7 +290,7 @@ test.group('invitations.send', (group) => {
             email: 'registered@example.test',
             role: 'user',
           }),
-        EmailAlreadyRegisteredError
+        E_ACCOUNT_KIT_EMAIL_ALREADY_REGISTERED
       )
     }
     await assert.rejects(
@@ -319,7 +319,7 @@ test.group('invitations.send', (group) => {
     )
     const rejected = results.filter((item) => item.status === 'rejected') as PromiseRejectedResult[]
     assert.lengthOf(rejected, 1)
-    assert.instanceOf(rejected[0].reason, InvitationPendingError)
+    assert.instanceOf(rejected[0].reason, E_ACCOUNT_KIT_INVITATION_PENDING)
     assert.lengthOf(await kit.db.from('account_invitations'), 1)
     assert.lengthOf(recorder.calls, 1)
   })
@@ -333,8 +333,8 @@ test.group('invitations.send', (group) => {
       await account.invitations.send({ actorId: actor.id, email: 'one@example.test', role: 'user' })
       assert.fail('expected delivery failure')
     } catch (error) {
-      assert.instanceOf(error, DeliveryError)
-      assert.instanceOf((error as DeliveryError).cause, Error)
+      assert.instanceOf(error, E_ACCOUNT_KIT_DELIVERY)
+      assert.instanceOf((error as InstanceType<typeof E_ACCOUNT_KIT_DELIVERY>).cause, Error)
     }
     const config = makeConfig({ users: makeUsersAdapter(kit.db, kit.hash) })
     const urlFailure = new Error('url failed')
@@ -354,8 +354,8 @@ test.group('invitations.send', (group) => {
       })
       assert.fail('expected URL failure')
     } catch (error) {
-      assert.instanceOf(error, DeliveryError)
-      assert.equal((error as DeliveryError).cause, urlFailure)
+      assert.instanceOf(error, E_ACCOUNT_KIT_DELIVERY)
+      assert.equal((error as InstanceType<typeof E_ACCOUNT_KIT_DELIVERY>).cause, urlFailure)
     }
     assert.lengthOf(await kit.db.from('account_invitations'), 2)
   })
@@ -379,9 +379,9 @@ test.group('invitations.send', (group) => {
       await account.invitations.send({ actorId: actor.id, email: 'new@example.test', role: 'user' })
       assert.fail('expected committed failure')
     } catch (error) {
-      assert.instanceOf(error, PostCommitError)
-      assert.isTrue((error as PostCommitError).committed)
-      assert.equal((error as PostCommitError).cause, failure)
+      assert.instanceOf(error, E_ACCOUNT_KIT_POST_COMMIT)
+      assert.isTrue((error as InstanceType<typeof E_ACCOUNT_KIT_POST_COMMIT>).committed)
+      assert.equal((error as InstanceType<typeof E_ACCOUNT_KIT_POST_COMMIT>).cause, failure)
     }
     assert.deepEqual(
       recorder.calls.map((call) => call.method),

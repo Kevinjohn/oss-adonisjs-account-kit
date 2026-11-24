@@ -113,7 +113,7 @@ In the same transaction, every pending invitation for the address is deleted and
 `onInvitationAccepted(user, invitation, trx)` runs once per invitation, in ascending `scope` order.
 After commit, `invitation.accepted` is reported for each, with the same fields as for the link. If a
 callback throws, the new account, the activation or the reset is rolled back and the invitations
-stay. A missing or expired invitation changes nothing. The emailed link then answers `InvalidTokenError`,
+stay. A missing or expired invitation changes nothing. The emailed link then answers `E_ACCOUNT_KIT_INVALID_TOKEN`,
 because the invitation was already accepted by signing in.
 
 An existing account never accepts an invitation, and changing the account's email to an invited

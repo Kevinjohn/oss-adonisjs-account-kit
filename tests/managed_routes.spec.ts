@@ -1,5 +1,5 @@
 import { test } from '@japa/runner'
-import { InvalidInputError } from '../src/errors.js'
+import { E_ACCOUNT_KIT_INVALID_INPUT } from '../src/errors.js'
 import { managedHandlers, type ManagedHandler } from '../src/http/managed.js'
 import { planManagedRoutes, type ManagedEndpointName } from '../src/http/routes.js'
 
@@ -387,8 +387,11 @@ test.group('managed numeric route parameters', () => {
         context.params.id = id
         const before = calls.length
         const error = await managedHandlers[name](request).catch((caught: unknown) => caught)
-        assert.instanceOf(error, InvalidInputError, id)
-        assert.equal((error as InvalidInputError).code, 'E_ACCOUNT_KIT_INVALID_INPUT')
+        assert.instanceOf(error, E_ACCOUNT_KIT_INVALID_INPUT, id)
+        assert.equal(
+          (error as InstanceType<typeof E_ACCOUNT_KIT_INVALID_INPUT>).code,
+          'E_ACCOUNT_KIT_INVALID_INPUT'
+        )
         assert.equal(calls.length, before, id)
         assert.equal(responses, 3, id)
       }

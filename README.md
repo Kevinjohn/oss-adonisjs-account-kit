@@ -121,7 +121,7 @@ Account Kit accepts `users`, `authorize`, `mapRegistrationFields` (`registration
 `onInvitationAccepted`, `onCredentialsChangedTransaction` and `onAccountDeletingTransaction`;
 admission accepts `approvalAuthorize` (`approval.authorize`) and `onAdmissionEvent`. A field set in
 both the config file and the registry, a second `register` call, or a call after the service was
-first resolved throws `InvalidConfigurationError`. A config file that passes every callback keeps
+first resolved throws `E_ACCOUNT_KIT_INVALID_CONFIGURATION`. A config file that passes every callback keeps
 working with nothing registered.
 
 ## User stories
@@ -136,7 +136,11 @@ validation, error mapping and the reset action.
 ```ts
 import app from '@adonisjs/core/services/app'
 import type { HttpContext } from '@adonisjs/core/http'
-import { AccountKit, DeliveryError, PostCommitError } from '@kevinjohn/adonisjs-account-kit'
+import {
+  AccountKit,
+  E_ACCOUNT_KIT_DELIVERY,
+  E_ACCOUNT_KIT_POST_COMMIT,
+} from '@kevinjohn/adonisjs-account-kit'
 
 export default class PasswordResetsController {
   async request({ request, response, logger }: HttpContext) {
@@ -146,10 +150,11 @@ export default class PasswordResetsController {
     } catch (error) {
       // Both errors follow a committed reset. Keep one response for known and unknown addresses,
       // and log no address or link.
-      if (!(error instanceof DeliveryError || error instanceof PostCommitError)) throw error
+      if (!(error instanceof E_ACCOUNT_KIT_DELIVERY || error instanceof E_ACCOUNT_KIT_POST_COMMIT))
+        throw error
       logger.error(
         { code: error.code },
-        error instanceof DeliveryError
+        error instanceof E_ACCOUNT_KIT_DELIVERY
           ? 'reset email failed'
           : 'reset follow-up failed; the email may have been sent'
       )
@@ -158,6 +163,22 @@ export default class PasswordResetsController {
   }
 }
 ```
+
+## Errors
+
+Account Kit throws AdonisJS exceptions with stable codes and HTTP statuses. Use the constructor
+export to recognise a specific cause.
+
+```ts
+import { errors } from '@kevinjohn/adonisjs-account-kit'
+
+if (error instanceof errors.E_ACCOUNT_KIT_INVALID_TOKEN) {
+  return response.badRequest({ message: 'This link is invalid or expired.' })
+}
+```
+
+The [error reference](docs/reference/errors.md) lists the constructors and shows how to use
+`accountErrorResponse` for the managed routes' response shape and translation keys.
 
 ## Tested against
 

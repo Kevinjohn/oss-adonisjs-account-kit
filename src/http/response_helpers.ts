@@ -1,6 +1,10 @@
 /** Response shaping shared by managed endpoint handlers: proof errors, policy errors, account bodies. */
 import type { HttpContext } from '@adonisjs/core/http'
-import { DeliveryError, InvalidTokenError, isCommittedFailure } from '../errors.js'
+import {
+  E_ACCOUNT_KIT_DELIVERY,
+  E_ACCOUNT_KIT_INVALID_TOKEN,
+  isCommittedFailure,
+} from '../errors.js'
 import type { CurrentAccount } from '../types.js'
 import {
   applyMappedHeaders,
@@ -27,7 +31,7 @@ export function sendInvalidProofResponse(
   proof: 'password' | 'email' | 'invitation' | 'magicLink',
   message?: ManagedMessage
 ): unknown {
-  const mapped = mapManagedErrorResponse(new InvalidTokenError(), {
+  const mapped = mapManagedErrorResponse(new E_ACCOUNT_KIT_INVALID_TOKEN(), {
     proof,
     request: context.request,
     message,
@@ -136,7 +140,7 @@ export function reportCommittedFailure(
   logRecoveryDiagnostic(
     context,
     operation,
-    error instanceof DeliveryError ? 'delivery_failed' : 'followup_failed'
+    error instanceof E_ACCOUNT_KIT_DELIVERY ? 'delivery_failed' : 'followup_failed'
   )
   return true
 }

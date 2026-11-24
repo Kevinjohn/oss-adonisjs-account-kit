@@ -1,5 +1,9 @@
 import { lockUser } from './db.js'
-import { IdentityNotConfirmedError, InvalidInputError, NoPasswordError } from './errors.js'
+import {
+  E_ACCOUNT_KIT_IDENTITY_NOT_CONFIRMED,
+  E_ACCOUNT_KIT_INVALID_INPUT,
+  E_ACCOUNT_KIT_NO_PASSWORD,
+} from './errors.js'
 import { consumeSocialSensitiveProof } from './social_proofs.js'
 import type { AccountUser, ResolvedConfig, SensitivePurpose, Trx, UserId } from './types.js'
 
@@ -10,7 +14,7 @@ export async function requireUser(
   trx?: Trx
 ): Promise<AccountUser> {
   const user = await config.users.findById(id, trx)
-  if (!user) throw new InvalidInputError('Unknown actor')
+  if (!user) throw new E_ACCOUNT_KIT_INVALID_INPUT('Unknown actor')
   return user
 }
 
@@ -30,8 +34,8 @@ export async function confirmActor(
   await lockUser(trx, config, actorId)
   const actor = await requireUser(config, actorId, trx)
   if (!actor.hasPassword) {
-    if (!config.enabled.includes('socialAuthentication')) throw new NoPasswordError()
-    if (typeof recentProof !== 'string') throw new IdentityNotConfirmedError()
+    if (!config.enabled.includes('socialAuthentication')) throw new E_ACCOUNT_KIT_NO_PASSWORD()
+    if (typeof recentProof !== 'string') throw new E_ACCOUNT_KIT_IDENTITY_NOT_CONFIRMED()
     await consumeSocialSensitiveProof(trx, config, actor.id, purpose, recentProof)
     return actor
   }
@@ -40,6 +44,6 @@ export async function confirmActor(
     currentPassword.length === 0 ||
     !(await config.users.verifyPassword(actor.id, currentPassword, trx))
   )
-    throw new IdentityNotConfirmedError()
+    throw new E_ACCOUNT_KIT_IDENTITY_NOT_CONFIRMED()
   return actor
 }

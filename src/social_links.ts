@@ -5,7 +5,10 @@ import { hasConfirmedAddress } from './account_projection.js'
 import { transaction } from './db.js'
 import { finishCommitted, postCommit, settleCommitted, type PostCommitEffect } from './effects.js'
 import { consumeSocialSensitiveProof } from './social_proofs.js'
-import { LastLoginMethodError, SocialUserNotFoundError } from './errors.js'
+import {
+  E_ACCOUNT_KIT_SOCIAL_LAST_LOGIN_METHOD,
+  E_ACCOUNT_KIT_SOCIAL_USER_NOT_FOUND,
+} from './errors.js'
 import {
   requireAuthenticatedUser,
   listEnabledSocialProviders,
@@ -65,7 +68,7 @@ export async function unlinkSocialIdentity(
         .where('id', input.identityId)
         .where('user_id', user.id)
         .first()
-      if (!row) throw new SocialUserNotFoundError()
+      if (!row) throw new E_ACCOUNT_KIT_SOCIAL_USER_NOT_FOUND()
       await consumeSocialSensitiveProof(trx, deps.config, user.id, 'social_unlink', input.proof)
       const remaining = await trx
         .from('social_identities')
@@ -75,7 +78,8 @@ export async function unlinkSocialIdentity(
         .whereIn('provider', listEnabledSocialProviders(deps.config))
         .count('* as total')
         .first()
-      if (!user.hasPassword && Number(remaining?.total ?? 0) === 0) throw new LastLoginMethodError()
+      if (!user.hasPassword && Number(remaining?.total ?? 0) === 0)
+        throw new E_ACCOUNT_KIT_SOCIAL_LAST_LOGIN_METHOD()
       await trx
         .from('social_identities')
         .where('id', input.identityId)

@@ -1,7 +1,7 @@
 // Validates and defaults one throttle budget option.
 import string from '@adonisjs/core/helpers/string'
 import { assertObject } from './config_assert.js'
-import { InvalidConfigurationError } from './errors.js'
+import { E_ACCOUNT_KIT_INVALID_CONFIGURATION } from './errors.js'
 import type { ThrottleBudget } from './types.js'
 import { freezeResolved } from './config_freeze.js'
 
@@ -15,7 +15,7 @@ export function resolveThrottleBudget(
   const requests = input?.requests ?? defaults.requests
   const duration = input?.duration ?? defaults.duration
   if (!Number.isSafeInteger(requests) || requests <= 0)
-    throw new InvalidConfigurationError(
+    throw new E_ACCOUNT_KIT_INVALID_CONFIGURATION(
       `${name}.requests`,
       `account_kit: ${name}.requests must be a positive safe integer`
     )
@@ -23,14 +23,14 @@ export function resolveThrottleBudget(
   try {
     milliseconds = string.seconds.parse(duration) * 1000
   } catch (cause) {
-    throw new InvalidConfigurationError(
+    throw new E_ACCOUNT_KIT_INVALID_CONFIGURATION(
       durationField,
       `account_kit: ${durationField} must be a supported positive duration`,
       { cause }
     )
   }
   if (!Number.isSafeInteger(milliseconds) || milliseconds <= 0 || milliseconds > 2_147_483_647)
-    throw new InvalidConfigurationError(
+    throw new E_ACCOUNT_KIT_INVALID_CONFIGURATION(
       durationField,
       `account_kit: ${durationField} must be a limiter-representable duration`
     )

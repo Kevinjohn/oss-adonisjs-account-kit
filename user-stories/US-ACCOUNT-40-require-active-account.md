@@ -11,7 +11,7 @@ As an application developer, I want to require an active account before a protec
 
 ## Acceptance criteria
 
-- Input is the full `CurrentAccountInput`; success returns the safe current account when active. A valid account with its only address awaiting confirmation throws `UnverifiedEmailError` after the current-account transaction completes. A pending change to a different address keeps the account active.
+- Input is the full `CurrentAccountInput`; success returns the safe current account when active. A valid account with its only address awaiting confirmation throws `E_ACCOUNT_KIT_UNVERIFIED_EMAIL` after the current-account transaction completes. A pending change to a different address keeps the account active.
 - Managed routes marked `active` use the ordinary current-account check when `verificationRequired: false`. The host keeps verification and sign-out available to inactive accounts.
 
 ## User flow
@@ -38,7 +38,7 @@ flowchart TD
  O -->|No| A["requireActive runs requireCurrentAccountInTransaction checks from US-ACCOUNT-39 and commits"]
  A -->|Failure| D["Propagate credential or transaction error"]
  A --> E{"CurrentAccount.active?"}
- E -->|No| F["Throw UnverifiedEmailError"]
+ E -->|No| F["Throw E_ACCOUNT_KIT_UNVERIFIED_EMAIL"]
  E -->|Yes| G["Return CurrentAccount; middleware or managed dispatcher continues"]
 ```
 

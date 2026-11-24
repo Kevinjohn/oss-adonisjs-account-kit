@@ -2,7 +2,7 @@
 // when Ace first asks for them, so loading `adonisrc.ts` stays cheap.
 import type { BaseCommand } from '@adonisjs/core/ace'
 import type { CommandMetaData } from '@adonisjs/core/types/ace'
-import { InvalidConfigurationError } from './errors.js'
+import { E_ACCOUNT_KIT_INVALID_CONFIGURATION } from './errors.js'
 
 /** Every command name the package's `./commands` loader registers. */
 export type AccountKitCommandName =
@@ -36,14 +36,26 @@ const accountKitCommandNames: readonly AccountKitCommandName[] = [
   'account-kit:setup',
 ]
 
-/** A lazy command loader for the `commands` array in `adonisrc.ts`. */
+/**
+ * A lazy command loader for the `commands` array in `adonisrc.ts`.
+ *
+ * @example
+ * ```ts
+ * import { defineCommands } from '@kevinjohn/adonisjs-account-kit/define_commands'
+ * import { defineConfig } from '@adonisjs/core/app'
+ *
+ * export default defineConfig({
+ *   commands: [defineCommands({ exclude: ['account-kit:invite'] })],
+ * })
+ * ```
+ */
 export function defineCommands(
   options: AccountKitCommandsOptions = {}
 ): () => Promise<AccountKitCommandsLoader> {
   const excluded = new Set<string>()
   for (const name of options.exclude ?? []) {
     if (!accountKitCommandNames.includes(name) || excluded.has(name))
-      throw new InvalidConfigurationError(
+      throw new E_ACCOUNT_KIT_INVALID_CONFIGURATION(
         'commands.exclude',
         `account_kit: unknown command ${name} in exclude`
       )

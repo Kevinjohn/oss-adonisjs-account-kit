@@ -1,5 +1,5 @@
 import { test } from '@japa/runner'
-import { DeliveryError, PostCommitError } from '@kevinjohn/adonisjs-account-kit'
+import { E_ACCOUNT_KIT_DELIVERY, E_ACCOUNT_KIT_POST_COMMIT } from '@kevinjohn/adonisjs-account-kit'
 import { reportCommittedFailure } from '#services/committed_failure_diagnostic'
 
 test('committed follow-up diagnostics omit private error details', async ({ assert }) => {
@@ -11,12 +11,12 @@ test('committed follow-up diagnostics omit private error details', async ({ asse
   }
   reportCommittedFailure(
     logger,
-    new DeliveryError('secret proof and recipient@example.test'),
+    new E_ACCOUNT_KIT_DELIVERY('secret proof and recipient@example.test'),
     'password_reset.request'
   )
   reportCommittedFailure(
     logger,
-    new PostCommitError('secret proof and recipient@example.test'),
+    new E_ACCOUNT_KIT_POST_COMMIT('secret proof and recipient@example.test'),
     'password_reset.complete'
   )
   assert.deepEqual(reported, [

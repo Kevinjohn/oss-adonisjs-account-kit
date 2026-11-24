@@ -1,10 +1,11 @@
+import { RuntimeException } from '@adonisjs/core/exceptions'
 // The account export: one versioned JSON document of the data Account Kit holds for a user.
 import { DateTime } from 'luxon'
 import { confirmActor } from './actor_confirmation.js'
 import { revision } from './credential_revision.js'
 import { transaction } from './db.js'
 import { settleCommitted } from './effects.js'
-import type { PostCommitError } from './errors.js'
+import type { E_ACCOUNT_KIT_POST_COMMIT } from './errors.js'
 import type { AccountDataInput, AccountExport, ResolvedConfig, Trx, UserId } from './types.js'
 import type { ServiceDependencies } from './service_dependencies.js'
 import { readIsoTimestamp, sqlTimestamp } from './timestamps.js'
@@ -12,10 +13,12 @@ import { decodeScopeColumn } from './invitation_scope.js'
 import { packageTables } from './package_tables.js'
 import { isSessionRegistryEnabled } from './session_registry.js'
 
-const faults = new WeakMap<AccountExport, PostCommitError>()
+const faults = new WeakMap<AccountExport, InstanceType<typeof E_ACCOUNT_KIT_POST_COMMIT>>()
 
 /** The fault raised after an export committed, if any. The document is still complete. */
-export function exportFault(document: AccountExport): PostCommitError | undefined {
+export function exportFault(
+  document: AccountExport
+): InstanceType<typeof E_ACCOUNT_KIT_POST_COMMIT> | undefined {
   return faults.get(document)
 }
 
@@ -25,10 +28,13 @@ function copyApplicationExportSection(value: unknown): unknown {
   try {
     text = JSON.stringify(value)
   } catch (cause) {
-    throw new Error('account_kit: exportAccountData must return JSON-serialisable data', { cause })
+    throw new RuntimeException(
+      'account_kit: exportAccountData must return JSON-serialisable data',
+      { cause }
+    )
   }
   if (text === undefined)
-    throw new Error('account_kit: exportAccountData must return JSON-serialisable data')
+    throw new RuntimeException('account_kit: exportAccountData must return JSON-serialisable data')
   return JSON.parse(text)
 }
 

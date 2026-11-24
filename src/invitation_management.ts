@@ -4,11 +4,11 @@ import { randomUUID } from 'node:crypto'
 import { lockRow, lockUser, transaction } from './db.js'
 import { finishCommitted, createLifecycleEffect, postCommit, settleCommitted } from './effects.js'
 import {
-  EmailAlreadyRegisteredError,
-  AuthorizationError,
-  InvalidInputError,
-  InvitationNotFoundError,
-  InvitationManagementDeniedError,
+  E_ACCOUNT_KIT_EMAIL_ALREADY_REGISTERED,
+  E_ACCOUNT_KIT_AUTHORIZATION,
+  E_ACCOUNT_KIT_INVALID_INPUT,
+  E_ACCOUNT_KIT_INVITATION_NOT_FOUND,
+  E_ACCOUNT_KIT_INVITATION_MANAGEMENT_DENIED,
 } from './errors.js'
 import { invitationPageSize } from './invitation_input.js'
 import { toInvitation } from './invitation_rows.js'
@@ -31,7 +31,7 @@ import type { ServiceDependencies } from './service_dependencies.js'
 
 function requireInvitationId(value: unknown): asserts value is number {
   if (!Number.isSafeInteger(value) || (value as number) <= 0)
-    throw new InvalidInputError('Invalid invitation id')
+    throw new E_ACCOUNT_KIT_INVALID_INPUT('Invalid invitation id')
 }
 
 /** Lock an invitation row and check the actor may manage it. */
@@ -45,10 +45,10 @@ async function lockManagedInvitation(
   const actor = await requireUser(config, actorId, trx)
   await lockRow(trx, 'account_invitations', invitationId)
   const row = await trx.from('account_invitations').where('id', invitationId).forUpdate().first()
-  if (!row) throw new InvitationNotFoundError()
+  if (!row) throw new E_ACCOUNT_KIT_INVITATION_NOT_FOUND()
   const invitation = toInvitation(row)
   if ((await config.authorize.manageInvitation(actor, invitation, { trx })) !== true)
-    throw new InvitationManagementDeniedError()
+    throw new E_ACCOUNT_KIT_INVITATION_MANAGEMENT_DENIED()
   return { actor, invitation }
 }
 
@@ -66,7 +66,7 @@ async function lockResendable(
     invitationId
   )
   if ((await config.authorize.invite(actor, current.role, { trx, scope: current.scope })) !== true)
-    throw new InvitationManagementDeniedError()
+    throw new E_ACCOUNT_KIT_INVITATION_MANAGEMENT_DENIED()
   return current
 }
 
@@ -98,7 +98,7 @@ export async function resendInvitation(
       const current = await lockResendable(deps.config, trx, input.actorId, input.invitationId)
       // The address may have signed up since; acceptance would refuse the new link.
       if (await deps.config.users.findByEmail(current.email, trx))
-        throw new EmailAlreadyRegisteredError()
+        throw new E_ACCOUNT_KIT_EMAIL_ALREADY_REGISTERED()
 
       const now = DateTime.utc()
       await trx
@@ -111,7 +111,7 @@ export async function resendInvitation(
         })
       // Re-read rather than use RETURNING, which MySQL lacks.
       const updated = await trx.from('account_invitations').where('id', input.invitationId).first()
-      if (!updated) throw new InvitationNotFoundError()
+      if (!updated) throw new E_ACCOUNT_KIT_INVITATION_NOT_FOUND()
       return toInvitation(updated)
     })
   )
@@ -167,7 +167,7 @@ export async function paginateInvitations(
     limit < invitationPageSize.minimum ||
     limit > invitationPageSize.maximum
   )
-    throw new InvalidInputError('Invalid invitation page limit')
+    throw new E_ACCOUNT_KIT_INVALID_INPUT('Invalid invitation page limit')
   const position =
     input.cursor === undefined
       ? null
@@ -176,7 +176,7 @@ export async function paginateInvitations(
   const actor = await requireUser(deps.config, input.actorId)
   const context = scope === undefined ? {} : { scope }
   if ((await deps.config.authorize.listInvitations(actor, context)) !== true)
-    throw new AuthorizationError()
+    throw new E_ACCOUNT_KIT_AUTHORIZATION()
   const query = deps.db.from('account_invitations').where('expires_at', '>', sqlTimestamp(deps.db))
   if (scope !== undefined) query.where('scope', encodeScopeColumn(scope))
   query

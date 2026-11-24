@@ -36,14 +36,14 @@ export default class EmailChangesController {
       })
     } catch (error) {
       if (
-        error instanceof errors.InvalidCredentialsError ||
-        error instanceof errors.IdentityNotConfirmedError
+        error instanceof errors.E_INVALID_CREDENTIALS ||
+        error instanceof errors.E_ACCOUNT_KIT_IDENTITY_NOT_CONFIRMED
       ) {
         ctx.session.flash('error', 'Your current password is incorrect. Check it and try again.')
         ctx.session.flashOnly(['email'])
         return ctx.response.redirect().back()
       }
-      if (error instanceof errors.EmailAlreadyRegisteredError) {
+      if (error instanceof errors.E_ACCOUNT_KIT_EMAIL_ALREADY_REGISTERED) {
         ctx.session.flash('error', 'This address cannot be used. Try another address.')
         ctx.session.flashOnly(['email'])
         return ctx.response.redirect().back()
@@ -77,8 +77,8 @@ export default class EmailChangesController {
       })
     } catch (error) {
       if (
-        !(error instanceof errors.InvalidCredentialsError) &&
-        !(error instanceof errors.IdentityNotConfirmedError)
+        !(error instanceof errors.E_INVALID_CREDENTIALS) &&
+        !(error instanceof errors.E_ACCOUNT_KIT_IDENTITY_NOT_CONFIRMED)
       )
         throw error
       ctx.session.flash('error', 'Your current password is incorrect. Check it and try again.')
@@ -98,7 +98,7 @@ export default class EmailChangesController {
     try {
       await kit.emailPasswordManagement.completeEmailChange({ token: ctx.params.token })
     } catch (error) {
-      if (error instanceof errors.InvalidTokenError) {
+      if (error instanceof errors.E_ACCOUNT_KIT_INVALID_TOKEN) {
         ctx.session.flash(
           'error',
           'This email link is invalid, already used, or expired. Sign in to request another change.'

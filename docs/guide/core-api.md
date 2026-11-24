@@ -221,10 +221,10 @@ revokes all of the account's tokens.
 import type { HttpContext } from '@adonisjs/core/http'
 import User from '#models/user'
 import {
-  DeliveryError,
-  PostCommitError,
+  E_ACCOUNT_KIT_DELIVERY,
+  E_ACCOUNT_KIT_POST_COMMIT,
   isCommittedFailure,
-  RegistrationEmailAlreadyRegisteredError,
+  E_ACCOUNT_KIT_REGISTRATION_EMAIL_ALREADY_REGISTERED,
   passwordChangeRevision,
 } from '@kevinjohn/adonisjs-account-kit'
 import accountKit from '@kevinjohn/adonisjs-account-kit/services/main'
@@ -245,7 +245,11 @@ function activeInput(ctx: HttpContext) {
   return { userId: user.id, tokenId: user.currentAccessToken?.identifier?.toString() }
 }
 
-function privateFault(ctx: HttpContext, error: DeliveryError | PostCommitError, operation: string) {
+function privateFault(
+  ctx: HttpContext,
+  error: E_ACCOUNT_KIT_DELIVERY | E_ACCOUNT_KIT_POST_COMMIT,
+  operation: string
+) {
   ctx.logger.error({ code: error.code, operation }, 'account follow-up failed')
 }
 
@@ -255,7 +259,7 @@ export default class AccountJourneyController {
     try {
       await accountKit.registration.register({ email, password })
     } catch (error) {
-      if (error instanceof RegistrationEmailAlreadyRegisteredError)
+      if (error instanceof E_ACCOUNT_KIT_REGISTRATION_EMAIL_ALREADY_REGISTERED)
         return ctx.response.unprocessableEntity({
           errors: [{ field: 'email', rule: 'unique', message: 'The email has already been taken' }],
         })

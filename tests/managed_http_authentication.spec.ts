@@ -1,7 +1,7 @@
 import { test } from '@japa/runner'
 import type { HttpContext } from '@adonisjs/core/http'
 import { AccountKit } from '../src/account_kit.js'
-import { InvalidSessionError } from '../src/errors.js'
+import { E_ACCOUNT_KIT_INVALID_SESSION } from '../src/errors.js'
 import { registerManagedRoutes, type ManagedRoutesOptions } from '../src/http/managed.js'
 import { fakeManagedHttp, stubGuard } from './helpers/managed_http_fakes.js'
 
@@ -153,7 +153,7 @@ test.group('managed HTTP dispatch', () => {
         strategy: 'access_tokens',
         publicCredential: () => 'token',
         current: async () => {
-          throw new InvalidSessionError()
+          throw new E_ACCOUNT_KIT_INVALID_SESSION()
         },
       }),
       enabled: ['authentication'],

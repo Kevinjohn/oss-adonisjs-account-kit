@@ -12,7 +12,7 @@ As an application developer, I want to require admission before protected applic
 ## Acceptance criteria
 
 - `admissionMiddleware({ admission, guard, active? })` resolves admission, checks the selected guard's name and strategy, and passes the credential evidence from `guard.current(context)` to `require`. The managed session and access-token adapters both authenticate and make the selected guard available to downstream application code.
-- `AccountAdmission.require(input, { active? } = {})` evaluates current credentials and admission as in [US-ACCOUNT-56](US-ACCOUNT-56-read-current-admission-status.md). It then refuses an inactive account unless `active: false`, and refuses any unmet enabled requirement with `AdmissionRequiredError` carrying the decision. A direct caller receives `{ account, decision }`; middleware continues to the host handler.
+- `AccountAdmission.require(input, { active? } = {})` evaluates current credentials and admission as in [US-ACCOUNT-56](US-ACCOUNT-56-read-current-admission-status.md). It then refuses an inactive account unless `active: false`, and refuses any unmet enabled requirement with `E_ACCOUNT_KIT_ADMISSION_REQUIRED` carrying the decision. A direct caller receives `{ account, decision }`; middleware continues to the host handler.
 
 ## User flow
 
@@ -51,9 +51,9 @@ flowchart TD
  G --> H{"Current succeeds?"}
  H -->|No| Y["Propagate credential or configuration error"]
  H -->|Yes| I{"Activation required and account inactive?"}
- I -->|Yes| J["Throw UnverifiedEmailError"]
+ I -->|Yes| J["Throw E_ACCOUNT_KIT_UNVERIFIED_EMAIL"]
  I -->|No| K{"Decision admitted?"}
- K -->|No| L["Throw AdmissionRequiredError with decision"]
+ K -->|No| L["Throw E_ACCOUNT_KIT_ADMISSION_REQUIRED with decision"]
  K -->|Yes| M["Return account and decision"]
  M -->|Middleware| N["Return next()"]
  M -->|Direct caller| O["Host receives account and decision"]

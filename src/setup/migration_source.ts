@@ -1,3 +1,4 @@
+import { RuntimeException } from '@adonisjs/core/exceptions'
 import { access } from 'node:fs/promises'
 import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
@@ -31,7 +32,7 @@ export async function requireMigrationTemplatePath(name: string): Promise<string
     await access(join(stubsRoot, stubPath))
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error
-    throw new Error(`Account Kit migration template ${name} is missing`)
+    throw new RuntimeException(`Account Kit migration template ${name} is missing`)
   }
   return stubPath
 }

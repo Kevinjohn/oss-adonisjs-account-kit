@@ -73,6 +73,17 @@ export type ManagedTokenGuardOptions<User> = {
 
 /**
  * Adapts an existing session guard for the managed routes. The session store must be server-side.
+ *
+ * @example
+ * ```ts
+ * import { createManagedGuard } from '@kevinjohn/adonisjs-account-kit/http'
+ *
+ * const guard = createManagedGuard({
+ *   strategy: 'session',
+ *   name: 'web',
+ *   loadUser: async () => (await import('#models/user')).default,
+ * })
+ * ```
  */
 export function createManagedGuard<User>(options: ManagedSessionGuardOptions<User>): Omit<
   ManagedGuard<undefined>,
@@ -82,7 +93,20 @@ export function createManagedGuard<User>(options: ManagedSessionGuardOptions<Use
   /** The guard bound to one request's session. */
   forRequest(context: HttpContext): Extract<AuthenticationGuard<undefined>, { strategy: 'session' }>
 }
-/** Adapts an existing access-token guard for the managed routes. */
+/**
+ * Adapts an existing access-token guard for the managed routes.
+ *
+ * @example
+ * ```ts
+ * import { createManagedGuard } from '@kevinjohn/adonisjs-account-kit/http'
+ *
+ * const guard = createManagedGuard({
+ *   strategy: 'access_tokens',
+ *   name: 'api',
+ *   loadUser: async () => (await import('#models/user')).default,
+ * })
+ * ```
+ */
 export function createManagedGuard<User>(options: ManagedTokenGuardOptions<User>): Omit<
   ManagedGuard<ManagedTokenCredential>,
   'strategy' | 'forRequest' | 'logoutCredential'

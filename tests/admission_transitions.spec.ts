@@ -1,5 +1,5 @@
 import { test } from '@japa/runner'
-import { AdmissionDecisionError } from '../src/admission/errors.js'
+import { E_ACCOUNT_KIT_ADMISSION_DECISION } from '../src/errors.js'
 import { resolveNextApprovalStatus, type AdmissionTransition } from '../src/admission/decisions.js'
 
 type Status = 'approved' | 'rejected' | 'revoked'
@@ -20,7 +20,10 @@ test.group('admission transitions', () => {
         const start = from === 'none' ? null : (from as Status)
         if (expected) assert.equal(resolveNextApprovalStatus(start, transition), expected)
         else
-          assert.throws(() => resolveNextApprovalStatus(start, transition), AdmissionDecisionError)
+          assert.throws(
+            () => resolveNextApprovalStatus(start, transition),
+            E_ACCOUNT_KIT_ADMISSION_DECISION
+          )
       }
   })
 })

@@ -3,7 +3,7 @@ import { fileURLToPath } from 'node:url'
 import { test } from '@japa/runner'
 import * as commandLoader from '../commands/main.js'
 import { defineCommands, type AccountKitCommandName } from '../src/define_commands.js'
-import { InvalidConfigurationError } from '../src/errors.js'
+import { E_ACCOUNT_KIT_INVALID_CONFIGURATION } from '../src/errors.js'
 
 const names = (commands: { commandName: string }[]) =>
   commands.map((command) => command.commandName).sort()
@@ -44,8 +44,11 @@ test.group('defineCommands', () => {
       } catch (caught) {
         error = caught
       }
-      assert.instanceOf(error, InvalidConfigurationError)
-      assert.equal((error as InvalidConfigurationError).field, 'commands.exclude')
+      assert.instanceOf(error, E_ACCOUNT_KIT_INVALID_CONFIGURATION)
+      assert.equal(
+        (error as InstanceType<typeof E_ACCOUNT_KIT_INVALID_CONFIGURATION>).field,
+        'commands.exclude'
+      )
       assert.equal(
         (error as Error).message,
         `account_kit: unknown command ${exclude.at(-1)} in exclude`

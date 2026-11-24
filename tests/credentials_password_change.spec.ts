@@ -1,12 +1,12 @@
 import { test } from '@japa/runner'
 import {
-  DeliveryError,
-  IdentityNotConfirmedError,
-  InvalidInputError,
-  InvalidTokenError,
-  NoPasswordError,
-  PostCommitError,
-  ThrottledError,
+  E_ACCOUNT_KIT_DELIVERY,
+  E_ACCOUNT_KIT_IDENTITY_NOT_CONFIRMED,
+  E_ACCOUNT_KIT_INVALID_INPUT,
+  E_ACCOUNT_KIT_INVALID_TOKEN,
+  E_ACCOUNT_KIT_NO_PASSWORD,
+  E_ACCOUNT_KIT_POST_COMMIT,
+  E_ACCOUNT_KIT_THROTTLED,
 } from '../src/errors.js'
 import { passwordChangeRevision } from '../src/password_change_revision.js'
 import type { AccountUser } from '../src/types.js'
@@ -39,7 +39,7 @@ test.group('emailPasswordManagement', (group) => {
             currentPassword: 'oldPassword123',
             newPassword: value as never,
           }),
-        InvalidInputError
+        E_ACCOUNT_KIT_INVALID_INPUT
       )
     assert.equal(lookups, 0)
     assert.deepEqual(
@@ -64,7 +64,7 @@ test.group('emailPasswordManagement', (group) => {
           currentPassword: 'oldPassword123',
           newPassword: 'password123',
         }),
-      InvalidInputError
+      E_ACCOUNT_KIT_INVALID_INPUT
     )
     await account.emailPasswordManagement.changePassword({
       actorId: user.id,
@@ -85,7 +85,7 @@ test.group('emailPasswordManagement', (group) => {
           currentPassword: 'oldPassword123',
           newPassword: 'newPassword123',
         }),
-      InvalidInputError
+      E_ACCOUNT_KIT_INVALID_INPUT
     )
     for (const currentPassword of [undefined, '', 'incorrect'])
       await assert.rejects(
@@ -95,7 +95,7 @@ test.group('emailPasswordManagement', (group) => {
             currentPassword: currentPassword as never,
             newPassword: 'newPassword123',
           }),
-        IdentityNotConfirmedError
+        E_ACCOUNT_KIT_IDENTITY_NOT_CONFIRMED
       )
     const row = await kit.db.from('users').where('id', user.id).first()
     assert.isTrue(await kit.hash.verify(row.password, 'oldPassword123'))
@@ -112,7 +112,7 @@ test.group('emailPasswordManagement', (group) => {
           currentPassword: 'anything',
           newPassword: 'newPassword123',
         }),
-      NoPasswordError
+      E_ACCOUNT_KIT_NO_PASSWORD
     )
     const row = await kit.db.from('users').where('id', user.id).first()
     assert.isNull(row.password)
@@ -144,7 +144,7 @@ test.group('emailPasswordManagement', (group) => {
             currentPassword: 'wrong',
             newPassword: 'newPassword123',
           }),
-        IdentityNotConfirmedError
+        E_ACCOUNT_KIT_IDENTITY_NOT_CONFIRMED
       )
     try {
       await account.emailPasswordManagement.changePassword({
@@ -154,8 +154,8 @@ test.group('emailPasswordManagement', (group) => {
       })
       assert.fail('expected throttle')
     } catch (error) {
-      assert.instanceOf(error, ThrottledError)
-      assert.isAbove((error as ThrottledError).retryAfterSeconds, 0)
+      assert.instanceOf(error, E_ACCOUNT_KIT_THROTTLED)
+      assert.isAbove((error as InstanceType<typeof E_ACCOUNT_KIT_THROTTLED>).retryAfterSeconds, 0)
     }
     assert.equal(lookups, 5)
     assert.equal(proofs, 5)
@@ -230,8 +230,8 @@ test.group('emailPasswordManagement', (group) => {
       })
       assert.fail('expected callback failure')
     } catch (error) {
-      assert.instanceOf(error, PostCommitError)
-      assert.equal((error as PostCommitError).cause, failure)
+      assert.instanceOf(error, E_ACCOUNT_KIT_POST_COMMIT)
+      assert.equal((error as InstanceType<typeof E_ACCOUNT_KIT_POST_COMMIT>).cause, failure)
     }
     const row = await kit.db.from('users').where('id', user.id).first()
     assert.isTrue(await kit.hash.verify(row.password, 'newPassword123'))
@@ -239,7 +239,7 @@ test.group('emailPasswordManagement', (group) => {
     assert.lengthOf(await kit.db.from('email_verification_tokens'), 0)
   })
 
-  test('passwordChanged failure reports DeliveryError after the password change commits', async ({
+  test('passwordChanged failure reports E_ACCOUNT_KIT_DELIVERY after the password change commits', async ({
     assert,
   }) => {
     const user = await createUser()
@@ -265,8 +265,8 @@ test.group('emailPasswordManagement', (group) => {
       })
       assert.fail('expected delivery error')
     } catch (error) {
-      assert.instanceOf(error, DeliveryError)
-      assert.equal((error as DeliveryError).cause, failure)
+      assert.instanceOf(error, E_ACCOUNT_KIT_DELIVERY)
+      assert.equal((error as InstanceType<typeof E_ACCOUNT_KIT_DELIVERY>).cause, failure)
       assert.isString(passwordChangeRevision(error))
     }
     assert.equal(lifecycleCalls, 1)
@@ -316,9 +316,9 @@ test.group('emailPasswordManagement', (group) => {
       })
       assert.fail('expected committed failure')
     } catch (error) {
-      assert.instanceOf(error, PostCommitError)
-      assert.isTrue((error as PostCommitError).committed)
-      assert.equal((error as PostCommitError).cause, failure)
+      assert.instanceOf(error, E_ACCOUNT_KIT_POST_COMMIT)
+      assert.isTrue((error as InstanceType<typeof E_ACCOUNT_KIT_POST_COMMIT>).committed)
+      assert.equal((error as InstanceType<typeof E_ACCOUNT_KIT_POST_COMMIT>).cause, failure)
     }
     assert.deepEqual(calls, ['notice', 'lifecycle'])
     const row = await kit.db.from('users').where('id', user.id).first()
@@ -492,7 +492,8 @@ test.group('emailPasswordManagement', (group) => {
       )
       assert.equal(results[0].status, 'fulfilled')
       assert.equal(results[1].status, 'rejected')
-      if (results[1].status === 'rejected') assert.instanceOf(results[1].reason, InvalidTokenError)
+      if (results[1].status === 'rejected')
+        assert.instanceOf(results[1].reason, E_ACCOUNT_KIT_INVALID_TOKEN)
       assert.equal(callbackCalls, 1)
       const row = await kit.db.from('users').where('id', user.id).first()
       const changed = await kit.hash.verify(row.password, 'changedPassword123')

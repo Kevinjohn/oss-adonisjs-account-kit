@@ -3,7 +3,7 @@ import { test } from '@japa/runner'
 import limiter from '@adonisjs/limiter/services/main'
 import db from '@adonisjs/lucid/services/db'
 import app from '@adonisjs/core/services/app'
-import { AccountKit, ThrottledError } from '@kevinjohn/adonisjs-account-kit'
+import { AccountKit, E_ACCOUNT_KIT_THROTTLED } from '@kevinjohn/adonisjs-account-kit'
 import { notifications } from '#services/account_kit_notifications'
 import User from '#models/user'
 import accountKitConfig from '#config/account_kit'
@@ -116,7 +116,7 @@ test.group('Signup safety', (group) => {
     const kit = await app.container.make(AccountKit)
     const original = Object.getOwnPropertyDescriptor(kit, 'authentication')
     for (const [kind, failure] of [
-      ['throttled', new ThrottledError(60)],
+      ['throttled', new E_ACCOUNT_KIT_THROTTLED(60)],
       ['guard', new Error('Credential guard failed')],
     ] as const) {
       const email = `committed-${kind}-${randomUUID()}@example.test`

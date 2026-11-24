@@ -3,11 +3,11 @@ import { test } from '@japa/runner'
 import { defineConfig } from '../src/account_kit.js'
 import { generateToken, hashToken } from '../src/tokens.js'
 import {
-  DeliveryError,
-  InvalidInputError,
-  InvalidTokenError,
-  PostCommitError,
-  ThrottledError,
+  E_ACCOUNT_KIT_DELIVERY,
+  E_ACCOUNT_KIT_INVALID_INPUT,
+  E_ACCOUNT_KIT_INVALID_TOKEN,
+  E_ACCOUNT_KIT_POST_COMMIT,
+  E_ACCOUNT_KIT_THROTTLED,
 } from '../src/errors.js'
 import type { AccountKitConfig } from '../src/types.js'
 import { bootTestApp, useTestApp } from './helpers/app.js'
@@ -65,7 +65,7 @@ test.group('passwordReset.reset', (group) => {
     const account = service({ passwordPolicy: { mixedCase: true, numbers: true, minScore: 3 } })
     await assert.rejects(
       () => account.passwordReset.reset({ token, password: 'password123' }),
-      InvalidInputError
+      E_ACCOUNT_KIT_INVALID_INPUT
     )
     assert.lengthOf(await kit.db.from('password_reset_tokens'), 1)
     await account.passwordReset.reset({ token, password: 'LongerPassword12345' })
@@ -79,19 +79,19 @@ test.group('passwordReset.reset', (group) => {
       .update({ expires_at: dbTime(kit, DateTime.utc().minus({ minute: 1 })) })
     await assert.rejects(
       () => account.passwordReset.reset({ token, password: 'new-password123' }),
-      InvalidTokenError
+      E_ACCOUNT_KIT_INVALID_TOKEN
     )
     await assert.rejects(
       () => account.passwordReset.reset({ token: 'bad', password: 'new-password123' }),
-      InvalidTokenError
+      E_ACCOUNT_KIT_INVALID_TOKEN
     )
     await assert.rejects(
       () => account.passwordReset.reset({ token: null as never, password: 'new-password123' }),
-      InvalidTokenError
+      E_ACCOUNT_KIT_INVALID_TOKEN
     )
     await assert.rejects(
       () => account.passwordReset.reset({ token: generateToken(), password: 'new-password123' }),
-      InvalidTokenError
+      E_ACCOUNT_KIT_INVALID_TOKEN
     )
     assert.equal(await storedPassword(), original)
     await kit.db
@@ -100,7 +100,7 @@ test.group('passwordReset.reset', (group) => {
     await account.passwordReset.reset({ token, password: 'new-password123' })
     await assert.rejects(
       () => account.passwordReset.reset({ token, password: 'another-password' }),
-      InvalidTokenError
+      E_ACCOUNT_KIT_INVALID_TOKEN
     )
     assert.notEqual(await storedPassword(), original)
     assert.isFalse(await kit.hash.verify((await storedPassword())!, 'another-password'))
@@ -111,7 +111,7 @@ test.group('passwordReset.reset', (group) => {
     for (const password of [null, 123, '1234567', 'x'.repeat(257)]) {
       await assert.rejects(
         () => account.passwordReset.reset({ token: 'bad', password: password as never }),
-        InvalidInputError
+        E_ACCOUNT_KIT_INVALID_INPUT
       )
     }
     assert.equal(await storedPassword(), user.password)
@@ -131,13 +131,13 @@ test.group('passwordReset.reset', (group) => {
     await kit.db.from('users').where('id', user.id).update({ email: 'changed@example.test' })
     await assert.rejects(
       () => account.passwordReset.reset({ token, password: 'new-password123' }),
-      InvalidTokenError
+      E_ACCOUNT_KIT_INVALID_TOKEN
     )
     assert.equal(await storedPassword(), user.password)
     await kit.db.from('users').where('id', user.id).delete()
     await assert.rejects(
       () => account.passwordReset.reset({ token, password: 'new-password123' }),
-      InvalidTokenError
+      E_ACCOUNT_KIT_INVALID_TOKEN
     )
   })
 
@@ -147,7 +147,7 @@ test.group('passwordReset.reset', (group) => {
     const account = service({}, { ...users, findById: async () => null })
     await assert.rejects(
       () => account.passwordReset.reset({ token, password: 'new-password123' }),
-      InvalidTokenError
+      E_ACCOUNT_KIT_INVALID_TOKEN
     )
     assert.lengthOf(await kit.db.from('password_reset_tokens'), 1)
   })
@@ -163,7 +163,7 @@ test.group('passwordReset.reset', (group) => {
       1
     )
     const rejected = results.find((result) => result.status === 'rejected') as PromiseRejectedResult
-    assert.instanceOf(rejected.reason, InvalidTokenError)
+    assert.instanceOf(rejected.reason, E_ACCOUNT_KIT_INVALID_TOKEN)
   })
 
   test('adapter failure rolls back token consumption and password change', async ({ assert }) => {
@@ -398,8 +398,8 @@ test.group('passwordReset.reset', (group) => {
       await account.passwordReset.reset({ token, password: 'new-password123' })
       assert.fail('expected committed failure')
     } catch (error) {
-      assert.instanceOf(error, PostCommitError)
-      assert.equal((error as PostCommitError).cause, failure)
+      assert.instanceOf(error, E_ACCOUNT_KIT_POST_COMMIT)
+      assert.equal((error as InstanceType<typeof E_ACCOUNT_KIT_POST_COMMIT>).cause, failure)
     }
     assert.deepEqual(calls, ['notice', 'lifecycle'])
     const row = await kit.db.from('users').where('id', user.id).first()
@@ -419,16 +419,16 @@ test.group('passwordReset.reset', (group) => {
     })
     try {
       await account.passwordReset.reset({ token, password: 'new-password123' })
-      assert.fail('expected PostCommitError')
+      assert.fail('expected E_ACCOUNT_KIT_POST_COMMIT')
     } catch (error) {
-      assert.instanceOf(error, PostCommitError)
-      assert.equal((error as PostCommitError).cause, failure)
+      assert.instanceOf(error, E_ACCOUNT_KIT_POST_COMMIT)
+      assert.equal((error as InstanceType<typeof E_ACCOUNT_KIT_POST_COMMIT>).cause, failure)
     }
     assert.isTrue(await kit.hash.verify((await storedPassword())!, 'new-password123'))
     assert.lengthOf(await kit.db.from('password_reset_tokens'), 0)
   })
 
-  test('passwordResetCompleted failure reports DeliveryError after the password reset commits', async ({
+  test('passwordResetCompleted failure reports E_ACCOUNT_KIT_DELIVERY after the password reset commits', async ({
     assert,
   }) => {
     const { token } = await issue()
@@ -449,8 +449,8 @@ test.group('passwordReset.reset', (group) => {
       await account.passwordReset.reset({ token, password: 'new-password123' })
       assert.fail('expected delivery error')
     } catch (error) {
-      assert.instanceOf(error, DeliveryError)
-      assert.equal((error as DeliveryError).cause, failure)
+      assert.instanceOf(error, E_ACCOUNT_KIT_DELIVERY)
+      assert.equal((error as InstanceType<typeof E_ACCOUNT_KIT_DELIVERY>).cause, failure)
     }
     assert.equal(lifecycleCalls, 1)
     const row = await kit.db.from('users').first()
@@ -477,7 +477,7 @@ test.group('password reset issuance and redemption boundaries', (group) => {
     const token = tokenFrom(recorder.calls[0].args[1])
     await assert.rejects(
       () => account.passwordReset.request({ email: 'person@example.test', clientKey: 'second' }),
-      ThrottledError
+      E_ACCOUNT_KIT_THROTTLED
     )
 
     const resetUser = await account.passwordReset.reset({ token, password: 'new-password123' })

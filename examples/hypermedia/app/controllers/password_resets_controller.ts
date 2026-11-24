@@ -39,7 +39,7 @@ export default class PasswordResetsController {
     try {
       await kit.passwordReset.reset({ token: ctx.params.token, password })
     } catch (error) {
-      if (error instanceof errors.InvalidTokenError) {
+      if (error instanceof errors.E_ACCOUNT_KIT_INVALID_TOKEN) {
         ctx.session.flash(
           'error',
           'This reset link is invalid, already used, or expired. Request a fresh link.'

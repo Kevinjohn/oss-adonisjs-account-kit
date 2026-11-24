@@ -37,9 +37,24 @@ if (process.env.TEST_BUILT_EXPORTS === '1')
     assert.isFunction(root.createAllySocialProvider)
     assert.equal(ally.createAllySocialProvider, root.createAllySocialProvider)
     assert.lengthOf(Object.keys(types), 0)
-    assert.isFunction(errors.ThrottledError)
-    assert.equal(root.errors.ThrottledError, errors.ThrottledError)
-    assert.equal(root.ThrottledError, errors.ThrottledError)
+    for (const [name, Constructor] of Object.entries(errors)) {
+      if (!name.startsWith('E_')) continue
+      assert.equal(root.errors[name as keyof typeof root.errors], Constructor, name)
+      assert.match(Constructor.name, /Exception$/)
+    }
+    assert.notProperty(root, 'InvalidTokenError')
+    assert.notProperty(errors, 'InvalidTokenError')
+    assert.equal(
+      admission.E_ACCOUNT_KIT_ADMISSION_REQUIRED,
+      root.errors.E_ACCOUNT_KIT_ADMISSION_REQUIRED
+    )
+    assert.equal(
+      admission.E_ACCOUNT_KIT_ADMISSION_DECISION,
+      root.errors.E_ACCOUNT_KIT_ADMISSION_DECISION
+    )
+    assert.isFunction(errors.E_ACCOUNT_KIT_THROTTLED)
+    assert.equal(root.errors.E_ACCOUNT_KIT_THROTTLED, errors.E_ACCOUNT_KIT_THROTTLED)
+    assert.equal(root.E_ACCOUNT_KIT_THROTTLED, errors.E_ACCOUNT_KIT_THROTTLED)
     assert.isFunction(provider.default)
     assert.notProperty(
       JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8')).exports,
@@ -70,7 +85,7 @@ if (process.env.TEST_BUILT_EXPORTS === '1')
     assert.isFunction(admission.admissionMiddleware)
     assert.isFunction(admission.withInvitationEvidence)
     assert.isFunction(admission.withAdmissionCleanup)
-    assert.instanceOf(new admission.AdmissionDecisionError(), root.AccountKitError)
+    assert.instanceOf(new admission.E_ACCOUNT_KIT_ADMISSION_DECISION(), root.E_ACCOUNT_KIT)
     assert.isFunction(admissionProvider.default)
     const admissionCommandList = await admissionCommands.getMetaData()
     assert.includeMembers(
@@ -108,12 +123,18 @@ if (process.env.TEST_BUILT_EXPORTS === '1')
       const second = await built.app.container.make(root.AccountKit)
       assert.equal(first, second)
       assert.instanceOf(first, root.AccountKit)
-      assert.isFunction(errors.AccountAccessDeniedError)
-      assert.equal(root.AccountAccessDeniedError, errors.AccountAccessDeniedError)
-      assert.equal(root.errors.AccountAccessDeniedError, errors.AccountAccessDeniedError)
+      assert.isFunction(errors.E_ACCOUNT_KIT_ACCOUNT_ACCESS_DENIED)
+      assert.equal(
+        root.E_ACCOUNT_KIT_ACCOUNT_ACCESS_DENIED,
+        errors.E_ACCOUNT_KIT_ACCOUNT_ACCESS_DENIED
+      )
+      assert.equal(
+        root.errors.E_ACCOUNT_KIT_ACCOUNT_ACCESS_DENIED,
+        errors.E_ACCOUNT_KIT_ACCOUNT_ACCESS_DENIED
+      )
       await assert.rejects(
         () => first.authentication.inspectAccountAccess({ userId: 999999, requireActive: true }),
-        errors.AccountAccessDeniedError
+        errors.E_ACCOUNT_KIT_ACCOUNT_ACCESS_DENIED
       )
       const service = await import('@kevinjohn/adonisjs-account-kit/services/main')
       assert.equal(service.default, first)

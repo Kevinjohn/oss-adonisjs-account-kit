@@ -1,3 +1,4 @@
+import { RuntimeException } from '@adonisjs/core/exceptions'
 import { lstat, readFile } from 'node:fs/promises'
 import { dirname, isAbsolute, relative, resolve, sep } from 'node:path'
 
@@ -13,12 +14,13 @@ export async function requireSafeSetupPath(root: string, name: string): Promise<
     fromRoot.startsWith(`..${sep}`) ||
     path === root
   )
-    throw new Error(`Setup path escapes the application: ${name}`)
+    throw new RuntimeException(`Setup path escapes the application: ${name}`)
   let parent = dirname(path)
   while (parent !== root) {
     try {
       const entry = await lstat(parent)
-      if (!entry.isDirectory()) throw new Error(`Setup refuses non-directory or symlink ${parent}`)
+      if (!entry.isDirectory())
+        throw new RuntimeException(`Setup refuses non-directory or symlink ${parent}`)
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error
     }
@@ -32,7 +34,7 @@ export async function readRegularFile(root: string, name: string): Promise<strin
   const path = await requireSafeSetupPath(root, name)
   try {
     const entry = await lstat(path)
-    if (!entry.isFile()) throw new Error(`Setup refuses non-regular file ${name}`)
+    if (!entry.isFile()) throw new RuntimeException(`Setup refuses non-regular file ${name}`)
     return await readFile(path, 'utf8')
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === 'ENOENT') return null

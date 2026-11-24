@@ -1,6 +1,6 @@
 import { test } from '@japa/runner'
 import type { AdmissionEvent } from '../src/admission/types.js'
-import { PostCommitError } from '../src/errors.js'
+import { E_ACCOUNT_KIT_POST_COMMIT } from '../src/errors.js'
 import { useAdmissionApp } from './helpers/admission_schema.js'
 import { allRequirements, makeAdmission, writeAdmissionRow } from './helpers/admission.js'
 import { insertUser } from './helpers/fakes.js'
@@ -75,11 +75,11 @@ test.group('admission events', (group) => {
     const person = await insertUser(kit)
     await assert.rejects(
       () => admission.request({ userId: person.id, revision: null }),
-      PostCommitError
+      E_ACCOUNT_KIT_POST_COMMIT
     )
     await assert.rejects(
       () => admission.operator.grantInvitation({ email: person.email }),
-      PostCommitError
+      E_ACCOUNT_KIT_POST_COMMIT
     )
     const row = await kit.db.from('account_admissions').where('user_id', person.id).first()
     assert.isNotNull(row.requested_at)

@@ -60,8 +60,8 @@ Set `notify.socialIdentityLinked` and `notify.socialIdentityUnlinked`, or use th
   a confirmed email address at the time of the change.
 - Delivery failures surface after commit; callers must not repeat the relationship operation in
   response.
-- If signup commits but activation lookup or proof issuance fails, `PostCommitError` retains the
-  original cause. Delivery failures keep `DeliveryError`. The account exists and the signup state
+- If signup commits but activation lookup or proof issuance fails, `E_ACCOUNT_KIT_POST_COMMIT` retains the
+  original cause. Delivery failures keep `E_ACCOUNT_KIT_DELIVERY`. The account exists and the signup state
   is consumed; recover by requesting activation again instead of repeating signup.
 - When SQLite retries a rolled-back signup attempt, activation delivery and invitation-acceptance
   events come only from the attempt that commits. An eventual `link_required` outcome does not
@@ -140,29 +140,29 @@ For the service contract and other address-confirmation paths, see
   cannot transfer an identity already linked elsewhere. An application can also supply a fresh
   proof directly to the callback when it has an authenticated completion channel.
 - Linking needs a confirmed account. `begin` and the link callback both throw
-  `UnverifiedEmailError` (403) while the account's address is unconfirmed, so a provider cannot be
+  `E_ACCOUNT_KIT_UNVERIFIED_EMAIL` (403) while the account's address is unconfirmed, so a provider cannot be
   attached to an address someone else may still claim.
 - No recent proof goes into a provider URL.
 - An optional `socialAuthentication.acceptLink(user, profile)` refuses a provider account before
   it is linked. `profile` is `{ provider, subject, email, emailVerified }`; `email` may be `null`.
   It runs after the proof and duplicate-identity checks, inside the link transaction and under the
   user lock, and receives the locked, authenticated user but no transaction. Throw
-  `SocialLinkRefusedError` to refuse: the link is rolled back, no notice is sent, and the proof and
+  `E_ACCOUNT_KIT_SOCIAL_LINK_REFUSED` to refuse: the link is rolled back, no notice is sent, and the proof and
   state can be used again. Other errors also roll back; only an exact provider/subject uniqueness
-  violation becomes `SocialIdentityAlreadyLinkedError`. Errors naming overlapping constraints or
+  violation becomes `E_ACCOUNT_KIT_SOCIAL_IDENTITY_ALREADY_LINKED`. Errors naming overlapping constraints or
   columns reach the caller unchanged.
 - `acceptLink` must decide from its arguments only. A database read can wait on SQLite's single
   pool connection, and the callback may run more than once on a SQLite retry, so it must not write
   or make remote side effects. It is not called for login, registration, confirmation or reauth.
 
 ```ts
-import { SocialLinkRefusedError } from '@kevinjohn/adonisjs-account-kit'
+import { E_ACCOUNT_KIT_SOCIAL_LINK_REFUSED } from '@kevinjohn/adonisjs-account-kit'
 
 socialAuthentication: {
   providers: { google: googleProvider },
   async acceptLink(user, profile) {
     if (!profile.emailVerified || profile.email !== user.email)
-      throw new SocialLinkRefusedError()
+      throw new E_ACCOUNT_KIT_SOCIAL_LINK_REFUSED()
   },
 }
 ```
@@ -170,7 +170,7 @@ socialAuthentication: {
 **Listing and unlinking**
 
 - `list({ current })` returns the caller's confirmed associations. `get({ current, identityId })`
-  returns one confirmed association and throws `SocialUserNotFoundError` when the caller has no
+  returns one confirmed association and throws `E_ACCOUNT_KIT_SOCIAL_USER_NOT_FOUND` when the caller has no
   confirmed link with that ID.
 - `unlink({ current, identityId, proof })` consumes a `social_unlink` proof and atomically keeps a
   usable password or another confirmed, currently enabled provider.

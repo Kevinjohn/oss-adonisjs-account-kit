@@ -1,6 +1,6 @@
 import { test } from '@japa/runner'
 import { AccountKit } from '../src/account_kit.js'
-import { DeliveryError, ThrottledError } from '../src/errors.js'
+import { E_ACCOUNT_KIT_DELIVERY, E_ACCOUNT_KIT_THROTTLED } from '../src/errors.js'
 import { registerManagedRoutes } from '../src/http/managed.js'
 import { fakeManagedHttp, stubGuard } from './helpers/managed_http_fakes.js'
 
@@ -59,7 +59,7 @@ test.group('managed HTTP dispatch', () => {
           assert.notInclude(key, '192.0.2.1')
           const count = (seen.get(key) ?? 0) + 1
           seen.set(key, count)
-          if (count > 1) throw new ThrottledError(15)
+          if (count > 1) throw new E_ACCOUNT_KIT_THROTTLED(15)
         },
       }),
     }
@@ -76,7 +76,7 @@ test.group('managed HTTP dispatch', () => {
     await first.managedHttp.consume({ endpoint: 'auth.signup', clientKey: '192.0.2.1' })
     await assert.rejects(
       () => second.managedHttp.consume({ endpoint: 'auth.signup', clientKey: '192.0.2.1' }),
-      ThrottledError
+      E_ACCOUNT_KIT_THROTTLED
     )
     await second.managedHttp.consume({
       endpoint: 'auth.passwordReset.inspect',
@@ -97,7 +97,7 @@ test.group('managed HTTP dispatch', () => {
             assertPublicRegistration: () => {},
             passwordAllowed: () => true,
             consume: async () => {
-              throw new ThrottledError(12)
+              throw new E_ACCOUNT_KIT_THROTTLED(12)
             },
           },
           registration: {
@@ -253,7 +253,7 @@ test.group('managed HTTP dispatch', () => {
           },
           registration: {
             register: async () => {
-              throw new DeliveryError('mail unavailable')
+              throw new E_ACCOUNT_KIT_DELIVERY('mail unavailable')
             },
           },
           authentication: {

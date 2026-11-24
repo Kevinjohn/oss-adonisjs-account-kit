@@ -43,7 +43,7 @@ flowchart TD
  C -->|Service list| S["Return SocialIdentity list"]
  C -->|Managed list| H["Map projectSocialIdentity and return 200 with identities"]
  C -->|Service detail| F{"Exact identityId in confirmed list?"}
- F -->|No| G["Throw SocialUserNotFoundError"]
+ F -->|No| G["Throw E_ACCOUNT_KIT_SOCIAL_USER_NOT_FOUND"]
  F -->|Yes| I["Return one SocialIdentity"]
 ```
 

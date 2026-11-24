@@ -1,5 +1,5 @@
 import { test } from '@japa/runner'
-import { InvalidInputError } from '../src/errors.js'
+import { E_ACCOUNT_KIT_INVALID_INPUT } from '../src/errors.js'
 import { decodeKeysetCursor, encodeKeysetCursor } from '../src/keyset_cursor.js'
 
 const LITERAL_CURSOR = 'WyIyMDI2LTAxLTAyVDAzOjA0OjA1LjAwMFoiLDdd'
@@ -15,7 +15,7 @@ test.group('keyset cursor', () => {
   test('rejects a malformed cursor with the given message', ({ assert }) => {
     assert.throws(
       () => decodeKeysetCursor('not-a-cursor', 'Invalid test cursor'),
-      InvalidInputError,
+      E_ACCOUNT_KIT_INVALID_INPUT,
       'Invalid test cursor'
     )
   })
@@ -28,7 +28,7 @@ test.group('keyset cursor', () => {
     ])
       assert.throws(
         () => decodeKeysetCursor(cursor, 'Invalid test cursor'),
-        InvalidInputError,
+        E_ACCOUNT_KIT_INVALID_INPUT,
         'Invalid test cursor'
       )
   })

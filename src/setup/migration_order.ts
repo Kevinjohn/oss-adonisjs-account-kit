@@ -1,3 +1,4 @@
+import { RuntimeException } from '@adonisjs/core/exceptions'
 import { posix } from 'node:path'
 import {
   formatMigrationSuffix,
@@ -37,12 +38,12 @@ export function orderMigrations(files: string[], now: number, names = migrationN
   const entries = names.map((name) => {
     const matches = files.filter((file) => matchesAccountKitMigration(file, name))
     if (matches.length > 1)
-      throw new Error(
+      throw new RuntimeException(
         `Multiple existing migrations for ${name}; reconcile their history before setup`
       )
     if (matches.length === 1) return { name, filename: matches[0], existing: true }
     if (!Number.isSafeInteger(timestamp))
-      throw new Error('Migration timestamp exceeds safe integer range')
+      throw new RuntimeException('Migration timestamp exceeds safe integer range')
     return {
       name,
       filename: posix.join(directory, `${timestamp++}${formatMigrationSuffix(name)}`),
@@ -61,7 +62,7 @@ export function orderMigrations(files: string[], now: number, names = migrationN
       (entry) => !entry.existing && prior.some((file) => !runsBefore(file, entry.filename))
     )
   )
-    throw new Error(
+    throw new RuntimeException(
       'Cannot establish migration order for mixed-width or non-conventional migration filenames; install the remaining Account Kit migrations manually after reviewing existing history'
     )
   for (const entry of entries) {
@@ -70,7 +71,7 @@ export function orderMigrations(files: string[], now: number, names = migrationN
       dependency &&
       ((entry.existing && !dependency.existing) || !runsBefore(dependency.filename, entry.filename))
     )
-      throw new Error(
+      throw new RuntimeException(
         `Migration order conflict: ${dependency.name} must run before ${entry.name}; reconcile filenames and applied history manually before setup`
       )
   }

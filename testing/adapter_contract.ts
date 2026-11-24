@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+import { RuntimeException } from '@adonisjs/core/exceptions'
 import { DateTime } from 'luxon'
 import type { Trx, UsersAdapter } from '../src/types.js'
 
@@ -63,6 +64,16 @@ function assertSameUser(
 /**
  * Reusable conformance checks for a UsersAdapter. This helper depends only on Node, Luxon,
  * and adapter types; consumers provide transaction, model-hook, and package-lock fixtures.
+ *
+ * @example
+ * ```ts
+ * import { assertUsersAdapterContract } from '@kevinjohn/adonisjs-account-kit/testing/adapter_contract'
+ * import { test } from '@japa/runner'
+ *
+ * test('honours the users adapter contract', async () => {
+ *   await assertUsersAdapterContract(adapterFixture)
+ * })
+ * ```
  */
 export async function assertUsersAdapterContract(fixture: AdapterContractFixture): Promise<void> {
   const prefix =
@@ -128,7 +139,7 @@ export async function assertUsersAdapterContract(fixture: AdapterContractFixture
         trx
       )
       assert.ok(await fixture.adapter.findByEmail(rolledBackEmail, trx))
-      throw new Error('create rollback')
+      throw new RuntimeException('create rollback')
     }),
     /create rollback/
   )
@@ -138,7 +149,7 @@ export async function assertUsersAdapterContract(fixture: AdapterContractFixture
   await assert.rejects(
     fixture.transaction(async (trx) => {
       await fixture.adapter.setEmail(created.id, changedEmail, trx)
-      throw new Error('contract rollback')
+      throw new RuntimeException('contract rollback')
     }),
     /contract rollback/
   )
@@ -182,7 +193,7 @@ export async function assertUsersAdapterContract(fixture: AdapterContractFixture
       await fixture.adapter.markEmailVerified(created.id, changedVerifiedAt, trx)
       const read = await fixture.adapter.findById(created.id, trx)
       assert.equal(read?.emailVerifiedAt?.toMillis(), changedVerifiedAt.toMillis())
-      throw new Error('verification rollback')
+      throw new RuntimeException('verification rollback')
     }),
     /verification rollback/
   )
@@ -210,7 +221,7 @@ export async function assertUsersAdapterContract(fixture: AdapterContractFixture
   await assert.rejects(
     fixture.transaction(async (trx) => {
       await fixture.adapter.setPassword(afterVerification.id, nextPassword, trx)
-      throw new Error('password rollback')
+      throw new RuntimeException('password rollback')
     }),
     /password rollback/
   )
@@ -270,7 +281,7 @@ export async function assertUsersAdapterContract(fixture: AdapterContractFixture
     await assert.rejects(
       fixture.transaction(async (trx) => {
         await setPasswordHash(prepared.id, nextHash, trx)
-        throw new Error('hash rollback')
+        throw new RuntimeException('hash rollback')
       }),
       /hash rollback/
     )
@@ -321,7 +332,7 @@ export async function assertUsersAdapterContract(fixture: AdapterContractFixture
       await fixture.adapter.setUnverifiedEmail(inactive.id, messy(pendingEmail), trx)
       const pending = await fixture.adapter.findById(inactive.id, trx)
       assert.equal(pending?.unverifiedEmail, pendingEmail)
-      throw new Error('pending address rollback')
+      throw new RuntimeException('pending address rollback')
     }),
     /pending address rollback/
   )
@@ -336,7 +347,7 @@ export async function assertUsersAdapterContract(fixture: AdapterContractFixture
       await fixture.adapter.setUnverifiedEmail(inactive.id, null, trx)
       const cleared = await fixture.adapter.findById(inactive.id, trx)
       assert.equal(cleared?.unverifiedEmail, null)
-      throw new Error('pending clear rollback')
+      throw new RuntimeException('pending clear rollback')
     }),
     /pending clear rollback/
   )
@@ -363,7 +374,7 @@ export async function assertUsersAdapterContract(fixture: AdapterContractFixture
     await assert.rejects(
       fixture.transaction(async (trx) => {
         await updateRegistrationData(created.id, update.data, trx)
-        throw new Error('registration rollback')
+        throw new RuntimeException('registration rollback')
       }),
       /registration rollback/
     )
@@ -378,7 +389,7 @@ export async function assertUsersAdapterContract(fixture: AdapterContractFixture
       fixture.transaction(async (trx) => {
         await remove(inactive.id, trx)
         assert.equal(await fixture.adapter.findById(inactive.id, trx), null)
-        throw new Error('delete rollback')
+        throw new RuntimeException('delete rollback')
       }),
       /delete rollback/
     )

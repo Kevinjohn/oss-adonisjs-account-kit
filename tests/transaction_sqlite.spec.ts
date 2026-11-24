@@ -1,7 +1,7 @@
 import { performance } from 'node:perf_hooks'
 import { test } from '@japa/runner'
 import { transaction } from '../src/db.js'
-import { PostCommitError } from '../src/errors.js'
+import { E_ACCOUNT_KIT_POST_COMMIT } from '../src/errors.js'
 import { bootTestApp, useTestApp } from './helpers/app.js'
 import { resetSchema } from './helpers/schema.js'
 import { locksRows } from './helpers/dialect.js'
@@ -466,8 +466,8 @@ test.group('managed transaction wrapper', (group) => {
         await writing
         assert.fail('expected postcommit fault')
       } catch (error) {
-        assert.instanceOf(error, PostCommitError)
-        assert.equal((error as PostCommitError).cause, restoreFault)
+        assert.instanceOf(error, E_ACCOUNT_KIT_POST_COMMIT)
+        assert.equal((error as InstanceType<typeof E_ACCOUNT_KIT_POST_COMMIT>).cause, restoreFault)
       }
       assert.equal(attempts, 1)
       assert.isNotNull(await reading)
@@ -503,8 +503,8 @@ test.group('managed transaction wrapper', (group) => {
       })
       assert.fail('expected listener failure')
     } catch (error) {
-      assert.instanceOf(error, PostCommitError)
-      assert.equal((error as PostCommitError).cause, failure)
+      assert.instanceOf(error, E_ACCOUNT_KIT_POST_COMMIT)
+      assert.equal((error as InstanceType<typeof E_ACCOUNT_KIT_POST_COMMIT>).cause, failure)
     }
     assert.equal(attempts, 1)
     assert.lengthOf(await kit.db.from('users').where('email', 'once@example.test'), 1)

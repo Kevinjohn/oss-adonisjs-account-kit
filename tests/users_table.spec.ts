@@ -1,6 +1,6 @@
 import { DateTime } from 'luxon'
 import { test } from '@japa/runner'
-import { EmailAlreadyRegisteredError } from '../src/errors.js'
+import { E_ACCOUNT_KIT_EMAIL_ALREADY_REGISTERED } from '../src/errors.js'
 import { bootTestApp } from './helpers/app.js'
 import { makeService, makeUsersAdapter, tokenFrom } from './helpers/fakes.js'
 import { resetSchema } from './helpers/schema.js'
@@ -107,7 +107,7 @@ for (const usersTable of tableNames) {
       const raceToken = tokenFrom(raceRecorder.calls.at(-1)!.args[2])
       await assert.rejects(
         () => racing.emailPasswordManagement.completeEmailChange({ token: raceToken }),
-        EmailAlreadyRegisteredError
+        E_ACCOUNT_KIT_EMAIL_ALREADY_REGISTERED
       )
       const restored = await users.findById(actor.id)
       assert.equal(restored!.email, 'next@example.test')

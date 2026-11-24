@@ -182,7 +182,19 @@ function buildRequestBodySchema(
   return schema && { required: true, content: { 'application/json': { schema } } }
 }
 
-/** Generate the document. Throws when an application extension has no matching schema. */
+/**
+ * Generate the document. Throws when an application extension has no matching schema.
+ *
+ * @example
+ * ```ts
+ * import { generateManagedOpenApi } from '@kevinjohn/adonisjs-account-kit/http'
+ *
+ * const document = generateManagedOpenApi({
+ *   registration,
+ *   info: { title: 'Example Studio Accounts', version: '1.0.0' },
+ * })
+ * ```
+ */
 export function generateManagedOpenApi(input: ManagedOpenApiInput): OpenApiDocument {
   const { registration } = input
   const accountSchema = input.accountSchema ?? registration.openapi?.accountSchema

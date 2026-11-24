@@ -6,15 +6,17 @@ import { proofRequest, proofRecovery } from '#services/token_page_headers'
 import { errors } from '@kevinjohn/adonisjs-account-kit'
 
 /** Maps Account Kit errors to safe flash messages without exposing private causes. */
-function accountMessage(error: errors.AccountKitError) {
-  if (error instanceof errors.InvalidCredentialsError) return 'Invalid email or password.'
-  if (error instanceof errors.ThrottledError)
+function accountMessage(error: InstanceType<typeof errors.E_ACCOUNT_KIT>) {
+  if (error instanceof errors.E_INVALID_CREDENTIALS) return 'Invalid email or password.'
+  if (error instanceof errors.E_ACCOUNT_KIT_THROTTLED)
     return `Too many attempts. Try again in ${error.retryAfterSeconds} seconds.`
-  if (error instanceof errors.InvalidTokenError) return 'This link is invalid or has expired.'
-  if (error instanceof errors.IdentityNotConfirmedError) return 'The password is incorrect.'
-  if (error instanceof errors.DeliveryError)
+  if (error instanceof errors.E_ACCOUNT_KIT_INVALID_TOKEN)
+    return 'This link is invalid or has expired.'
+  if (error instanceof errors.E_ACCOUNT_KIT_IDENTITY_NOT_CONFIRMED)
+    return 'The password is incorrect.'
+  if (error instanceof errors.E_ACCOUNT_KIT_DELIVERY)
     return 'Your change was saved, but the email could not be sent. If you need a verification link, wait one minute before requesting another.'
-  if (error instanceof errors.PostCommitError)
+  if (error instanceof errors.E_ACCOUNT_KIT_POST_COMMIT)
     return 'Your change was saved, but a follow-up step failed. Check your email if you were expecting a link. If you need a new verification link, wait one minute before requesting another.'
   return 'Something went wrong. Please try again.'
 }
@@ -79,13 +81,13 @@ export default class HttpExceptionHandler extends ExceptionHandler {
       ctx.session.flash('error', 'The form expired. Please try again.')
       return ctx.response.redirect().back()
     }
-    if (error instanceof errors.InvalidSessionError) {
+    if (error instanceof errors.E_ACCOUNT_KIT_INVALID_SESSION) {
       await ctx.auth.use('web').logout()
       ctx.session.clear()
       ctx.session.flash('error', 'Your session has ended. Please sign in again.')
       return ctx.response.redirect().toRoute('session.create')
     }
-    if (error instanceof errors.AccountKitError) {
+    if (error instanceof errors.E_ACCOUNT_KIT) {
       ctx.session.flash('error', accountMessage(error))
       const proof = proofRequest(ctx.request)
       if (proof) return ctx.response.redirect(proof.fallback, false)

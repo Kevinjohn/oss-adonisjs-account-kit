@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto'
 import app from '@adonisjs/core/services/app'
 import { type HttpContext, ExceptionHandler } from '@adonisjs/core/http'
 import { accountErrorResponse, errors } from '@kevinjohn/adonisjs-account-kit'
-import { AdmissionRequiredError } from '@kevinjohn/adonisjs-account-kit/admission'
+import { E_ACCOUNT_KIT_ADMISSION_REQUIRED } from '@kevinjohn/adonisjs-account-kit/admission'
 import { errors as shieldErrors } from '@adonisjs/shield'
 import { accountError } from '#services/http_responses'
 import { SocialProviderExchangeError } from '#services/social_provider'
@@ -10,10 +10,7 @@ import { isSocialPath } from '#services/social_path'
 
 function providerFailure(error: unknown) {
   if (error instanceof SocialProviderExchangeError) return error
-  if (
-    error instanceof errors.AccountKitError &&
-    error.cause instanceof SocialProviderExchangeError
-  ) {
+  if (error instanceof errors.E_ACCOUNT_KIT && error.cause instanceof SocialProviderExchangeError) {
     return error.cause
   }
   return undefined
@@ -53,7 +50,7 @@ export default class HttpExceptionHandler extends ExceptionHandler {
         ? error.status
         : undefined
     const unexpected =
-      social && !provider && !(error instanceof errors.AccountKitError) && !(status && status < 500)
+      social && !provider && !(error instanceof errors.E_ACCOUNT_KIT) && !(status && status < 500)
     if (provider || (social && status && status >= 500) || unexpected) {
       logSocialFailure(ctx, provider, unexpected)
     }
@@ -61,11 +58,11 @@ export default class HttpExceptionHandler extends ExceptionHandler {
       return accountError(ctx, 403, 'E_BAD_CSRF_TOKEN', error.message)
     }
     // The structured decision says which requirement is unmet, so the client can explain it.
-    if (error instanceof AdmissionRequiredError) {
+    if (error instanceof E_ACCOUNT_KIT_ADMISSION_REQUIRED) {
       return accountError(
         ctx,
         403,
-        AdmissionRequiredError.code,
+        E_ACCOUNT_KIT_ADMISSION_REQUIRED.code,
         'Admission is required',
         undefined,
         {

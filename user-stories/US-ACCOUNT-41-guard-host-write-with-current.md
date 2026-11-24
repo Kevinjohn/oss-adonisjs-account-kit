@@ -40,7 +40,7 @@ flowchart TD
  B --> C{"Non-SQLite and token or tracked-session ID available?"}
  C -->|Yes| D["Lock token or tracked session row"]
  D --> V{"Row still present?"}
- V -->|No| X["Throw InvalidSessionError before callback"]
+ V -->|No| X["Throw E_ACCOUNT_KIT_INVALID_SESSION before callback"]
  C -->|No| E["Continue under transaction/account lock; SQLite serialises writers"]
  V -->|Yes| F["Invoke run({ account, signInId?, trx, readCredentialRevision })"]
  E --> F

@@ -26,8 +26,8 @@ export default class PasswordsController {
         notified = false
         revision = committed
       } else if (
-        error instanceof errors.InvalidCredentialsError ||
-        error instanceof errors.IdentityNotConfirmedError
+        error instanceof errors.E_INVALID_CREDENTIALS ||
+        error instanceof errors.E_ACCOUNT_KIT_IDENTITY_NOT_CONFIRMED
       ) {
         ctx.session.flash('error', 'Your current password is incorrect. Check it and try again.')
         return ctx.response.redirect().back()

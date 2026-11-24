@@ -1,3 +1,4 @@
+import { InvalidArgumentsException } from '@adonisjs/core/exceptions'
 import type { NotificationCallbacks } from './types.js'
 import type { AccountKitTranslator } from './translator.js'
 
@@ -90,6 +91,16 @@ function escapeHtml(value: string): string {
  * Renders the built-in template for one kind of account email. Use it to send through your own
  * transport with the same wording. With `i18n`, each part is looked up as
  * `account_kit.emails.<kind>.<part>` and falls back to the English text.
+ *
+ * @example
+ * ```ts
+ * import { renderAccountMessage } from '@kevinjohn/adonisjs-account-kit'
+ *
+ * const email = renderAccountMessage('passwordResetProvision', {
+ *   brandName: 'Example Studio',
+ *   actionUrl: 'https://app.example.test/reset-password/example-token',
+ * })
+ * ```
  */
 export function renderAccountMessage(
   kind: AccountMessageKind,
@@ -99,19 +110,19 @@ export function renderAccountMessage(
 ): RenderedAccountMessage {
   const template = templates[kind]
   if (template.action && !values.actionUrl)
-    throw new Error(`account_kit: ${kind} requires an action URL`)
+    throw new InvalidArgumentsException(`account_kit: ${kind} requires an action URL`)
   if (values.actionUrl) {
     let url: URL
     try {
       url = new URL(values.actionUrl)
     } catch {
-      throw new Error('account_kit: action URL must be absolute')
+      throw new InvalidArgumentsException('account_kit: action URL must be absolute')
     }
     if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password)
-      throw new Error('account_kit: action URL must be a trusted HTTP(S) URL')
+      throw new InvalidArgumentsException('account_kit: action URL must be a trusted HTTP(S) URL')
   }
   if (template.body.includes('{provider}') && !values.providerName)
-    throw new Error(`account_kit: ${kind} requires a provider name`)
+    throw new InvalidArgumentsException(`account_kit: ${kind} requires a provider name`)
   const data = { brandName: values.brandName, provider: values.providerName, url: values.actionUrl }
   const translate = (key: string, english: string) => {
     // @adonisjs/i18n returns the fallback verbatim, so it must already be interpolated.

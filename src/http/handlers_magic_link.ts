@@ -1,6 +1,6 @@
 /** Managed handlers for the magic-link capability: request, link inspection and completion. */
 import type { HttpContext } from '@adonisjs/core/http'
-import { InvalidInputError, InvalidTokenError } from '../errors.js'
+import { E_ACCOUNT_KIT_INVALID_INPUT, E_ACCOUNT_KIT_INVALID_TOKEN } from '../errors.js'
 import type { ManagedEndpointName } from './routes.js'
 import type { ManagedHandler } from './managed_types.js'
 import {
@@ -37,7 +37,7 @@ export const magicLinkHandlers = {
       verifier = resolveMagicLinkVerifier(requireMagicLinkSession(context))
       clientChallenge = deriveClientChallenge(verifier)
     }
-    if (!clientChallenge) throw new InvalidInputError('Client challenge is required')
+    if (!clientChallenge) throw new E_ACCOUNT_KIT_INVALID_INPUT('Client challenge is required')
     try {
       await kit.magicLink.request({ email: input.email, clientKey: request.ip(), clientChallenge })
     } catch (error) {
@@ -70,7 +70,7 @@ export const magicLinkHandlers = {
     if (options.guard.strategy === 'session') {
       verifier = resolveMagicLinkVerifier(requireMagicLinkSession(context), false)
     }
-    if (!verifier) throw new InvalidTokenError()
+    if (!verifier) throw new E_ACCOUNT_KIT_INVALID_TOKEN()
     const result = await kit.magicLink.complete(
       { token: params.token, verifier },
       options.guard.forRequest(context)

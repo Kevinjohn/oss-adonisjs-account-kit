@@ -3,16 +3,19 @@ import { countDeletedRowsFromResult } from '../consume_rows.js'
 import { issueOperatorInvitation } from '../operator.js'
 import { isInvitationRole } from '../invitation_input.js'
 import { isEmailShaped, normalizeEmail } from '../email.js'
-import { CapabilityDisabledError, InvalidInputError } from '../errors.js'
+import {
+  E_ACCOUNT_KIT_BOOTSTRAP_APPROVAL_CHANGED,
+  E_ACCOUNT_KIT_CAPABILITY_DISABLED,
+  E_ACCOUNT_KIT_INVALID_INPUT,
+} from '../errors.js'
 import { sqlTimestamp } from '../timestamps.js'
 import type { OperatorInviteResult } from '../types.js'
 import { requireApproval } from './capability.js'
-import { BootstrapApprovalChangedError } from './errors.js'
 import { admissionTable } from './rows.js'
 import type { AdmissionContext } from './service.js'
 
 function requireEmail(value: unknown): string {
-  if (!isEmailShaped(value)) throw new InvalidInputError('Invalid email')
+  if (!isEmailShaped(value)) throw new E_ACCOUNT_KIT_INVALID_INPUT('Invalid email')
   return normalizeEmail(value)
 }
 
@@ -26,9 +29,9 @@ export async function bootstrapOperatorInvitation(
 ): Promise<OperatorInviteResult> {
   requireApproval(deps.config)
   const email = requireEmail(input.email)
-  if (!isInvitationRole(input.role)) throw new InvalidInputError('Invalid role')
+  if (!isInvitationRole(input.role)) throw new E_ACCOUNT_KIT_INVALID_INPUT('Invalid role')
   if (!deps.accountConfig.enabled.includes('invitations'))
-    throw new CapabilityDisabledError('invitations is disabled')
+    throw new E_ACCOUNT_KIT_CAPABILITY_DISABLED('invitations is disabled')
   const issued = await issueOperatorInvitation(
     { config: deps.accountConfig, db: deps.db },
     { email, role: input.role, deliver: 'print' },
@@ -53,7 +56,7 @@ export async function bootstrapOperatorInvitation(
     .whereNull('user_id')
     .where('invitation_id', issued.invitation.id)
     .first()
-  if (!pending) throw new BootstrapApprovalChangedError()
+  if (!pending) throw new E_ACCOUNT_KIT_BOOTSTRAP_APPROVAL_CHANGED()
   return issued
 }
 

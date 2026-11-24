@@ -11,7 +11,7 @@ import { requireAuthentication } from '../authentication_config.js'
 import { establishCredential } from '../credential_issuance.js'
 import { revision } from '../credential_revision.js'
 import { lockUser, transaction } from '../db.js'
-import { InvalidCredentialsError, InvalidSessionError } from '../errors.js'
+import { E_INVALID_CREDENTIALS, E_ACCOUNT_KIT_INVALID_SESSION } from '../errors.js'
 import { createSessionGuard } from '../http/managed_session_guard.js'
 import type { AuthenticationGuard, CurrentAccountInput, UserId } from '../types.js'
 
@@ -26,6 +26,14 @@ const handleKey = 'accountKitSession'
  * `authentication.current` checks. `ctx.auth.use(name).user` and `ctx.auth.user` are the
  * signed-in model; `authenticateAsClient(user)` creates a real registry sign-in, so
  * `@adonisjs/auth`'s `authApiClient` provides `loginAs`.
+ *
+ * @example
+ * ```ts
+ * import type { AccountKitSessionGuard } from '@kevinjohn/adonisjs-account-kit/auth'
+ *
+ * const web: AccountKitSessionGuard<typeof userProvider> = auth.use('web')
+ * const user = await web.authenticate()
+ * ```
  */
 export class AccountKitSessionGuard<
   UserProvider extends SessionUserProviderContract<unknown>,
@@ -56,7 +64,7 @@ export class AccountKitSessionGuard<
       loadUser: async () => ({
         findOrFail: async (id: UserId) => {
           const user = await this.#provider.findById(id)
-          if (!user) throw new InvalidSessionError()
+          if (!user) throw new E_ACCOUNT_KIT_INVALID_SESSION()
           return user.getOriginal()
         },
       }),
@@ -66,6 +74,11 @@ export class AccountKitSessionGuard<
   /**
    * Authenticates the session as `SessionGuard` does, then checks its credential revision and
    * registry handle as `authentication.current` does. Fails with `E_UNAUTHORIZED_ACCESS`.
+   *
+   * @example
+   * ```ts
+   * const user = await guard.authenticate()
+   * ```
    */
   async authenticate(): Promise<RealUser<UserProvider>> {
     if (this.authenticationAttempted) return this.getUserOrFail()
@@ -75,8 +88,10 @@ export class AccountKitSessionGuard<
     const stored = session.get(revisionKey)
     const handle = session.get(handleKey)
     try {
-      if (stored !== undefined && typeof stored !== 'string') throw new InvalidSessionError()
-      if (handle !== undefined && typeof handle !== 'string') throw new InvalidSessionError()
+      if (stored !== undefined && typeof stored !== 'string')
+        throw new E_ACCOUNT_KIT_INVALID_SESSION()
+      if (handle !== undefined && typeof handle !== 'string')
+        throw new E_ACCOUNT_KIT_INVALID_SESSION()
       const kit = await this.#app.container.make('account_kit')
       await kit.authentication.current({
         userId: (user as { id: UserId }).id,
@@ -87,7 +102,7 @@ export class AccountKitSessionGuard<
       // `SessionGuard.authenticate` marked the request authenticated before the kit check.
       this.user = undefined
       this.isAuthenticated = false
-      if (!(error instanceof InvalidSessionError)) throw error
+      if (!(error instanceof E_ACCOUNT_KIT_INVALID_SESSION)) throw error
       throw new errors.E_UNAUTHORIZED_ACCESS('Invalid or expired user session', {
         guardDriverName: this.driverName,
       })
@@ -98,6 +113,11 @@ export class AccountKitSessionGuard<
   /**
    * Creates a registry sign-in for `user`, with the `canAccess` checks of `authentication.login`
    * after its password check, and returns the session data for the test client.
+   *
+   * @example
+   * ```ts
+   * const { session } = await guard.authenticateAsClient(user)
+   * ```
    */
   async authenticateAsClient(user: RealUser<UserProvider>): Promise<AuthClientResponse> {
     const guardUser = await this.#provider.createUserForGuard(user)
@@ -109,7 +129,7 @@ export class AccountKitSessionGuard<
       await lockUser(trx, deps.config, userId)
       const account = await deps.config.users.findById(userId, trx)
       if (!account || !requireAccountAccessDecision(await auth.canAccess(account, trx)))
-        throw new InvalidCredentialsError()
+        throw new E_INVALID_CREDENTIALS()
       return {
         account: buildAccountProjection(account),
         revision: await revision(trx, deps.config, account.id),
@@ -131,23 +151,55 @@ export class AccountKitSessionGuard<
         async terminate() {},
       },
       verified,
-      { rejected: () => new InvalidCredentialsError(), cleanupFailed: 'Client sign-in failed' }
+      { rejected: () => new E_INVALID_CREDENTIALS(), cleanupFailed: 'Client sign-in failed' }
     )
     return { session }
   }
 
-  /** The verified sign-in for `authentication.current` / `withCurrent`; `ManagedGuard.current` without a context. */
+  /**
+   * The verified sign-in for `authentication.current` / `withCurrent`; `ManagedGuard.current` without a context.
+   *
+   * @example
+   * ```ts
+   * const account = await kit.authentication.current(await guard.current())
+   * ```
+   */
   current(): Promise<CurrentAccountInput> {
     return this.#createManagedGuard().current(this.#ctx)
   }
 
-  /** The request adapter for `authentication.login` / `logout`; `ManagedGuard.forRequest` without a context. */
+  /**
+   * The request adapter for `authentication.login` / `logout`; `ManagedGuard.forRequest` without a context.
+   *
+   * @example
+   * ```ts
+   * await kit.authentication.logout(guard.forRequest())
+   * ```
+   */
   forRequest(): AuthenticationGuard<undefined> {
     return this.#createManagedGuard().forRequest(this.#ctx)
   }
 }
 
-/** Configures an `AccountKitSessionGuard` in `config/auth.ts`, as `sessionGuard` does. */
+/**
+ * Configures an `AccountKitSessionGuard` in `config/auth.ts`, as `sessionGuard` does.
+ *
+ * @example
+ * ```ts
+ * import { accountKitSessionGuard } from '@kevinjohn/adonisjs-account-kit/auth'
+ * import { defineConfig } from '@adonisjs/auth'
+ * import { sessionUserProvider } from '@adonisjs/auth/session'
+ *
+ * export default defineConfig({
+ *   default: 'web',
+ *   guards: {
+ *     web: accountKitSessionGuard({
+ *       provider: sessionUserProvider({ model: () => import('#models/user') }),
+ *     }),
+ *   },
+ * })
+ * ```
+ */
 export function accountKitSessionGuard<
   UserProvider extends SessionUserProviderContract<unknown>,
 >(config: {

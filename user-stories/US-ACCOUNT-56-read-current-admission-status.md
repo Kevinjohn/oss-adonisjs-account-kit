@@ -12,7 +12,7 @@ As a signed-in account holder, I want the application to show my admission statu
 ## Acceptance criteria
 
 - `current(input)` checks the guard evidence and evaluates admission in one transaction, returning `{ account, decision }`. Session evidence is `userId` and the current `revision` (explicit `null` before the first revision change), plus `sessionHandle` when sign-in tracking is enabled. Access-token evidence is `userId` and `tokenId` for the user's token. A valid tracked session can have its activity updated.
-- Unknown users, invalid or revoked credentials, and accounts refused by `authentication.canAccess(user, trx)` fail with `InvalidSessionError`. A non-boolean access decision throws `AdapterContractError`. An account may be inactive or lack admission and still receive status. The decision contains only enabled requirements and the combined `admitted` result. The host controls what it displays and applies the [protected-route gate](US-ACCOUNT-25-gate-application-route.md) separately.
+- Unknown users, invalid or revoked credentials, and accounts refused by `authentication.canAccess(user, trx)` fail with `E_ACCOUNT_KIT_INVALID_SESSION`. A non-boolean access decision throws `E_ACCOUNT_KIT_ADAPTER_CONTRACT`. An account may be inactive or lack admission and still receive status. The decision contains only enabled requirements and the combined `admitted` result. The host controls what it displays and applies the [protected-route gate](US-ACCOUNT-25-gate-application-route.md) separately.
 
 ## User flow
 
@@ -32,7 +32,7 @@ The runnable API example traces the controller and middleware entry in its [admi
 ```mermaid
 flowchart TD
  A["AccountAdmission.current starts transaction and calls requireCurrentAccountInTransaction"] --> B{"Authentication enabled?"}
- B -->|No| L["Throw CapabilityDisabledError"]
+ B -->|No| L["Throw E_ACCOUNT_KIT_CAPABILITY_DISABLED"]
  B -->|Yes| M{"Lock and find user?"}
  M -->|No| G
  M -->|Yes| C{"Which credential strategy?"}
@@ -40,10 +40,10 @@ flowchart TD
  C -->|Access token| E["Check token row belongs to user"]
  D --> F{"Credential valid?"}
  E --> F
- F -->|No| G["Throw InvalidSessionError for refusal"]
+ F -->|No| G["Throw E_ACCOUNT_KIT_INVALID_SESSION for refusal"]
  F -->|Yes| N{"What does canAccess return?"}
  N -->|False| G
- N -->|Non-boolean| O["Throw AdapterContractError"]
+ N -->|Non-boolean| O["Throw E_ACCOUNT_KIT_ADAPTER_CONTRACT"]
  N -->|True| H["Touch tracked session if applicable and build account projection"]
  H --> I{"users.findById reloads user?"}
  I -->|No| G

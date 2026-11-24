@@ -3,7 +3,7 @@ import { bootTestApp } from './helpers/app.js'
 import { resetSchema } from './helpers/schema.js'
 import { makeService, makeUsersAdapter } from './helpers/fakes.js'
 import { clientChallenge, provider } from './helpers/social_identity.js'
-import { SocialTransactionError } from '../src/errors.js'
+import { E_ACCOUNT_KIT_SOCIAL_TRANSACTION_INVALID } from '../src/errors.js'
 import { isUserEmailUniqueViolation } from '../src/db.js'
 
 test.group('social registration email collisions', () => {
@@ -61,7 +61,7 @@ test.group('social registration email collisions', () => {
           account.socialAuthentication.callback({ state: start.state, callback: {} })
         if (entry === 'verification hook') {
           const error = await runCallback().catch((caught: unknown) => caught)
-          assert.instanceOf(error, SocialTransactionError)
+          assert.instanceOf(error, E_ACCOUNT_KIT_SOCIAL_TRANSACTION_INVALID)
         } else {
           const callback = await runCallback()
           if (entry === 'continuation') {

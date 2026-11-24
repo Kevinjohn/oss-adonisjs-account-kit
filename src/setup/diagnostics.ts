@@ -1,3 +1,4 @@
+import { InvalidArgumentsException } from '@adonisjs/core/exceptions'
 import type { SetupDiagnostic } from './types.js'
 
 /** Selected environment values read from the process or the application's `.env` files. */
@@ -72,8 +73,9 @@ export function addOriginDiagnostics(
   try {
     const parsed = new URL(value)
     if (parsed.username || parsed.password || parsed.search || parsed.hash)
-      throw new Error('origin must not include credentials, query or fragment')
-    if (!['https:', 'http:'].includes(parsed.protocol)) throw new Error('HTTP(S) is required')
+      throw new InvalidArgumentsException('origin must not include credentials, query or fragment')
+    if (!['https:', 'http:'].includes(parsed.protocol))
+      throw new InvalidArgumentsException('HTTP(S) is required')
     if (production && parsed.protocol !== 'https:') {
       addSetupDiagnostic(diagnostics, field, `${variable} must use HTTPS in production`)
     } else if (

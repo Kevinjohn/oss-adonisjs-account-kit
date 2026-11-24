@@ -111,7 +111,7 @@ trigger them. Configure the maintained callbacks directly through `notify` when 
 does not prove recipient delivery. With `best-effort`, Account Kit does not retry a failed or
 lost message. Record failures privately with an operation ID and message kind, omitting proofs,
 full URLs, passwords, and unnecessary personal data. A delivery-only failure is reported as
-`DeliveryError`. Any observer or commit-listener failure is reported as `PostCommitError` with
+`E_ACCOUNT_KIT_DELIVERY`. Any observer or commit-listener failure is reported as `E_ACCOUNT_KIT_POST_COMMIT` with
 `committed: true`; if a delivery also fails, its cause is included. Both can follow a committed account change, so never
 blindly repeat a non-repeatable mutation. A transport failure _after_ `sendLater` accepts the
 message is observable through the application's Mail transport or worker logs, not a later

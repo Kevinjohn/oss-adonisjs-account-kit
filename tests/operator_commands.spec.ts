@@ -3,7 +3,11 @@ import { Kernel } from '@adonisjs/core/ace'
 import InviteAccount from '../commands/invite.js'
 import ResetLink from '../commands/reset_link.js'
 import * as commandLoader from '../commands/main.js'
-import { EmailAlreadyRegisteredError, InvalidInputError, UserNotFoundError } from '../src/errors.js'
+import {
+  E_ACCOUNT_KIT_EMAIL_ALREADY_REGISTERED,
+  E_ACCOUNT_KIT_INVALID_INPUT,
+  E_ACCOUNT_KIT_USER_NOT_FOUND,
+} from '../src/errors.js'
 import { AccountKit } from '../src/account_kit.js'
 import type { AccountKitConfig } from '../src/types.js'
 import { aceKernel } from './helpers/ace_kernel.js'
@@ -93,7 +97,7 @@ test.group('operator commands', (group) => {
     ])
     assert.equal(command.exitCode, 1)
     assert.equal(command.failure, 'E_ACCOUNT_KIT_EMAIL_ALREADY_REGISTERED')
-    assert.instanceOf(command.error, EmailAlreadyRegisteredError)
+    assert.instanceOf(command.error, E_ACCOUNT_KIT_EMAIL_ALREADY_REGISTERED)
     assert.lengthOf(stdout(), 0)
     assert.lengthOf(stderr(), 1)
     assert.include(stderr()[0].message, 'E_ACCOUNT_KIT_EMAIL_ALREADY_REGISTERED')
@@ -103,7 +107,7 @@ test.group('operator commands', (group) => {
     assert,
   }) => {
     const cause = new Error('private callback failure')
-    const error = new InvalidInputError('private URL builder failure', { cause })
+    const error = new E_ACCOUNT_KIT_INVALID_INPUT('private URL builder failure', { cause })
     let proof: string | undefined
     const { kernel, stdout, stderr } = kernelFor(kit, {
       enabled: ['invitations'],
@@ -151,8 +155,8 @@ test.group('operator commands', (group) => {
     assert.equal(command.exitCode, 1)
     const output = JSON.parse(stdout()[0].message)
     assert.isString(output.url)
-    assert.equal(output.fault.name, 'PostCommitError')
-    assert.equal(command.failure, 'PostCommitError')
+    assert.equal(output.fault.name, 'PostCommitException')
+    assert.equal(command.failure, 'PostCommitException')
     assert.isUndefined(command.error)
     assert.lengthOf(stderr(), 2)
     assert.include(stderr()[0].message, 'bearer secret')
@@ -218,7 +222,7 @@ test.group('operator commands', (group) => {
     ])
     assert.equal(missing.exitCode, 1)
     assert.equal(missing.failure, 'E_ACCOUNT_KIT_USER_NOT_FOUND')
-    assert.instanceOf(missing.error, UserNotFoundError)
+    assert.instanceOf(missing.error, E_ACCOUNT_KIT_USER_NOT_FOUND)
     assert.include(stderr().at(-1)!.message, 'E_ACCOUNT_KIT_USER_NOT_FOUND')
     assert.lengthOf(stdout(), 1)
   })

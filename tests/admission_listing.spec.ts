@@ -1,7 +1,7 @@
 /* eslint-disable @unicorn/no-await-expression-member -- Keep each assertion next to the operation it inspects. */
 
 import { test } from '@japa/runner'
-import { AuthorizationError, InvalidInputError } from '../src/errors.js'
+import { E_ACCOUNT_KIT_AUTHORIZATION, E_ACCOUNT_KIT_INVALID_INPUT } from '../src/errors.js'
 import { useAdmissionApp } from './helpers/admission_schema.js'
 import { allowDecisions, makeAdmission, writeAdmissionRow } from './helpers/admission.js'
 import { insertUser, makeUsersAdapter } from './helpers/fakes.js'
@@ -45,7 +45,7 @@ test.group('admission listing', (group) => {
     ])
     await assert.rejects(
       () => admission.list({ actorId: actor.id, status: 'archived' as never }),
-      InvalidInputError
+      E_ACCOUNT_KIT_INVALID_INPUT
     )
   })
 
@@ -87,7 +87,10 @@ test.group('admission listing', (group) => {
         'Invalid admission cursor'
       )
     for (const limit of [0, 101, 1.5])
-      await assert.rejects(() => admission.list({ actorId: actor.id, limit }), InvalidInputError)
+      await assert.rejects(
+        () => admission.list({ actorId: actor.id, limit }),
+        E_ACCOUNT_KIT_INVALID_INPUT
+      )
   })
 
   test('requires authorize.list to return exactly true', async ({ assert }) => {
@@ -105,7 +108,7 @@ test.group('admission listing', (group) => {
         },
       },
     })
-    await assert.rejects(() => admission.list({ actorId: actor.id }), AuthorizationError)
+    await assert.rejects(() => admission.list({ actorId: actor.id }), E_ACCOUNT_KIT_AUTHORIZATION)
     assert.deepEqual(calls, [actor.id])
     await assert.rejects(() => admission.list({ actorId: 999_999 }), 'Unknown actor')
   })
@@ -114,9 +117,9 @@ test.group('admission listing', (group) => {
     const { actor } = await seed()
     const { admission } = makeAdmission(kit, approvalOnly)
     await writeAdmissionRow(kit, actor.id, { approval: 'revoked' })
-    await assert.rejects(() => admission.list({ actorId: actor.id }), AuthorizationError)
+    await assert.rejects(() => admission.list({ actorId: actor.id }), E_ACCOUNT_KIT_AUTHORIZATION)
     await kit.db.from('account_admissions').where('user_id', actor.id).delete()
-    await assert.rejects(() => admission.list({ actorId: actor.id }), AuthorizationError)
+    await assert.rejects(() => admission.list({ actorId: actor.id }), E_ACCOUNT_KIT_AUTHORIZATION)
   })
 
   test('pages rows that share a created_at by id', async ({ assert }) => {

@@ -567,7 +567,7 @@ test.group('native account journeys', (group) => {
     accountKitNotifications.clear()
     const notify = accountKitNotifications.notify.accountActivationProvision
     accountKitNotifications.notify.accountActivationProvision = async () => {
-      throw new errors.DeliveryError('test delivery failure')
+      throw new errors.E_ACCOUNT_KIT_DELIVERY('test delivery failure')
     }
     try {
       const page = await visit('/signup')
@@ -614,7 +614,7 @@ test.group('native account journeys', (group) => {
     })
     const notify = accountKitNotifications.notify.passwordChanged
     accountKitNotifications.notify.passwordChanged = async () => {
-      throw new errors.DeliveryError('test delivery failure')
+      throw new errors.E_ACCOUNT_KIT_DELIVERY('test delivery failure')
     }
     try {
       const page = await visit('/login')

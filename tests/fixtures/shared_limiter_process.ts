@@ -3,7 +3,7 @@ import { IgnitorFactory } from '@adonisjs/core/factories'
 import { defineConfig as defineDatabaseConfig } from '@adonisjs/lucid'
 import { LimiterManager } from '@adonisjs/limiter'
 import LimiterDatabaseStore from '@adonisjs/limiter/stores/database'
-import { ThrottledError } from '../../src/errors.js'
+import { E_ACCOUNT_KIT_THROTTLED } from '../../src/errors.js'
 import { consume } from '../../src/throttle.js'
 
 const filename = process.env.ACCOUNT_KIT_TEST_DB!
@@ -62,7 +62,7 @@ try {
       )
       results.push({ throttled: false })
     } catch (error) {
-      if (!(error instanceof ThrottledError)) throw error
+      if (!(error instanceof E_ACCOUNT_KIT_THROTTLED)) throw error
       results.push({ throttled: true, status: error.status })
     }
   }

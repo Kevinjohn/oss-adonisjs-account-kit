@@ -12,7 +12,7 @@ As an application developer, I want AdonisJS Auth middleware to use Account Kit'
 ## Acceptance criteria
 
 - `provider` is an AdonisJS session user provider or its configuration provider. Its original user model must expose a string or number `id` that matches the provider’s user ID and the Account Kit adapter’s account ID. The guard disables remember-me tokens. Use `auth.use(name).forRequest()` with Account Kit login and logout to establish and end Account Kit session data.
-- Auth middleware can expose the signed-in model as `auth.user` once the revision, tracked handle when enabled, and account access policy pass. A failed Account Kit session check clears the guard's authenticated state and exposes `E_UNAUTHORIZED_ACCESS` for `InvalidSessionError`. Other failures propagate.
+- Auth middleware can expose the signed-in model as `auth.user` once the revision, tracked handle when enabled, and account access policy pass. A failed Account Kit session check clears the guard's authenticated state and exposes `E_UNAUTHORIZED_ACCESS` for `E_ACCOUNT_KIT_INVALID_SESSION`. Other failures propagate.
 - `auth.use(name).current()` returns trusted `CurrentAccountInput` for `authentication.current` or `withCurrent`. It includes a live sign-in handle when session management is enabled. Use a separate active-account check when the route requires one.
 - With Japa's Auth and session client plugins, `loginAs(user)` uses `authenticateAsClient(user)` to create a new session sign-in. It checks account existence and `canAccess` before issuing session data, and creates a registry row when session management is enabled.
 
@@ -41,7 +41,7 @@ flowchart TD
  C -->|Base guard refuses| I["Auth refuses sign-in"]
  C -->|Already attempted| Q["Use cached getUserOrFail result for this request"]
  C --> K["Read user.id, revision and handle; authentication.current applies US-ACCOUNT-39 checks"]
- K -->|InvalidSessionError| N["Clear guard identity and authenticated state; throw E_UNAUTHORIZED_ACCESS"]
+ K -->|E_ACCOUNT_KIT_INVALID_SESSION| N["Clear guard identity and authenticated state; throw E_UNAUTHORIZED_ACCESS"]
  K -->|Other fault| X["Clear guard identity and authenticated state; propagate fault"]
  K -->|Accepted| O["Return signed-in model to Auth"]
  B --> H["current or forRequest delegates to createSessionGuard for this context"]
@@ -51,7 +51,7 @@ flowchart TD
  S -->|forRequest| R["Return establish and terminate adapter for Account Kit login and logout"]
  B --> J["authenticateAsClient uses createUserForGuard and reads getId()"]
  J --> U["Lock and load account; check canAccess and read revision"]
- U -->|Denied or missing| V["Throw InvalidCredentialsError"]
+ U -->|Denied or missing| V["Throw E_INVALID_CREDENTIALS"]
  U --> W["establishCredential prepares session data, then rechecks under lock and records tracked sign-in if enabled"]
  W -->|Success| Y["Return session data to test client"]
  W -->|Failure| Z["Propagate issuance failure"]

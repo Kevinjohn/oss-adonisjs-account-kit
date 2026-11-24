@@ -1,7 +1,7 @@
 import { DateTime } from 'luxon'
 import { test } from '@japa/runner'
 import { AccountKit } from '../src/account_kit.js'
-import { AccountAccessDeniedError, PostCommitError } from '../src/errors.js'
+import { E_ACCOUNT_KIT_ACCOUNT_ACCESS_DENIED, E_ACCOUNT_KIT_POST_COMMIT } from '../src/errors.js'
 import type { AccountKitConfig } from '../src/types.js'
 import { useTestApp, bootTestApp } from './helpers/app.js'
 import { accessTokenDefaults } from './helpers/access_tokens.js'
@@ -167,7 +167,7 @@ test.group('account access inspection side effects and dependency failures', (gr
     const error = await failure(() =>
       account.authentication.inspectAccountAccess({ userId: user.id, requireActive: true })
     )
-    assert.notInstanceOf(error, AccountAccessDeniedError)
+    assert.notInstanceOf(error, E_ACCOUNT_KIT_ACCOUNT_ACCESS_DENIED)
     assert.strictEqual(error, cause)
   })
 
@@ -192,7 +192,7 @@ test.group('account access inspection side effects and dependency failures', (gr
     const error = await failure(() =>
       account.authentication.inspectAccountAccess({ userId: user.id, requireActive: true })
     )
-    assert.notInstanceOf(error, AccountAccessDeniedError)
+    assert.notInstanceOf(error, E_ACCOUNT_KIT_ACCOUNT_ACCESS_DENIED)
     assert.equal(
       error.message,
       'account_kit: adapter metadata must use a plain table name and physical id column'
@@ -221,7 +221,7 @@ test.group('account access inspection side effects and dependency failures', (gr
     const error = await failure(() =>
       account.authentication.inspectAccountAccess({ userId: user.id, requireActive: true })
     )
-    assert.notInstanceOf(error, AccountAccessDeniedError)
+    assert.notInstanceOf(error, E_ACCOUNT_KIT_ACCOUNT_ACCESS_DENIED)
     const driver = kit.db.connection().getWriteClient().client.driver
     if (testEngine === 'sqlite') assert.instanceOf(error, driver.SqliteError)
     if (testEngine === 'pg') assert.instanceOf(error, driver.DatabaseError)
@@ -246,9 +246,9 @@ test.group('account access inspection side effects and dependency failures', (gr
     const error = await failure(() =>
       account.authentication.inspectAccountAccess({ userId: user.id, requireActive: true })
     )
-    assert.notInstanceOf(error, AccountAccessDeniedError)
-    assert.instanceOf(error, PostCommitError)
-    assert.strictEqual((error as PostCommitError).cause, listener)
+    assert.notInstanceOf(error, E_ACCOUNT_KIT_ACCOUNT_ACCESS_DENIED)
+    assert.instanceOf(error, E_ACCOUNT_KIT_POST_COMMIT)
+    assert.strictEqual((error as InstanceType<typeof E_ACCOUNT_KIT_POST_COMMIT>).cause, listener)
   })
 
   test('INS-09 propagates a PostgreSQL COMMIT rejection without returning a snapshot', async ({
@@ -273,8 +273,8 @@ test.group('account access inspection side effects and dependency failures', (gr
       const error = await failure(() =>
         account.authentication.inspectAccountAccess({ userId: user.id, requireActive: true })
       )
-      assert.notInstanceOf(error, AccountAccessDeniedError)
-      assert.notInstanceOf(error, PostCommitError)
+      assert.notInstanceOf(error, E_ACCOUNT_KIT_ACCOUNT_ACCESS_DENIED)
+      assert.notInstanceOf(error, E_ACCOUNT_KIT_POST_COMMIT)
       assert.instanceOf(error, kit.db.connection().getWriteClient().client.driver.DatabaseError)
       assert.equal((error as { code?: string }).code, '23503')
     } finally {
@@ -308,9 +308,12 @@ test.group('account access inspection side effects and dependency failures', (gr
       const error = await failure(() =>
         account.authentication.inspectAccountAccess({ userId: user.id, requireActive: true })
       )
-      assert.notInstanceOf(error, AccountAccessDeniedError)
-      assert.instanceOf(error, PostCommitError)
-      assert.strictEqual((error as PostCommitError).cause, restoreFailure)
+      assert.notInstanceOf(error, E_ACCOUNT_KIT_ACCOUNT_ACCESS_DENIED)
+      assert.instanceOf(error, E_ACCOUNT_KIT_POST_COMMIT)
+      assert.strictEqual(
+        (error as InstanceType<typeof E_ACCOUNT_KIT_POST_COMMIT>).cause,
+        restoreFailure
+      )
     } finally {
       if (native && original) native.pragma = original
       await customKit.close()

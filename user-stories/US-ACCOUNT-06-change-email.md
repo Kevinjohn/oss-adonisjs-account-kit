@@ -46,7 +46,7 @@ flowchart TD
   B --> C["Transaction confirms actor for email_change and persists mapped profile fields, if any"]
   C --> I{"Email state?"}
   I -->|Same current address| J["Clear pending different address and verification proof, if present; return without new delivery"]
-  I -->|Different and already registered| X["Roll back with EmailAlreadyRegisteredError"]
+  I -->|Different and already registered| X["Roll back with E_ACCOUNT_KIT_EMAIL_ALREADY_REGISTERED"]
   I -->|Same pending email change in cooldown| K["Keep existing proof; return without new delivery"]
   I -->|Inactive, different and available| L["Replace current and pending email, clear reset proof, upsert activation proof and advance credentials"]
   I -->|Active, different and available| M["Upsert pending address and email-change proof"]

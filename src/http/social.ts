@@ -1,5 +1,5 @@
 import type { HttpContext } from '@adonisjs/core/http'
-import { InvalidInputError, SocialTransactionError } from '../errors.js'
+import { E_ACCOUNT_KIT_INVALID_INPUT, E_ACCOUNT_KIT_SOCIAL_TRANSACTION_INVALID } from '../errors.js'
 import { isSocialProviderName } from '../social_providers.js'
 import { isSensitivePurpose, isSocialBeginIntent, isSocialIntent } from '../social_enums.js'
 import type {
@@ -59,7 +59,7 @@ function requireEnabledProviderName(
   enabled: readonly SocialProviderName[]
 ): SocialProviderName {
   if (!isSocialProviderName(value) || !enabled.includes(value))
-    throw new InvalidInputError('Unsupported social provider')
+    throw new E_ACCOUNT_KIT_INVALID_INPUT('Unsupported social provider')
   return value
 }
 
@@ -81,7 +81,7 @@ function resolveClientChallenge<Credential>(
     const { verifier, challenge } = generateVerifierAndChallenge()
     return { verifier, clientChallenge: challenge }
   }
-  if (!clientChallenge) throw new InvalidInputError('Client challenge is required')
+  if (!clientChallenge) throw new E_ACCOUNT_KIT_INVALID_INPUT('Client challenge is required')
   return { verifier: null, clientChallenge }
 }
 
@@ -127,17 +127,18 @@ const completeOAuthCallback: SocialHandler = async ({
   const isPost = name === 'auth.oauth.complete'
   const providerCode = request.input('code')
   if (request.input('error') || typeof providerCode !== 'string' || !providerCode)
-    throw new SocialTransactionError()
+    throw new E_ACCOUNT_KIT_SOCIAL_TRANSACTION_INVALID()
   const input = isPost
     ? await request.validateUsing(socialCallbackValidator)
     : {
         state: request.input('state') as string,
         intent: undefined,
       }
-  if (typeof input.state !== 'string') throw new SocialTransactionError()
-  if (isPost && input.intent && !isSocialIntent(input.intent)) throw new SocialTransactionError()
+  if (typeof input.state !== 'string') throw new E_ACCOUNT_KIT_SOCIAL_TRANSACTION_INVALID()
+  if (isPost && input.intent && !isSocialIntent(input.intent))
+    throw new E_ACCOUNT_KIT_SOCIAL_TRANSACTION_INVALID()
   const saved = guard.strategy === 'session' ? requireSessionState(context, input.state) : null
-  if (saved && saved.provider !== provider) throw new SocialTransactionError()
+  if (saved && saved.provider !== provider) throw new E_ACCOUNT_KIT_SOCIAL_TRANSACTION_INVALID()
   const intent = saved?.intent ?? (input.intent as SocialIntent | undefined) ?? 'login'
   const current: CurrentAccountInput | undefined =
     intent === 'login' || intent === 'confirm' ? undefined : await guard.current(context)
@@ -169,9 +170,9 @@ const socialHandlers = {
     const provider = requireEnabledProviderName(params.provider, extension.providers)
     const input = await request.validateUsing(socialBeginValidator)
     if (!isSocialBeginIntent(input.intent ?? 'login'))
-      throw new InvalidInputError('Invalid social intent')
+      throw new E_ACCOUNT_KIT_INVALID_INPUT('Invalid social intent')
     if (input.purpose && !isSensitivePurpose(input.purpose))
-      throw new InvalidInputError('Invalid social proof purpose')
+      throw new E_ACCOUNT_KIT_INVALID_INPUT('Invalid social proof purpose')
     const intent = (input.intent ?? 'login') as SocialBeginInput['intent']
     const current = intent === 'login' ? undefined : await guard.current(context)
     const { verifier, clientChallenge } = resolveClientChallenge(guard, input.clientChallenge)

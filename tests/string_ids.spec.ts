@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto'
 import { DateTime } from 'luxon'
 import { test } from '@japa/runner'
 import { defineConfig } from '../src/account_kit.js'
-import { SessionNotFoundError } from '../src/errors.js'
+import { E_ACCOUNT_KIT_SESSION_NOT_FOUND } from '../src/errors.js'
 import type { AccountKitConfig, UsersAdapter } from '../src/types.js'
 import { bootTestApp } from './helpers/app.js'
 import {
@@ -228,7 +228,7 @@ test('revokes string-id tokens one by one and never another user token', async (
     const current = { userId, tokenId: phone }
     await assert.rejects(
       () => account.authentication.sessions.revoke({ current, id: theirs }),
-      SessionNotFoundError
+      E_ACCOUNT_KIT_SESSION_NOT_FOUND
     )
     assert.deepEqual(await account.authentication.sessions.revoke({ current, id: laptop }), {
       current: false,

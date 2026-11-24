@@ -38,7 +38,7 @@ export default class EmailVerificationsController {
     try {
       await kit.emailVerification.complete({ token: ctx.params.token, password })
     } catch (error) {
-      if (error instanceof errors.InvalidTokenError) {
+      if (error instanceof errors.E_ACCOUNT_KIT_INVALID_TOKEN) {
         ctx.session.flash(
           'error',
           'This verification link is invalid, already used, or expired. Sign in to request a fresh one.'

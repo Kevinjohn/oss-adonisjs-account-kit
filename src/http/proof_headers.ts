@@ -21,7 +21,26 @@ function matchesPath(pattern: string, path: string): boolean {
   )
 }
 
-/** Install before body-parser and Shield so proof URL failures retain protective headers. */
+/**
+ * Install before body-parser and Shield so proof URL failures retain protective headers.
+ *
+ * @example
+ * ```ts
+ * import { managedProofHeadersMiddleware } from '@kevinjohn/adonisjs-account-kit/http'
+ * import server from '@adonisjs/core/services/server'
+ *
+ * const proofHeaders = managedProofHeadersMiddleware({
+ *   prefix: '/account',
+ *   strategy: 'session',
+ *   enabled: ['passwordReset'],
+ * })
+ * class AccountProofHeadersMiddleware {
+ *   handle = proofHeaders
+ * }
+ *
+ * server.use([async () => ({ default: AccountProofHeadersMiddleware })])
+ * ```
+ */
 export function managedProofHeadersMiddleware(selection: ManagedRouteSelection) {
   const proofs = planManagedRoutes(selection).filter((route) => route.proof)
   return async (context: HttpContext, next: () => Promise<unknown>): Promise<unknown> => {

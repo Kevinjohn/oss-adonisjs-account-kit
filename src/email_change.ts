@@ -5,7 +5,11 @@ import { DateTime } from 'luxon'
 import { invalidateChangedCredentials } from './credential_revision.js'
 import { consumeUserToken, isUserEmailUniqueViolation, transaction } from './db.js'
 import { finishCommitted, createLifecycleEffect, postCommit, settleCommitted } from './effects.js'
-import { EmailAlreadyRegisteredError, InvalidTokenError, type PostCommitError } from './errors.js'
+import {
+  E_ACCOUNT_KIT_EMAIL_ALREADY_REGISTERED,
+  E_ACCOUNT_KIT_INVALID_TOKEN,
+  type E_ACCOUNT_KIT_POST_COMMIT,
+} from './errors.js'
 import { clearRecoveryTokens } from './credential_cleanup.js'
 import { hashToken, isTokenShaped } from './tokens.js'
 import type {
@@ -43,11 +47,11 @@ export async function completeEmailChange(
   deps: Pick<ServiceDependencies, 'config' | 'db'>,
   input: CompleteEmailChangeInput
 ): Promise<AccountUser> {
-  if (!isTokenShaped(input.token)) throw new InvalidTokenError()
+  if (!isTokenShaped(input.token)) throw new E_ACCOUNT_KIT_INVALID_TOKEN()
   const operationId = randomUUID()
 
   let changed: { user: AccountUser; previousEmail: string }
-  let fault: PostCommitError | undefined
+  let fault: InstanceType<typeof E_ACCOUNT_KIT_POST_COMMIT> | undefined
   try {
     ;({ value: changed, fault } = await settleCommitted(
       transaction(deps.db, async (trx) => {
@@ -62,13 +66,14 @@ export async function completeEmailChange(
             candidate.current_email === current.email
         )
         const colliding = await deps.config.users.findByEmail(row.email, trx)
-        if (colliding && colliding.id !== user.id) throw new EmailAlreadyRegisteredError()
+        if (colliding && colliding.id !== user.id)
+          throw new E_ACCOUNT_KIT_EMAIL_ALREADY_REGISTERED()
 
         await deps.config.users.setEmail(user.id, row.email, trx)
         await deps.config.users.markEmailVerified(user.id, DateTime.utc(), trx)
         await clearRecoveryTokens(trx, user.id, ['password_reset_tokens'])
         const reloaded = await deps.config.users.findById(user.id, trx)
-        if (!reloaded) throw new InvalidTokenError()
+        if (!reloaded) throw new E_ACCOUNT_KIT_INVALID_TOKEN()
         await invalidateChangedCredentials(trx, deps.config, reloaded, {
           operation: 'email_change',
           operationId,
@@ -79,7 +84,7 @@ export async function completeEmailChange(
     ))
   } catch (error) {
     if (await isUserEmailUniqueViolation(error, deps.config, deps.db))
-      throw new EmailAlreadyRegisteredError()
+      throw new E_ACCOUNT_KIT_EMAIL_ALREADY_REGISTERED()
     throw error
   }
 

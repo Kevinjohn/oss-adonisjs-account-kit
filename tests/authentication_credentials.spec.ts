@@ -7,10 +7,10 @@ import { insertUser, makeService, tokenFrom, unwrapId } from './helpers/fakes.js
 import { advanceCredentialRevision } from '../src/credential_revision.js'
 import { transaction } from '../src/db.js'
 import {
-  AdapterContractError,
-  InvalidCredentialsError,
-  InvalidSessionError,
-  PostCommitError,
+  E_ACCOUNT_KIT_ADAPTER_CONTRACT,
+  E_INVALID_CREDENTIALS,
+  E_ACCOUNT_KIT_INVALID_SESSION,
+  E_ACCOUNT_KIT_POST_COMMIT,
 } from '../src/errors.js'
 import { dbTime } from './helpers/db_time.js'
 
@@ -64,7 +64,7 @@ test.group('authentication contract', (group) => {
           await change()
           assert.fail('Expected a committed observer failure')
         } catch (error) {
-          assert.instanceOf(error, PostCommitError)
+          assert.instanceOf(error, E_ACCOUNT_KIT_POST_COMMIT)
           assert.strictEqual((error as Error).cause, failure)
         }
       } else {
@@ -644,12 +644,12 @@ test.group('authentication policy result contract', (group) => {
           else if (policy.value === false) {
             assert.instanceOf(
               result.error,
-              boundary === 'current' ? InvalidSessionError : InvalidCredentialsError
+              boundary === 'current' ? E_ACCOUNT_KIT_INVALID_SESSION : E_INVALID_CREDENTIALS
             )
           } else {
-            assert.instanceOf(result.error, AdapterContractError)
-            assert.notInstanceOf(result.error, InvalidCredentialsError)
-            assert.notInstanceOf(result.error, InvalidSessionError)
+            assert.instanceOf(result.error, E_ACCOUNT_KIT_ADAPTER_CONTRACT)
+            assert.notInstanceOf(result.error, E_INVALID_CREDENTIALS)
+            assert.notInstanceOf(result.error, E_ACCOUNT_KIT_INVALID_SESSION)
             assert.equal(
               (result.error as Error).message,
               'account_kit: canAccess must resolve to a boolean'
@@ -718,7 +718,7 @@ test.group('authentication policy result contract', (group) => {
       assert.instanceOf(error, AggregateError)
       const causes = (error as AggregateError).errors
       assert.lengthOf(causes, 2)
-      assert.instanceOf(causes[0], AdapterContractError)
+      assert.instanceOf(causes[0], E_ACCOUNT_KIT_ADAPTER_CONTRACT)
       assert.equal(causes[0].message, 'account_kit: canAccess must resolve to a boolean')
       assert.strictEqual(causes[1], cleanupFault)
       assert.isNotNull(await kit.db.from('auth_access_tokens').where('id', issuedId!).first())

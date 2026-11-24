@@ -11,7 +11,7 @@ import {
   postCommit,
   settleCommitted,
 } from './effects.js'
-import { InvalidInputError, InvalidTokenError } from './errors.js'
+import { E_ACCOUNT_KIT_INVALID_INPUT, E_ACCOUNT_KIT_INVALID_TOKEN } from './errors.js'
 import { emitInvitationAccepted } from './invitation_match.js'
 import { isPasswordAllowed } from './password.js'
 import { preparePassword, storePassword } from './password_hashing.js'
@@ -49,7 +49,7 @@ export async function sendVerification(
   input: VerificationSendInput
 ): Promise<'sent' | 'already_verified'> {
   const user = await deps.config.users.findById(input.userId)
-  if (!user) throw new InvalidInputError('Unknown user')
+  if (!user) throw new E_ACCOUNT_KIT_INVALID_INPUT('Unknown user')
   if (isActiveAccount(user)) return 'already_verified'
   await deps.throttler.consume('verification:user', String(user.id), deps.config.throttle)
   const recent = await deps.db
@@ -127,8 +127,8 @@ export async function completeVerification(
   input: VerificationCompleteInput
 ): Promise<'verified'> {
   if (!isPasswordAllowed(input.password, deps.config.passwordPolicy))
-    throw new InvalidInputError('Invalid password')
-  if (!isTokenShaped(input.token)) throw new InvalidTokenError()
+    throw new E_ACCOUNT_KIT_INVALID_INPUT('Invalid password')
+  if (!isTokenShaped(input.token)) throw new E_ACCOUNT_KIT_INVALID_TOKEN()
   const operationId = randomUUID()
   const password = await preparePassword(deps.config.users, input.password)
   const { value: claimed, fault } = await settleCommitted(
@@ -143,7 +143,7 @@ export async function completeVerification(
       await storePassword(deps.config.users, user.id, password, trx)
       const invitationIds = await activateClaim(trx, deps.config, user)
       const reloaded = await deps.config.users.findById(user.id, trx)
-      if (!reloaded) throw new InvalidTokenError()
+      if (!reloaded) throw new E_ACCOUNT_KIT_INVALID_TOKEN()
       await invalidateChangedCredentials(trx, deps.config, reloaded, {
         operation: 'registration_claim',
         operationId,

@@ -8,10 +8,8 @@ import {
   parseSetupSource,
   inspectTopLevelConfig,
 } from './ts_source.js'
-import {
-  SelectedEnvironmentValueError,
-  resolveEnvironmentNameFromGetter,
-} from './selected_environment.js'
+import { resolveEnvironmentNameFromGetter } from './selected_environment.js'
+import { E_ACCOUNT_KIT_SELECTED_ENVIRONMENT_VALUE } from '../errors.js'
 
 /**
  * Finds the connection a Lucid database config selects, reading `DB_CONNECTION` from the selected
@@ -56,7 +54,7 @@ export async function inspectDatabaseConnection(
           env
         )) ?? null
     } catch (error) {
-      if (error instanceof SelectedEnvironmentValueError) return null
+      if (error instanceof E_ACCOUNT_KIT_SELECTED_ENVIRONMENT_VALUE) return null
       throw error
     }
   }

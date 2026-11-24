@@ -1,7 +1,11 @@
 import { test } from '@japa/runner'
 import { useTestApp } from './helpers/app.js'
 import { insertUser, makeService, makeUsersAdapter } from './helpers/fakes.js'
-import { IdentityNotConfirmedError, SocialProofError, ThrottledError } from '../src/errors.js'
+import {
+  E_ACCOUNT_KIT_IDENTITY_NOT_CONFIRMED,
+  E_ACCOUNT_KIT_SOCIAL_PROOF_INVALID,
+  E_ACCOUNT_KIT_THROTTLED,
+} from '../src/errors.js'
 import { current, provider } from './helpers/social_identity.js'
 import type { UserId } from '../src/types.js'
 
@@ -28,7 +32,7 @@ test.group('social password proof budget', (group) => {
     return { account, verified }
   }
 
-  test('rejects with ThrottledError once the account budget is spent, without checking the password', async ({
+  test('rejects with E_ACCOUNT_KIT_THROTTLED once the account budget is spent, without checking the password', async ({
     assert,
   }) => {
     const user = await insertUser(kit)
@@ -39,9 +43,9 @@ test.group('social password proof budget', (group) => {
         password: 'wrong-password',
         purpose: 'social_link',
       })
-    await assert.rejects(prove, SocialProofError)
+    await assert.rejects(prove, E_ACCOUNT_KIT_SOCIAL_PROOF_INVALID)
     assert.lengthOf(verified, 1)
-    await assert.rejects(prove, ThrottledError)
+    await assert.rejects(prove, E_ACCOUNT_KIT_THROTTLED)
     assert.lengthOf(verified, 1)
   })
 
@@ -61,13 +65,13 @@ test.group('social password proof budget', (group) => {
       })
 
     const first = await insertUser(kit, { email: 'first@example.test' })
-    await assert.rejects(() => changePassword(first.id), IdentityNotConfirmedError)
+    await assert.rejects(() => changePassword(first.id), E_ACCOUNT_KIT_IDENTITY_NOT_CONFIRMED)
     const afterChange = verified.length
-    await assert.rejects(() => provePassword(first.id), ThrottledError)
+    await assert.rejects(() => provePassword(first.id), E_ACCOUNT_KIT_THROTTLED)
     assert.lengthOf(verified, afterChange)
 
     const second = await insertUser(kit, { email: 'second@example.test' })
     assert.isString(await provePassword(second.id))
-    await assert.rejects(() => changePassword(second.id), ThrottledError)
+    await assert.rejects(() => changePassword(second.id), E_ACCOUNT_KIT_THROTTLED)
   })
 })

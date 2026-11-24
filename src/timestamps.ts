@@ -1,3 +1,4 @@
+import { RuntimeException } from '@adonisjs/core/exceptions'
 // Converts timestamps between Luxon and the values SQL drivers accept and return.
 import { DateTime } from 'luxon'
 
@@ -16,16 +17,33 @@ function getDatabaseDialect(client: DialectSource): string {
 /**
  * The value to write or compare for a timestamp column, in UTC. MySQL rejects ISO 8601 offsets
  * such as `Z`, so it gets `yyyy-MM-dd HH:mm:ss.SSS`; other engines get ISO 8601.
+ *
+ * @example
+ * ```ts
+ * import { sqlTimestamp } from '@kevinjohn/adonisjs-account-kit/transaction'
+ *
+ * const recordedAt = sqlTimestamp(trx)
+ * await trx.table('audit_events').insert({ recorded_at: recordedAt })
+ * ```
  */
 export function sqlTimestamp(client: DialectSource, at: DateTime = DateTime.utc()): string {
   const utc = at.toUTC()
-  if (!utc.isValid) throw new Error('account_kit: invalid timestamp')
+  if (!utc.isValid) throw new RuntimeException('account_kit: invalid timestamp')
   return getDatabaseDialect(client) === 'mysql'
     ? utc.toFormat('yyyy-MM-dd HH:mm:ss.SSS')
     : utc.toISO()!
 }
 
-/** Read a timestamp column whatever the driver returns: a Date, a string or epoch milliseconds. */
+/**
+ * Read a timestamp column whatever the driver returns: a Date, a string or epoch milliseconds.
+ *
+ * @example
+ * ```ts
+ * import { readTimestamp } from '@kevinjohn/adonisjs-account-kit/transaction'
+ *
+ * const recordedAt = readTimestamp(row.recorded_at)?.toISO()
+ * ```
+ */
 export function readTimestamp(value: unknown): DateTime | null {
   if (value === null || value === undefined) return null
   let parsed: DateTime
@@ -34,8 +52,8 @@ export function readTimestamp(value: unknown): DateTime | null {
   else if (typeof value === 'string') {
     parsed = DateTime.fromISO(value, { zone: 'utc' })
     if (!parsed.isValid) parsed = DateTime.fromSQL(value, { zone: 'utc' })
-  } else throw new Error('account_kit: unreadable timestamp value')
-  if (!parsed.isValid) throw new Error('account_kit: unreadable timestamp value')
+  } else throw new RuntimeException('account_kit: unreadable timestamp value')
+  if (!parsed.isValid) throw new RuntimeException('account_kit: unreadable timestamp value')
   return parsed
 }
 

@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto'
 import { test } from '@japa/runner'
 import { DateTime } from 'luxon'
 import { createSqlUsersAdapter, type SqlUsersAdapterOptions } from '../adapters/sql.js'
-import { InvalidConfigurationError } from '../src/errors.js'
+import { E_ACCOUNT_KIT_INVALID_CONFIGURATION } from '../src/errors.js'
 import { transaction } from '../src/db.js'
 import { assertUsersAdapterContract } from '../testing/adapter_contract.js'
 import { useTestApp } from './helpers/app.js'
@@ -211,9 +211,15 @@ test.group('SQL users adapter', (group) => {
       const error = await Promise.resolve()
         .then(() => createSqlUsersAdapter({ table }))
         .catch((caught: unknown) => caught)
-      assert.instanceOf(error, InvalidConfigurationError)
-      assert.equal((error as InvalidConfigurationError).code, 'E_ACCOUNT_KIT_INVALID_CONFIGURATION')
-      assert.equal((error as InvalidConfigurationError).field, 'table')
+      assert.instanceOf(error, E_ACCOUNT_KIT_INVALID_CONFIGURATION)
+      assert.equal(
+        (error as InstanceType<typeof E_ACCOUNT_KIT_INVALID_CONFIGURATION>).code,
+        'E_ACCOUNT_KIT_INVALID_CONFIGURATION'
+      )
+      assert.equal(
+        (error as InstanceType<typeof E_ACCOUNT_KIT_INVALID_CONFIGURATION>).field,
+        'table'
+      )
       assert.equal(
         (error as Error).message,
         'account_kit: the users table must be a plain SQL identifier'

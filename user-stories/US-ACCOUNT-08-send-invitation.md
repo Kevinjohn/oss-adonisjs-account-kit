@@ -24,7 +24,7 @@ flowchart TD
  A["Authorised inviter submits recipient, role and optional 1–255 character scope"] --> B{"Does invite authorisation and input validation pass?"}
  B -->|No| C["Return refusal; no invitation is issued"]
  B -->|Yes| D{"Does recipient already have an account or a pending invite in this scope?"}
- D -->|Yes| E["Refuse with EmailAlreadyRegisteredError or same-scope InvitationPendingError"]
+ D -->|Yes| E["Refuse with E_ACCOUNT_KIT_EMAIL_ALREADY_REGISTERED or same-scope E_ACCOUNT_KIT_INVITATION_PENDING"]
  D -->|No| F["Store invitation and deliver link after commit"]
  F -->|Delivery fails| G["Invitation remains recorded; request a resend"]
 ```
@@ -39,7 +39,7 @@ flowchart TD
   C -->|Address already registered| R["Refuse before recipient budget"]
   C -->|Available| D["Spend recipient budget"]
   D --> E["Transaction locks inviter, deletes expired rows in the same email and scope, rechecks authorize.invite with transaction and scope"]
-  E --> F["Insert hashed token; same-email same-scope uniqueness failure rolls back as InvitationPendingError"]
+  E --> F["Insert hashed token; same-email same-scope uniqueness failure rolls back as E_ACCOUNT_KIT_INVITATION_PENDING"]
   F --> G["Commit; send provision and lifecycle event"]
   G --> H["Return Invitation or managed 201 with ID; surface committed follow-up error if one occurs"]
 ```

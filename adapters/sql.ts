@@ -1,6 +1,7 @@
+import { InvalidArgumentsException, RuntimeException } from '@adonisjs/core/exceptions'
 import type { Database } from '@adonisjs/lucid/database'
 import type { QueryClientContract } from '@adonisjs/lucid/types/database'
-import { InvalidConfigurationError } from '../src/errors.js'
+import { E_ACCOUNT_KIT_INVALID_CONFIGURATION } from '../src/errors.js'
 import { isSqlIdentifier } from '../src/sql_identifier.js'
 import { normalizeEmail } from '../src/email.js'
 import { readTimestamp, sqlTimestamp } from '../src/timestamps.js'
@@ -69,11 +70,18 @@ function toAccountUser(row: Record<string, unknown> | null | undefined): Account
 /**
  * A users adapter that runs plain SQL through the package's Lucid transaction. Use it when the
  * users table is not a Lucid model; the Drizzle and Prisma adapters build on it.
+ *
+ * @example
+ * ```ts
+ * import { createSqlUsersAdapter } from '@kevinjohn/adonisjs-account-kit/adapters/sql'
+ *
+ * const users = createSqlUsersAdapter({ table: 'users' })
+ * ```
  */
 export function createSqlUsersAdapter(options: SqlUsersAdapterOptions): SqlUsersAdapter {
   const { table } = options
   if (typeof table !== 'string' || !isSqlIdentifier(table))
-    throw new InvalidConfigurationError(
+    throw new E_ACCOUNT_KIT_INVALID_CONFIGURATION(
       'table',
       'account_kit: the users table must be a plain SQL identifier'
     )
@@ -104,13 +112,17 @@ export function createSqlUsersAdapter(options: SqlUsersAdapterOptions): SqlUsers
     context: RegistrationContext
   ): Promise<RegistrationColumns> => {
     if (!options.mapRegistrationData)
-      throw new Error('account_kit: registrationData requires mapRegistrationData')
+      throw new InvalidArgumentsException(
+        'account_kit: registrationData requires mapRegistrationData'
+      )
     const columns = await options.mapRegistrationData(data, context)
     if (!columns || typeof columns !== 'object' || Array.isArray(columns))
-      throw new Error('account_kit: mapRegistrationData must return an object of columns')
+      throw new InvalidArgumentsException(
+        'account_kit: mapRegistrationData must return an object of columns'
+      )
     for (const key of Object.keys(columns)) {
       if (!isSqlIdentifier(key) || controlledColumns.has(key.toLowerCase()))
-        throw new Error(
+        throw new InvalidArgumentsException(
           'account_kit: mapRegistrationData cannot assign id, email, unverified_email, password, email_verified_at, credentials_changed_at, or role'
         )
     }
@@ -159,7 +171,8 @@ export function createSqlUsersAdapter(options: SqlUsersAdapterOptions): SqlUsers
       })
       // Re-read inside the transaction rather than relying on RETURNING or an insert id.
       const created = await getUserByColumn('email', email, trx)
-      if (!created) throw new Error('account_kit: the created user could not be read back')
+      if (!created)
+        throw new RuntimeException('account_kit: the created user could not be read back')
       return created
     },
 

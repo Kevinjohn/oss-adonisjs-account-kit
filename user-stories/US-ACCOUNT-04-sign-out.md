@@ -12,7 +12,7 @@ As a signed-in account holder, I want to sign out of the current session or toke
 ## Acceptance criteria
 
 - **Inputs and result:** `authentication.logout(guard, credential?, current?)` returns `void`. The host authenticates the request and supplies its guard; a session registry row is removed when a current session handle is supplied and session management is enabled.
-- Managed session logout specifically terminates a session whose guard evidence was read but whose current account check raises `InvalidSessionError`, returning 204. If the guard itself refuses evidence, the route cannot enter that recovery branch.
+- Managed session logout specifically terminates a session whose guard evidence was read but whose current account check raises `E_ACCOUNT_KIT_INVALID_SESSION`, returning 204. If the guard itself refuses evidence, the route cannot enter that recovery branch.
 
 ## User flow
 
@@ -30,7 +30,7 @@ flowchart TD
 ```mermaid
 flowchart TD
   M["Managed account.logout reads guard evidence and calls authentication.current"] -->|Current account accepted| N["Resolve request guard and optional logout credential"]
-  M -->|Session evidence read; InvalidSessionError from account check| S["Terminate browser session and return 204"]
+  M -->|Session evidence read; E_ACCOUNT_KIT_INVALID_SESSION from account check| S["Terminate browser session and return 204"]
   M -->|Guard refuses evidence or other account-check error| X["Propagate refusal"]
   N --> A["authentication.logout"]
   H["Host supplies guard and available credential/current evidence"] --> A

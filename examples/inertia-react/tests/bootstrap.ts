@@ -80,7 +80,7 @@ export const runnerHooks: Required<Pick<Config, 'setup' | 'teardown'>> = {
             })
             return ctx.response.ok({ userId: account.id })
           } catch (error) {
-            if (!(error instanceof errors.UnverifiedEmailError)) throw error
+            if (!(error instanceof errors.E_ACCOUNT_KIT_UNVERIFIED_EMAIL)) throw error
             return ctx.response.forbidden({ reason: 'verification_required' })
           }
         })

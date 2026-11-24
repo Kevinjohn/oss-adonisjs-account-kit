@@ -14,7 +14,12 @@ export function generateAccountConfigSource(
     choices.policy.accessRestrictionHook || choices.features.includes('invitations')
   const imports = [
     "import env from '#start/env'",
-    ...(emailEnabled ? ["import app from '@adonisjs/core/services/app'"] : []),
+    ...(emailEnabled
+      ? [
+          "import { InvalidArgumentsException } from '@adonisjs/core/exceptions'",
+          "import app from '@adonisjs/core/services/app'",
+        ]
+      : []),
     `import { ${[
       ...(emailEnabled ? ['createActionUrls'] : []),
       'defineConfig',
@@ -32,7 +37,7 @@ export function generateAccountConfigSource(
       ? ["import { accountKitPolicy } from '#services/account_kit_policy'"]
       : []),
     ...(choices.policy.registrationFields.length
-      ? ["import { InvalidInputError } from '@kevinjohn/adonisjs-account-kit/errors'"]
+      ? ["import { E_ACCOUNT_KIT_INVALID_INPUT } from '@kevinjohn/adonisjs-account-kit/errors'"]
       : []),
     ...(social ? ["import type { HttpContext } from '@adonisjs/core/http'"] : []),
     '',
@@ -42,20 +47,20 @@ export function generateAccountConfigSource(
           '',
           `const registrationFields: ReadonlyArray<{ name: string; type: 'string' | 'number' | 'boolean'; required: boolean; maxLength?: number }> = ${JSON.stringify(choices.policy.registrationFields)}`,
           'const mapRegistrationFields = (input: unknown): Record<string, unknown> => {',
-          "  if (input !== undefined && (!input || typeof input !== 'object' || Array.isArray(input))) throw new InvalidInputError('account_kit: registrationData must be an object')",
+          "  if (input !== undefined && (!input || typeof input !== 'object' || Array.isArray(input))) throw new E_ACCOUNT_KIT_INVALID_INPUT('account_kit: registrationData must be an object')",
           '  const source = (input ?? {}) as Record<string, unknown>',
           '  const output: Record<string, unknown> = {}',
-          '  for (const key of Object.keys(source)) if (!registrationFields.some((field) => field.name === key)) throw new InvalidInputError(`account_kit: registrationData.${key} is not allowed`)',
+          '  for (const key of Object.keys(source)) if (!registrationFields.some((field) => field.name === key)) throw new E_ACCOUNT_KIT_INVALID_INPUT(`account_kit: registrationData.${key} is not allowed`)',
           '  for (const field of registrationFields) {',
           '    const value = Object.prototype.hasOwnProperty.call(source, field.name) ? source[field.name] : undefined',
           '    if (value === undefined) {',
-          '      if (field.required) throw new InvalidInputError(`account_kit: registrationData.${field.name} is required`)',
+          '      if (field.required) throw new E_ACCOUNT_KIT_INVALID_INPUT(`account_kit: registrationData.${field.name} is required`)',
           '      continue',
           '    }',
-          '    if (typeof value !== field.type) throw new InvalidInputError(`account_kit: registrationData.${field.name} must be ${field.type}`)',
+          '    if (typeof value !== field.type) throw new E_ACCOUNT_KIT_INVALID_INPUT(`account_kit: registrationData.${field.name} must be ${field.type}`)',
           "    const mapped = field.required && typeof value === 'string' ? value.trim() : value",
-          "    if (field.required && mapped === '') throw new InvalidInputError(`account_kit: registrationData.${field.name} is required`)",
-          "    if (field.type === 'string' && typeof mapped === 'string' && field.maxLength !== undefined && mapped.length > field.maxLength) throw new InvalidInputError(`account_kit: registrationData.${field.name} is too long`)",
+          "    if (field.required && mapped === '') throw new E_ACCOUNT_KIT_INVALID_INPUT(`account_kit: registrationData.${field.name} is required`)",
+          "    if (field.type === 'string' && typeof mapped === 'string' && field.maxLength !== undefined && mapped.length > field.maxLength) throw new E_ACCOUNT_KIT_INVALID_INPUT(`account_kit: registrationData.${field.name} is too long`)",
           '    output[field.name] = mapped',
           '  }',
           '  return output',

@@ -10,10 +10,10 @@ import {
 import { isInvitationRole } from './invitation_input.js'
 import { isEmailShaped, normalizeEmail } from './email.js'
 import {
-  EmailAlreadyRegisteredError,
-  InvalidInputError,
-  UserNotFoundError,
-  type PostCommitError,
+  E_ACCOUNT_KIT_EMAIL_ALREADY_REGISTERED,
+  E_ACCOUNT_KIT_INVALID_INPUT,
+  E_ACCOUNT_KIT_USER_NOT_FOUND,
+  type E_ACCOUNT_KIT_POST_COMMIT,
 } from './errors.js'
 import { transaction } from './db.js'
 import { replaceBootstrapInvitation } from './bootstrap_invitation.js'
@@ -32,17 +32,18 @@ import type {
 import type { ServiceDependencies } from './service_dependencies.js'
 
 function requireDelivery(value: unknown): asserts value is 'send' | 'print' {
-  if (value !== 'send' && value !== 'print') throw new InvalidInputError('Invalid delivery')
+  if (value !== 'send' && value !== 'print')
+    throw new E_ACCOUNT_KIT_INVALID_INPUT('Invalid delivery')
 }
 
 function requireEmail(value: unknown): string {
-  if (!isEmailShaped(value)) throw new InvalidInputError('Invalid email')
+  if (!isEmailShaped(value)) throw new E_ACCOUNT_KIT_INVALID_INPUT('Invalid email')
   return normalizeEmail(value)
 }
 
 /** Run committed follow-ups and report any failure as safe data instead of throwing. */
 async function followUps(
-  committedFault: PostCommitError | undefined,
+  committedFault: InstanceType<typeof E_ACCOUNT_KIT_POST_COMMIT> | undefined,
   message: string,
   effects: PostCommitEffect[]
 ): Promise<OperatorFault | undefined> {
@@ -74,8 +75,8 @@ export async function issueOperatorInvitation(
 ): Promise<OperatorInviteResult> {
   requireDelivery(input.deliver)
   const email = requireEmail(input.email)
-  if (!isInvitationRole(input.role)) throw new InvalidInputError('Invalid role')
-  if (await deps.config.users.findByEmail(email)) throw new EmailAlreadyRegisteredError()
+  if (!isInvitationRole(input.role)) throw new E_ACCOUNT_KIT_INVALID_INPUT('Invalid role')
+  if (await deps.config.users.findByEmail(email)) throw new E_ACCOUNT_KIT_EMAIL_ALREADY_REGISTERED()
 
   const token = generateToken(deps.config.tokenSecretLength)
   const url = deps.config.urls.invitation(token)
@@ -135,7 +136,7 @@ export async function issueOperatorResetLink(
   requireDelivery(input.deliver)
   const email = requireEmail(input.email)
   const user = await deps.config.users.findByEmail(email)
-  if (!user) throw new UserNotFoundError()
+  if (!user) throw new E_ACCOUNT_KIT_USER_NOT_FOUND()
 
   const token = generateToken(deps.config.tokenSecretLength)
   const url = deps.config.urls.passwordReset(token)
@@ -144,7 +145,7 @@ export async function issueOperatorResetLink(
   )
   if (!issued) {
     if (fault) throw fault
-    throw new UserNotFoundError()
+    throw new E_ACCOUNT_KIT_USER_NOT_FOUND()
   }
   const effects: PostCommitEffect[] = [
     createLifecycleEffect(deps.config, {

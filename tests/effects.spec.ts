@@ -1,5 +1,5 @@
 import { test } from '@japa/runner'
-import { DeliveryError, PostCommitError } from '../src/errors.js'
+import { E_ACCOUNT_KIT_DELIVERY, E_ACCOUNT_KIT_POST_COMMIT } from '../src/errors.js'
 import { createLifecycleEffect, postCommit } from '../src/effects.js'
 import type { LifecycleEvent } from '../src/types.js'
 
@@ -29,11 +29,11 @@ test.group('post-commit effects', () => {
     } catch (error) {
       failure = error
     }
-    assert.instanceOf(failure, DeliveryError)
+    assert.instanceOf(failure, E_ACCOUNT_KIT_DELIVERY)
     assert.deepEqual(events, ['one', 'two'])
     assert.deepEqual(
-      (failure as DeliveryError).cause instanceof AggregateError
-        ? ((failure as DeliveryError).cause as AggregateError).errors
+      (failure as InstanceType<typeof E_ACCOUNT_KIT_DELIVERY>).cause instanceof AggregateError
+        ? ((failure as InstanceType<typeof E_ACCOUNT_KIT_DELIVERY>).cause as AggregateError).errors
         : [],
       [first, second]
     )
@@ -63,10 +63,11 @@ test.group('post-commit effects', () => {
     } catch (error) {
       failure = error
     }
-    assert.instanceOf(failure, PostCommitError)
+    assert.instanceOf(failure, E_ACCOUNT_KIT_POST_COMMIT)
     assert.deepEqual(
-      (failure as PostCommitError).cause instanceof AggregateError
-        ? ((failure as PostCommitError).cause as AggregateError).errors
+      (failure as InstanceType<typeof E_ACCOUNT_KIT_POST_COMMIT>).cause instanceof AggregateError
+        ? ((failure as InstanceType<typeof E_ACCOUNT_KIT_POST_COMMIT>).cause as AggregateError)
+            .errors
         : [],
       [delivery, observer]
     )
@@ -102,11 +103,11 @@ test.group('post-commit effects', () => {
     } catch (error) {
       failure = error
     }
-    assert.instanceOf(failure, PostCommitError)
-    assert.equal((failure as PostCommitError).cause, listener)
+    assert.instanceOf(failure, E_ACCOUNT_KIT_POST_COMMIT)
+    assert.equal((failure as InstanceType<typeof E_ACCOUNT_KIT_POST_COMMIT>).cause, listener)
   })
 
-  test('a delivery failure reports DeliveryError and still runs later effects', async ({
+  test('a delivery failure reports E_ACCOUNT_KIT_DELIVERY and still runs later effects', async ({
     assert,
   }) => {
     const notice = new Error('notice')
@@ -132,7 +133,7 @@ test.group('post-commit effects', () => {
       failure = error
     }
     assert.deepEqual(ran, ['notice', 'event'])
-    assert.instanceOf(failure, DeliveryError)
-    assert.equal((failure as DeliveryError).cause, notice)
+    assert.instanceOf(failure, E_ACCOUNT_KIT_DELIVERY)
+    assert.equal((failure as InstanceType<typeof E_ACCOUNT_KIT_DELIVERY>).cause, notice)
   })
 })

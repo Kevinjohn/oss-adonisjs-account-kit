@@ -84,7 +84,7 @@ order, so `onInvitationAccepted` inserts one membership per workspace.
 ## Limits to plan around
 
 - **Invitations are for new accounts.** Inviting an existing account throws
-  `EmailAlreadyRegisteredError`. Add existing users to a workspace with your own flow.
+  `E_ACCOUNT_KIT_EMAIL_ALREADY_REGISTERED`. Add existing users to a workspace with your own flow.
 - **Rate limits are shared.** Use one `limiterSecret` and `limiterNamespace` per deployment,
   not per workspace.
 

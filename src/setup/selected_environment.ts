@@ -3,10 +3,8 @@ import { isExactCall, hasSafeEnvironmentGetter, type SetupSource } from './ts_so
 import { resolveSelectedEnvironment } from './selected_environment_values.js'
 
 export {
-  IndirectEnvironmentValueError,
   resolveSelectedEnvironment,
   resolveSelectedEnvironmentValue,
-  SelectedEnvironmentValueError,
 } from './selected_environment_values.js'
 
 /**

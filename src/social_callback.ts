@@ -10,12 +10,12 @@ import { createHandoff } from './social_handoff.js'
 import { hasConfirmedAddress, isActiveAccount } from './account_projection.js'
 import { consumeSocialSensitiveProofHash, issueProof } from './social_proofs.js'
 import {
-  InvalidInputError,
-  SocialIdentityAlreadyLinkedError,
-  SocialProofError,
-  SocialTransactionError,
-  SocialUserNotFoundError,
-  UnverifiedEmailError,
+  E_ACCOUNT_KIT_INVALID_INPUT,
+  E_ACCOUNT_KIT_SOCIAL_IDENTITY_ALREADY_LINKED,
+  E_ACCOUNT_KIT_SOCIAL_PROOF_INVALID,
+  E_ACCOUNT_KIT_SOCIAL_TRANSACTION_INVALID,
+  E_ACCOUNT_KIT_SOCIAL_USER_NOT_FOUND,
+  E_ACCOUNT_KIT_UNVERIFIED_EMAIL,
 } from './errors.js'
 import { readTimestamp } from './timestamps.js'
 import { generateToken, hashToken, isTokenShaped } from './tokens.js'
@@ -96,19 +96,19 @@ function freshAuthenticationMatches(
 export function requireSocialProvider(deps: Dependencies, name: SocialProviderName) {
   const selected = deps.config.socialAuthentication?.providers[name]
   if (!selected || !isSocialProviderName(name))
-    throw new InvalidInputError('Unsupported social provider')
+    throw new E_ACCOUNT_KIT_INVALID_INPUT('Unsupported social provider')
   return selected
 }
 
 export async function consumeState(trx: Trx, state: string): Promise<SocialTransactionRow> {
-  if (!isTokenShaped(state)) throw new SocialTransactionError()
+  if (!isTokenShaped(state)) throw new E_ACCOUNT_KIT_SOCIAL_TRANSACTION_INVALID()
   const rows = await consumeRows<SocialTransactionRow>(
     trx,
     'social_transactions',
     { hash: hashToken(state) },
     readSqlTimestamp(trx)
   )
-  if (rows.length !== 1) throw new SocialTransactionError()
+  if (rows.length !== 1) throw new E_ACCOUNT_KIT_SOCIAL_TRANSACTION_INVALID()
   return rows[0]
 }
 
@@ -121,29 +121,31 @@ export async function completeSocialCallback(
   deps: Dependencies,
   input: SocialCallbackInput
 ): Promise<SocialCallbackResult> {
-  if (!isTokenShaped(input.state)) throw new SocialTransactionError()
+  if (!isTokenShaped(input.state)) throw new E_ACCOUNT_KIT_SOCIAL_TRANSACTION_INVALID()
   const candidate = await deps.db
     .from('social_transactions')
     .where('hash', hashToken(input.state))
     .where('expires_at', '>', readSqlTimestamp(deps.db))
     .first()
-  if (!candidate || candidate.intent === 'registration') throw new SocialTransactionError()
+  if (!candidate || candidate.intent === 'registration')
+    throw new E_ACCOUNT_KIT_SOCIAL_TRANSACTION_INVALID()
   const name = candidate.provider as SocialProviderName
-  if (input.provider !== undefined && input.provider !== name) throw new SocialTransactionError()
+  if (input.provider !== undefined && input.provider !== name)
+    throw new E_ACCOUNT_KIT_SOCIAL_TRANSACTION_INVALID()
   let profile: ProviderProfile
   let freshEvidence: VerifiedSocialAuthentication | null = null
   try {
     const adapter = requireSocialProvider(deps, name)
     profile = requireProviderProfile(await adapter.resolve(input.callback))
     if (candidate.intent === 'reauth') {
-      if (!adapter.verifyFreshAuthentication) throw new SocialProofError()
+      if (!adapter.verifyFreshAuthentication) throw new E_ACCOUNT_KIT_SOCIAL_PROOF_INVALID()
       freshEvidence = await adapter.verifyFreshAuthentication(input.callback, {
         state: input.state,
         subject: profile.subject,
       })
     }
   } catch (cause) {
-    throw new SocialTransactionError({ cause })
+    throw new E_ACCOUNT_KIT_SOCIAL_TRANSACTION_INVALID({ cause })
   }
   let userCreateFailure: unknown
   let settled: Awaited<ReturnType<typeof settleCommitted<SocialTransactionResult>>>
@@ -166,7 +168,7 @@ export async function completeSocialCallback(
           state.intent !== candidate.intent ||
           (input.intent && input.intent !== state.intent)
         )
-          throw new SocialTransactionError()
+          throw new E_ACCOUNT_KIT_SOCIAL_TRANSACTION_INVALID()
         if (state.intent === 'login') {
           const stored = await trx
             .from('social_identities')
@@ -184,13 +186,13 @@ export async function completeSocialCallback(
                   unverified: owner.id,
                 }
               }
-              throw new SocialUserNotFoundError()
+              throw new E_ACCOUNT_KIT_SOCIAL_USER_NOT_FOUND()
             }
             const user = await deps.config.users.findById(stored.user_id, trx)
-            if (!user) throw new SocialUserNotFoundError()
+            if (!user) throw new E_ACCOUNT_KIT_SOCIAL_USER_NOT_FOUND()
             const auth = deps.config.authentication!
             if (!requireAccountAccessDecision(await auth.canAccess(user, trx)))
-              throw new SocialUserNotFoundError()
+              throw new E_ACCOUNT_KIT_SOCIAL_USER_NOT_FOUND()
             return {
               result: {
                 status: 'linked',
@@ -208,7 +210,7 @@ export async function completeSocialCallback(
           if (profile.email && (await deps.config.users.findByEmail(profile.email, trx)))
             return { result: { status: 'link_required' } }
           if (deps.config.registration!.availability === 'closed')
-            throw new SocialTransactionError()
+            throw new E_ACCOUNT_KIT_SOCIAL_TRANSACTION_INVALID()
           if (
             !profile.email ||
             deps.config.registration!.mapFields ||
@@ -281,7 +283,7 @@ export async function completeSocialCallback(
               hashToken(input.verificationToken) !== state.verification_hash) ||
             !state.user_id
           )
-            throw new SocialTransactionError()
+            throw new E_ACCOUNT_KIT_SOCIAL_TRANSACTION_INVALID()
           const pending = await trx
             .from('social_identities')
             .where('user_id', state.user_id)
@@ -289,7 +291,7 @@ export async function completeSocialCallback(
             .where('provider_user_id', profile.subject)
             .whereNull('confirmed_at')
             .first()
-          if (!pending) throw new SocialTransactionError()
+          if (!pending) throw new E_ACCOUNT_KIT_SOCIAL_TRANSACTION_INVALID()
           const { userId, invitationIds } = await completeActivationByHash(
             trx,
             deps.config,
@@ -313,22 +315,23 @@ export async function completeSocialCallback(
           }
         }
         if (state.user_id === null || input.current?.userId !== state.user_id)
-          throw new SocialTransactionError()
+          throw new E_ACCOUNT_KIT_SOCIAL_TRANSACTION_INVALID()
         const user = await requireAuthenticatedUser(deps, input.current, trx)
         if (state.intent === 'reauth') {
           if (
             !freshAuthenticationMatches(freshEvidence, profile.subject, state.created_at) ||
             state.credential_revision !== (await revision(trx, deps.config, user.id))
           )
-            throw new SocialProofError()
+            throw new E_ACCOUNT_KIT_SOCIAL_PROOF_INVALID()
           const stored = await trx
             .from('social_identities')
             .where('user_id', user.id)
             .where('provider', name)
             .where('provider_user_id', profile.subject)
             .first()
-          if (!stored || !stored.confirmed_at || user.hasPassword) throw new SocialProofError()
-          if (!state.purpose) throw new SocialTransactionError()
+          if (!stored || !stored.confirmed_at || user.hasPassword)
+            throw new E_ACCOUNT_KIT_SOCIAL_PROOF_INVALID()
+          if (!state.purpose) throw new E_ACCOUNT_KIT_SOCIAL_TRANSACTION_INVALID()
           return {
             result: {
               status: 'reauthenticated',
@@ -337,16 +340,16 @@ export async function completeSocialCallback(
           }
         }
         const proofHash = state.proof_hash ?? (input.proof ? hashToken(input.proof) : null)
-        if (!proofHash) throw new SocialProofError()
+        if (!proofHash) throw new E_ACCOUNT_KIT_SOCIAL_PROOF_INVALID()
         await consumeSocialSensitiveProofHash(trx, deps.config, user.id, 'social_link', proofHash)
         // A confirmed link survives the email-owner claim, so an unconfirmed account cannot link.
-        if (!isActiveAccount(user)) throw new UnverifiedEmailError()
+        if (!isActiveAccount(user)) throw new E_ACCOUNT_KIT_UNVERIFIED_EMAIL()
         const existing = await trx
           .from('social_identities')
           .where('provider', name)
           .where('provider_user_id', profile.subject)
           .first()
-        if (existing) throw new SocialIdentityAlreadyLinkedError()
+        if (existing) throw new E_ACCOUNT_KIT_SOCIAL_IDENTITY_ALREADY_LINKED()
         await deps.config.socialAuthentication!.acceptLink?.(user, {
           provider: name,
           subject: profile.subject,
@@ -358,10 +361,10 @@ export async function completeSocialCallback(
       })
     )
   } catch (error) {
-    if (isIdentityConflict(error)) throw new SocialIdentityAlreadyLinkedError()
+    if (isIdentityConflict(error)) throw new E_ACCOUNT_KIT_SOCIAL_IDENTITY_ALREADY_LINKED()
     if (await isUserEmailUniqueViolation(error, deps.config, deps.db)) {
       if (error === userCreateFailure) return { status: 'link_required' }
-      throw new SocialTransactionError()
+      throw new E_ACCOUNT_KIT_SOCIAL_TRANSACTION_INVALID()
     }
     throw error
   }

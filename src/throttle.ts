@@ -1,7 +1,7 @@
 import { errors } from '@adonisjs/limiter'
 import { createHmac, hkdfSync } from 'node:crypto'
 import type { LimiterService } from '@adonisjs/limiter/types'
-import { ThrottledError } from './errors.js'
+import { E_ACCOUNT_KIT_THROTTLED } from './errors.js'
 import type { ResolvedConfig } from './types.js'
 
 export async function consume(
@@ -17,7 +17,7 @@ export async function consume(
     await limiter.use({ ...options }).consume(digest)
   } catch (error) {
     if (error instanceof errors.E_TOO_MANY_REQUESTS) {
-      throw new ThrottledError(error.response.availableIn, undefined, { cause: error })
+      throw new E_ACCOUNT_KIT_THROTTLED(error.response.availableIn, { cause: error })
     }
     throw error
   }

@@ -6,7 +6,7 @@ index 0000000..7afb281
 @@ -0,0 +1,50 @@
 +import type { HttpContext } from '@adonisjs/core/http'
 +import vine from '@vinejs/vine'
-+import { InvalidTokenError } from '@kevinjohn/adonisjs-account-kit'
++import { E_ACCOUNT_KIT_INVALID_TOKEN } from '@kevinjohn/adonisjs-account-kit'
 +import accountKit from '@kevinjohn/adonisjs-account-kit/services/main'
 +
 +const sendValidator = vine.compile(
@@ -49,7 +49,7 @@ index 0000000..7afb281
 +      })
 +      return response.created({ id: user.id, email: user.email })
 +    } catch (error) {
-+      if (error instanceof InvalidTokenError) return response.badRequest({ error: 'Invalid invitation.' })
++      if (error instanceof E_ACCOUNT_KIT_INVALID_TOKEN) return response.badRequest({ error: 'Invalid invitation.' })
 +      throw error
 +    }
 +  }
@@ -118,7 +118,7 @@ index 3613a3f..97d6289 100644
  import app from '@adonisjs/core/services/app'
 +import { deliverInvitation } from '#services/invitation_delivery'
 +import { authorizeInvitations } from '#services/invitation_authorization'
-+import { InvalidInputError } from '@kevinjohn/adonisjs-account-kit'
++import { E_ACCOUNT_KIT_INVALID_INPUT } from '@kevinjohn/adonisjs-account-kit'
  import {
    createActionUrls,
    createLucidAdapter,
@@ -138,11 +138,11 @@ index 3613a3f..97d6289 100644
 +  {
 +    mapRegistrationData(data, user) {
 +      if (!data || typeof data !== 'object' || Array.isArray(data)) {
-+        throw new InvalidInputError('Invalid invitation profile fields')
++        throw new E_ACCOUNT_KIT_INVALID_INPUT('Invalid invitation profile fields')
 +      }
 +      const fullName = Reflect.get(data, 'fullName')
 +      if (typeof fullName !== 'string') {
-+        throw new InvalidInputError('A full name is required')
++        throw new E_ACCOUNT_KIT_INVALID_INPUT('A full name is required')
 +      }
 +      user.fullName = fullName
 +    },
@@ -165,9 +165,9 @@ index 3613a3f..97d6289 100644
 +  registration: {
 +    availability: 'open',
 +    mapFields(data) {
-+      if (!data || typeof data !== 'object' || Array.isArray(data)) throw new InvalidInputError('Invalid invitation profile fields')
++      if (!data || typeof data !== 'object' || Array.isArray(data)) throw new E_ACCOUNT_KIT_INVALID_INPUT('Invalid invitation profile fields')
 +      const fullName = Reflect.get(data, 'fullName')
-+      if (typeof fullName !== 'string' || !fullName.trim()) throw new InvalidInputError('A full name is required')
++      if (typeof fullName !== 'string' || !fullName.trim()) throw new E_ACCOUNT_KIT_INVALID_INPUT('A full name is required')
 +      return { fullName: fullName.trim() }
 +    },
 +  },

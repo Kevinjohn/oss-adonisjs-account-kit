@@ -1,5 +1,5 @@
 import { test } from '@japa/runner'
-import { InvalidInputError } from '../src/errors.js'
+import { E_ACCOUNT_KIT_INVALID_INPUT } from '../src/errors.js'
 import type { UsersAdapter } from '../src/types.js'
 import { useTestApp } from './helpers/app.js'
 import { insertUser, makeService, makeUsersAdapter, tokenFrom } from './helpers/fakes.js'
@@ -25,7 +25,7 @@ test.group('invitation management contracts', (group) => {
           typeof (data as { fullName?: unknown }).fullName !== 'string' ||
           !(data as { fullName: string }).fullName.trim()
         ) {
-          throw new InvalidInputError('Invalid registration data')
+          throw new E_ACCOUNT_KIT_INVALID_INPUT('Invalid registration data')
         }
         const created = await users.create(attrs, trx)
         savedName = (data as { fullName: string }).fullName
@@ -47,7 +47,7 @@ test.group('invitation management contracts', (group) => {
     const token = tokenFrom(recorder.calls.at(-1)!.args[1])
     await assert.rejects(
       () => account.invitations.accept({ token, password: 'password123' }),
-      InvalidInputError
+      E_ACCOUNT_KIT_INVALID_INPUT
     )
     await assert.rejects(
       () =>
@@ -56,7 +56,7 @@ test.group('invitation management contracts', (group) => {
           password: 'password123',
           registrationData: { fullName: 'Person', role: 'admin' },
         }),
-      InvalidInputError
+      E_ACCOUNT_KIT_INVALID_INPUT
     )
     assert.isNotNull(await kit.db.from('account_invitations').where('id', invitation.id).first())
     assert.lengthOf(await kit.db.from('users').where('email', invitation.email), 0)
@@ -102,7 +102,7 @@ test.group('invitation management contracts', (group) => {
           password: 'password123',
           registrationData: { role: 'admin' },
         }),
-      InvalidInputError
+      E_ACCOUNT_KIT_INVALID_INPUT
     )
     assert.equal(createCalls, 0)
     assert.lengthOf(await kit.db.from('account_invitations'), 1)
@@ -137,7 +137,7 @@ test.group('invitation management contracts', (group) => {
           password: 'password123',
           registrationData: { role: 'admin' },
         }),
-      InvalidInputError
+      E_ACCOUNT_KIT_INVALID_INPUT
     )
     assert.equal(createCalls, 0)
     assert.lengthOf(await kit.db.from('account_invitations'), 1)

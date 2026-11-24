@@ -1,10 +1,10 @@
 import { DateTime } from 'luxon'
 import { test } from '@japa/runner'
 import {
-  DeliveryError,
-  EmailAlreadyRegisteredError,
-  InvalidTokenError,
-  PostCommitError,
+  E_ACCOUNT_KIT_DELIVERY,
+  E_ACCOUNT_KIT_EMAIL_ALREADY_REGISTERED,
+  E_ACCOUNT_KIT_INVALID_TOKEN,
+  E_ACCOUNT_KIT_POST_COMMIT,
 } from '../src/errors.js'
 import { hashToken } from '../src/tokens.js'
 import { useTestApp } from './helpers/app.js'
@@ -50,7 +50,7 @@ test.group('emailPasswordManagement', (group) => {
     assert.lengthOf(await kit.db.from('password_reset_tokens'), 0)
     await assert.rejects(
       () => account.emailPasswordManagement.completeEmailChange({ token }),
-      InvalidTokenError
+      E_ACCOUNT_KIT_INVALID_TOKEN
     )
   })
 
@@ -63,7 +63,7 @@ test.group('emailPasswordManagement', (group) => {
     for (const token of [null, 123, '', 'bad'])
       await assert.rejects(
         () => account.emailPasswordManagement.completeEmailChange({ token: token as never }),
-        InvalidTokenError
+        E_ACCOUNT_KIT_INVALID_TOKEN
       )
     const token = await issueEmailChange(account, user, recorder)
     await kit.db
@@ -72,14 +72,14 @@ test.group('emailPasswordManagement', (group) => {
       .update({ expires_at: dbTime(kit, DateTime.utc().minus({ second: 1 })) })
     await assert.rejects(
       () => account.emailPasswordManagement.completeEmailChange({ token }),
-      InvalidTokenError
+      E_ACCOUNT_KIT_INVALID_TOKEN
     )
     assert.lengthOf(await kit.db.from('email_verification_tokens'), 1)
     const second = await issueEmailChange(account, user, recorder)
     await kit.db.from('users').where('id', user.id).update({ email: 'changed@example.test' })
     await assert.rejects(
       () => account.emailPasswordManagement.completeEmailChange({ token: second }),
-      InvalidTokenError
+      E_ACCOUNT_KIT_INVALID_TOKEN
     )
     assert.lengthOf(await kit.db.from('email_verification_tokens'), 1)
     const third = await issueEmailChange(
@@ -90,7 +90,7 @@ test.group('emailPasswordManagement', (group) => {
     await kit.db.from('users').where('id', user.id).delete()
     await assert.rejects(
       () => account.emailPasswordManagement.completeEmailChange({ token: third }),
-      InvalidTokenError
+      E_ACCOUNT_KIT_INVALID_TOKEN
     )
   })
 
@@ -117,7 +117,7 @@ test.group('emailPasswordManagement', (group) => {
       .insert({ email: 'new@example.test', created_at: dbTime(kit, DateTime.utc()) })
     await assert.rejects(
       () => account.emailPasswordManagement.completeEmailChange({ token }),
-      EmailAlreadyRegisteredError
+      E_ACCOUNT_KIT_EMAIL_ALREADY_REGISTERED
     )
     const stored = await kit.db.from('users').where('id', user.id).first()
     assert.equal(stored.email, user.email)
@@ -144,7 +144,7 @@ test.group('emailPasswordManagement', (group) => {
     const token = await issueEmailChange(account, user, recorder)
     await assert.rejects(
       () => account.emailPasswordManagement.completeEmailChange({ token }),
-      EmailAlreadyRegisteredError
+      E_ACCOUNT_KIT_EMAIL_ALREADY_REGISTERED
     )
     const stored = await kit.db.from('users').where('id', user.id).first()
     assert.equal(stored.email, user.email)
@@ -164,7 +164,7 @@ test.group('emailPasswordManagement', (group) => {
     })
     await assert.rejects(
       () => account.emailPasswordManagement.completeEmailChange({ token }),
-      InvalidTokenError
+      E_ACCOUNT_KIT_INVALID_TOKEN
     )
   })
 
@@ -183,7 +183,8 @@ test.group('emailPasswordManagement', (group) => {
     )
     assert.lengthOf(
       results.filter(
-        (result) => result.status === 'rejected' && result.reason instanceof InvalidTokenError
+        (result) =>
+          result.status === 'rejected' && result.reason instanceof E_ACCOUNT_KIT_INVALID_TOKEN
       ),
       1
     )
@@ -234,10 +235,10 @@ test.group('emailPasswordManagement', (group) => {
     const token = await issueEmailChange(account, user, recorder)
     try {
       await account.emailPasswordManagement.completeEmailChange({ token })
-      assert.fail('expected DeliveryError')
+      assert.fail('expected E_ACCOUNT_KIT_DELIVERY')
     } catch (error) {
-      assert.instanceOf(error, DeliveryError)
-      assert.equal((error as DeliveryError).cause, failure)
+      assert.instanceOf(error, E_ACCOUNT_KIT_DELIVERY)
+      assert.equal((error as InstanceType<typeof E_ACCOUNT_KIT_DELIVERY>).cause, failure)
     }
     assert.equal(credentialsCalls, 1)
     const stored = await kit.db.from('users').where('id', user.id).first()
@@ -262,8 +263,8 @@ test.group('emailPasswordManagement', (group) => {
       await account.emailPasswordManagement.completeEmailChange({ token })
       assert.fail('expected postcommit error')
     } catch (error) {
-      assert.instanceOf(error, PostCommitError)
-      assert.equal((error as PostCommitError).cause, failure)
+      assert.instanceOf(error, E_ACCOUNT_KIT_POST_COMMIT)
+      assert.equal((error as InstanceType<typeof E_ACCOUNT_KIT_POST_COMMIT>).cause, failure)
     }
     const notice = recorder.calls.find((call) => call.method === 'emailChanged')
     assert.isDefined(notice)
@@ -294,8 +295,8 @@ test.group('emailPasswordManagement', (group) => {
       await account.emailPasswordManagement.completeEmailChange({ token })
       assert.fail('expected postcommit error')
     } catch (error) {
-      assert.instanceOf(error, PostCommitError)
-      const cause = (error as PostCommitError).cause
+      assert.instanceOf(error, E_ACCOUNT_KIT_POST_COMMIT)
+      const cause = (error as InstanceType<typeof E_ACCOUNT_KIT_POST_COMMIT>).cause
       assert.instanceOf(cause, AggregateError)
       assert.deepEqual((cause as AggregateError).errors, [callbackFailure, noticeFailure])
     }
@@ -358,9 +359,9 @@ test.group('emailPasswordManagement', (group) => {
       await account.emailPasswordManagement.completeEmailChange({ token })
       assert.fail('expected committed failure')
     } catch (error) {
-      assert.instanceOf(error, PostCommitError)
-      assert.isTrue((error as PostCommitError).committed)
-      assert.equal((error as PostCommitError).cause, failure)
+      assert.instanceOf(error, E_ACCOUNT_KIT_POST_COMMIT)
+      assert.isTrue((error as InstanceType<typeof E_ACCOUNT_KIT_POST_COMMIT>).committed)
+      assert.equal((error as InstanceType<typeof E_ACCOUNT_KIT_POST_COMMIT>).cause, failure)
     }
     assert.deepEqual(calls, ['credentials', 'notice:person@example.test', 'email_change.completed'])
     const stored = await kit.db.from('users').where('id', user.id).first()
@@ -392,9 +393,9 @@ test.group('emailPasswordManagement', (group) => {
       })
       assert.fail('expected committed failure')
     } catch (error) {
-      assert.instanceOf(error, PostCommitError)
-      assert.isTrue((error as PostCommitError).committed)
-      assert.equal((error as PostCommitError).cause, failure)
+      assert.instanceOf(error, E_ACCOUNT_KIT_POST_COMMIT)
+      assert.isTrue((error as InstanceType<typeof E_ACCOUNT_KIT_POST_COMMIT>).committed)
+      assert.equal((error as InstanceType<typeof E_ACCOUNT_KIT_POST_COMMIT>).cause, failure)
     }
     assert.deepEqual(
       recorder.calls.map((call) => call.method),
@@ -432,9 +433,9 @@ test.group('emailPasswordManagement', (group) => {
       })
       assert.fail('expected committed failure')
     } catch (error) {
-      assert.instanceOf(error, PostCommitError)
-      assert.isTrue((error as PostCommitError).committed)
-      const cause = (error as PostCommitError).cause
+      assert.instanceOf(error, E_ACCOUNT_KIT_POST_COMMIT)
+      assert.isTrue((error as InstanceType<typeof E_ACCOUNT_KIT_POST_COMMIT>).committed)
+      const cause = (error as InstanceType<typeof E_ACCOUNT_KIT_POST_COMMIT>).cause
       assert.instanceOf(cause, AggregateError)
       assert.deepEqual((cause as AggregateError).errors, [failure, observerFailure])
     }

@@ -1,5 +1,5 @@
 import type { HttpContext } from '@adonisjs/core/http'
-import { InvalidTokenError } from '@kevinjohn/adonisjs-account-kit'
+import { E_ACCOUNT_KIT_INVALID_TOKEN } from '@kevinjohn/adonisjs-account-kit'
 import accountKit from '@kevinjohn/adonisjs-account-kit/services/main'
 import { passwordValidator, recoveryRequestValidator } from '#validators/account_kit'
 import { proofFailure, proofHeaders } from '#services/http_responses'
@@ -33,7 +33,7 @@ export default class PasswordResetsController {
       )
       return ctx.response.accepted({ message: 'Password reset.' })
     } catch (error) {
-      if (error instanceof InvalidTokenError)
+      if (error instanceof E_ACCOUNT_KIT_INVALID_TOKEN)
         return proofFailure(ctx, 'E_ACCOUNT_KIT_INVALID_PASSWORD_TOKEN')
       throw error
     }

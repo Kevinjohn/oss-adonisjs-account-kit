@@ -13,7 +13,7 @@ export default class VerifiedAccountMiddleware {
         ...(revision === undefined ? {} : { revision: revision === '' ? null : revision }),
       })
     } catch (error) {
-      if (!(error instanceof errors.UnverifiedEmailError)) throw error
+      if (!(error instanceof errors.E_ACCOUNT_KIT_UNVERIFIED_EMAIL)) throw error
       ctx.session.flash('error', 'Confirm your email address to open this protected page.')
       return ctx.response.redirect().toRoute('dashboard')
     }

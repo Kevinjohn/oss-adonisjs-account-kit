@@ -215,7 +215,7 @@ export interface ResolvedConfig extends Omit<
   delivery: 'best-effort' | 'durable' | 'capture'
   /**
    * `AccountKitConfig.onInvitationAccepted`. Without one, calling it throws
-   * `CapabilityDisabledError`; invitations require the hook, so the package never calls that.
+   * `E_ACCOUNT_KIT_CAPABILITY_DISABLED`; invitations require the hook, so the package never calls that.
    */
   onInvitationAccepted: NonNullable<AccountKitConfig['onInvitationAccepted']>
   usersTable: string

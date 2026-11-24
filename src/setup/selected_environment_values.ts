@@ -1,3 +1,8 @@
+import { RuntimeException } from '@adonisjs/core/exceptions'
+import {
+  E_ACCOUNT_KIT_INDIRECT_ENVIRONMENT_VALUE,
+  E_ACCOUNT_KIT_SELECTED_ENVIRONMENT_VALUE,
+} from '../errors.js'
 import { createReadStream } from 'node:fs'
 import { lstat } from 'node:fs/promises'
 import { join, relative, resolve } from 'node:path'
@@ -5,16 +10,6 @@ import { createInterface } from 'node:readline'
 import { parseEnv } from 'node:util'
 import { envName } from './diagnostics.js'
 import { requireSafeSetupPath } from './safe_path.js'
-
-/** A selected assignment is empty, repeated, malformed or indirect: unresolved, not unsafe. */
-export class SelectedEnvironmentValueError extends Error {}
-
-/** A selected assignment refers to other values, so reading it would mean evaluating it. */
-export class IndirectEnvironmentValueError extends SelectedEnvironmentValueError {
-  constructor() {
-    super('Selected environment assignment must be a direct value')
-  }
-}
 
 /** Node's `parseEnv` treats no character as an escape: the next matching quote closes the value. */
 function hasClosingQuote(text: string, quote: string): boolean {
@@ -55,7 +50,8 @@ async function resolveEnvironmentValue(
       if ((error as NodeJS.ErrnoException).code === 'ENOENT') continue
       throw error
     }
-    if (!stat.isFile()) throw new Error('Selected environment file must be a regular file')
+    if (!stat.isFile())
+      throw new RuntimeException('Selected environment file must be a regular file')
     const stream = createReadStream(path)
     const lines = createInterface({ input: stream, crlfDelay: Infinity })
     let value: string | null = null
@@ -65,7 +61,7 @@ async function resolveEnvironmentValue(
       for await (const line of lines) {
         if (multilineQuote) {
           if (assignmentStart.test(line))
-            throw new SelectedEnvironmentValueError(
+            throw new E_ACCOUNT_KIT_SELECTED_ENVIRONMENT_VALUE(
               'Selected environment assignment is inside a multiline value'
             )
           if (hasClosingQuote(line, multilineQuote)) multilineQuote = null
@@ -79,16 +75,23 @@ async function resolveEnvironmentValue(
         }
         if (!assignmentStart.test(line)) continue
         if (found || !assignmentValue.test(line))
-          throw new SelectedEnvironmentValueError('Selected environment assignment is ambiguous')
+          throw new E_ACCOUNT_KIT_SELECTED_ENVIRONMENT_VALUE(
+            'Selected environment assignment is ambiguous'
+          )
         found = true
-        if (line.includes('$') || line.includes('`')) throw new IndirectEnvironmentValueError()
+        if (line.includes('$') || line.includes('`'))
+          throw new E_ACCOUNT_KIT_INDIRECT_ENVIRONMENT_VALUE()
         try {
           value = parseEnv(line)[variable] ?? null
         } catch {
-          throw new SelectedEnvironmentValueError('Selected environment assignment is malformed')
+          throw new E_ACCOUNT_KIT_SELECTED_ENVIRONMENT_VALUE(
+            'Selected environment assignment is malformed'
+          )
         }
         if (!validate(value))
-          throw new SelectedEnvironmentValueError(`Selected environment value must be ${expected}`)
+          throw new E_ACCOUNT_KIT_SELECTED_ENVIRONMENT_VALUE(
+            `Selected environment value must be ${expected}`
+          )
       }
     } finally {
       lines.close()

@@ -1,5 +1,5 @@
 // Validates `config/admission.ts` at boot.
-import { InvalidConfigurationError } from '../errors.js'
+import { E_ACCOUNT_KIT_INVALID_CONFIGURATION } from '../errors.js'
 import { isDomainName } from './domain.js'
 import type {
   AdmissionAuthorizeCallbacks,
@@ -14,13 +14,20 @@ const isObject = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value)
 
 function fail(field: string, message: string): never {
-  throw new InvalidConfigurationError(field, `account_kit: admission ${message}`)
+  throw new E_ACCOUNT_KIT_INVALID_CONFIGURATION(field, `account_kit: admission ${message}`)
 }
 
 /**
  * Validates the admission config. Throws at boot for a config with no requirement, a malformed
  * domain, or an invalid `authorize` callback. A missing `approval.authorize` may come from
  * `AdmissionCallbackRegistry`; it is checked when the admission service is first resolved.
+ *
+ * @example
+ * ```ts
+ * import { defineAdmission } from '@kevinjohn/adonisjs-account-kit/admission'
+ *
+ * export default defineAdmission({ invitation: { required: true } })
+ * ```
  */
 export function defineAdmission(config: AdmissionConfig): ResolvedAdmissionConfig {
   const resolved = checkAdmission(config, true)

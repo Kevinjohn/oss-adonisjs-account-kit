@@ -45,7 +45,7 @@ as `signInId` (see [Protected requests](authentication.md#protected-requests)).
 await kit.authentication.login({ email, password, clientKey, sessionLabel }, guard)
 ```
 
-- `revoke` throws `SessionNotFoundError` for an id that is unknown, malformed or belongs to another
+- `revoke` throws `E_ACCOUNT_KIT_SESSION_NOT_FOUND` for an id that is unknown, malformed or belongs to another
   account. All three look the same. It returns `{ current: true }` when the caller revoked its own
   sign-in; end the caller's session then.
 - `revokeOthers` keeps the caller signed in.
@@ -54,7 +54,7 @@ await kit.authentication.login({ email, password, clientKey, sessionLabel }, gua
   End the caller's session afterwards.
 - Every call first checks the caller with `current`, in the same transaction, so a revoked caller
   cannot manage sign-ins.
-- Observer failures after the change has committed throw `PostCommitError`. Treat the change as
+- Observer failures after the change has committed throw `E_ACCOUNT_KIT_POST_COMMIT`. Treat the change as
   done.
 
 Lifecycle events: `sessions.revoked` (`userId`, `operationId`, `count`) for `revoke` and
@@ -139,7 +139,7 @@ matches nothing deletes them all. The call returns `{ revision }`, the new crede
 session guard must store it where `establish` stored the first one, or the next request fails the
 revision check, and should regenerate the session id so a copied cookie for the kept session stops
 working. When a post-commit observer, commit listener, or password-change notice fails, the call
-throws `PostCommitError` or `DeliveryError`; `passwordChangeRevision(error)` returns the committed
+throws `E_ACCOUNT_KIT_POST_COMMIT` or `E_ACCOUNT_KIT_DELIVERY`; `passwordChangeRevision(error)` returns the committed
 revision for either, so store that one. The managed session guard's `refresh(revision)` does both,
 and the managed password-change route passes `keepCurrent` and calls it on success and failure
 paths.

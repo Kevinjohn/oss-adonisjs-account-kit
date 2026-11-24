@@ -1,6 +1,6 @@
 import { test } from '@japa/runner'
 import type { AdmissionEvent } from '../src/admission/types.js'
-import { InvalidSessionError, UnverifiedEmailError } from '../src/errors.js'
+import { E_ACCOUNT_KIT_INVALID_SESSION, E_ACCOUNT_KIT_UNVERIFIED_EMAIL } from '../src/errors.js'
 import { useAdmissionApp } from './helpers/admission_schema.js'
 import { allowDecisions, makeAdmission, writeAdmissionRow } from './helpers/admission.js'
 import { insertUser } from './helpers/fakes.js'
@@ -64,9 +64,12 @@ test.group('admission request', (group) => {
     const person = await insertUser(kit, { verified: false })
     await assert.rejects(
       () => admission.request({ userId: person.id, revision: null }),
-      UnverifiedEmailError
+      E_ACCOUNT_KIT_UNVERIFIED_EMAIL
     )
-    await assert.rejects(() => admission.request({ userId: person.id }), InvalidSessionError)
+    await assert.rejects(
+      () => admission.request({ userId: person.id }),
+      E_ACCOUNT_KIT_INVALID_SESSION
+    )
     assert.lengthOf(await kit.db.from('account_admissions'), 0)
   })
 })

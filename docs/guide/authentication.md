@@ -32,7 +32,7 @@ authentication: {
   changes. Its callback writes through the supplied transaction; the package then advances the
   credential revision and applies the selected revocation policy in that transaction. After commit,
   `onCredentialsChanged` receives the `access_restriction` context when that observer is configured.
-  An observer failure reports `PostCommitError`; the restriction and revocation remain committed.
+  An observer failure reports `E_ACCOUNT_KIT_POST_COMMIT`; the restriction and revocation remain committed.
   A transaction failure leaves both unchanged and skips the observer.
 - Account activation is a separate state: an inactive account may hold a limited credential, but
   `requireActive` denies protected actions with HTTP 403 and code `E_ACCOUNT_KIT_UNVERIFIED_EMAIL`.
@@ -159,7 +159,7 @@ reads eligibility and credential revision without a credential for that account.
 authentication: authorise the caller first, and never expose a route without that check.
 
 Unknown accounts, denied `canAccess`, and unconfirmed addresses when `requireActive` is true
-share `AccountAccessDeniedError`, without a reason. Denial timing differs by cause; an HTTP
+share `E_ACCOUNT_KIT_ACCOUNT_ACCESS_DENIED`, without a reason. Denial timing differs by cause; an HTTP
 caller owns any timing floor. An id the database cannot compare with its key column fails as
 an error, not a denial.
 
@@ -171,7 +171,7 @@ The snapshot is a point in time; nothing stays held after it returns. It waits f
 in-progress change to the same account, so keep `change` callbacks short. Application-owned
 restriction writes must use `changeRestriction` for this guarantee. Never call inspection
 from an Account Kit callback or while holding that account's row: it opens its own
-transaction and would wait on itself. A `PostCommitError` means the snapshot was discarded;
+transaction and would wait on itself. An `E_ACCOUNT_KIT_POST_COMMIT` means the snapshot was discarded;
 a retry is safe.
 
 See the [worked account access inspection recipe](../recipes/account-access-inspection.md) for a

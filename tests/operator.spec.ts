@@ -1,5 +1,11 @@
+import {
+  E_ACCOUNT_KIT_CAPABILITY_DISABLED,
+  E_ACCOUNT_KIT_EMAIL_ALREADY_REGISTERED,
+  E_ACCOUNT_KIT_INVALID_TOKEN,
+  E_ACCOUNT_KIT_THROTTLED,
+  E_ACCOUNT_KIT_USER_NOT_FOUND,
+} from '../src/errors.js'
 import { test } from '@japa/runner'
-import { CapabilityDisabledError, ThrottledError, UserNotFoundError } from '../src/errors.js'
 import type { LifecycleEvent } from '../src/types.js'
 import { useTestApp } from './helpers/app.js'
 import { denyAll, insertUser, makeService, tokenFrom } from './helpers/fakes.js'
@@ -115,7 +121,7 @@ test.group('operator services', (group) => {
     assert.deepEqual(assigned, [{ userId: user.id, role: 'admin' }])
     await assert.rejects(
       () => account.invitations.accept({ token: tokenFrom(url), password: 'another-password' }),
-      /InvalidTokenError/
+      E_ACCOUNT_KIT_INVALID_TOKEN
     )
   })
 
@@ -126,7 +132,7 @@ test.group('operator services', (group) => {
     const { account } = makeService(kit)
     await assert.rejects(
       () => account.operator.invite({ email: 'taken@example.test', role: 'a', deliver: 'send' }),
-      /EmailAlreadyRegisteredError/
+      E_ACCOUNT_KIT_EMAIL_ALREADY_REGISTERED
     )
     await assert.rejects(
       () => account.operator.invite({ email: 'not-an-email', role: 'a', deliver: 'send' }),
@@ -148,7 +154,7 @@ test.group('operator services', (group) => {
     const disabled = makeService(kit, { enabled: ['passwordReset'] }).account
     await assert.rejects(
       () => disabled.operator.invite({ email: 'x@example.test', role: 'a', deliver: 'send' }),
-      CapabilityDisabledError
+      E_ACCOUNT_KIT_CAPABILITY_DISABLED
     )
   })
 
@@ -164,7 +170,7 @@ test.group('operator services', (group) => {
       deliver: 'print',
     })
     assert.isString(result.url)
-    assert.equal(result.fault?.name, 'PostCommitError')
+    assert.equal(result.fault?.name, 'PostCommitException')
     assert.notInclude(JSON.stringify(result.fault), 'secret.example')
     assert.lengthOf(await kit.db.from('account_invitations'), 1)
   })
@@ -179,7 +185,7 @@ test.group('operator services', (group) => {
     await account.passwordReset.request({ email: 'locked@example.test', clientKey: 'client' })
     await assert.rejects(
       () => account.passwordReset.request({ email: 'locked@example.test', clientKey: 'client' }),
-      ThrottledError
+      E_ACCOUNT_KIT_THROTTLED
     )
     const printed = await account.operator.resetLink({
       email: 'locked@example.test',
@@ -277,7 +283,7 @@ test.group('operator services', (group) => {
     for (const deliver of ['print', 'send'] as const)
       await assert.rejects(
         () => account.operator.resetLink({ email: 'nobody@example.test', deliver }),
-        UserNotFoundError
+        E_ACCOUNT_KIT_USER_NOT_FOUND
       )
     assert.equal(calls, 0)
     assert.lengthOf(recorder.calls, 0)
@@ -298,7 +304,7 @@ test.group('operator services', (group) => {
     })
     await assert.rejects(
       () => account.operator.resetLink({ email: 'nobody@example.test', deliver: 'print' }),
-      UserNotFoundError
+      E_ACCOUNT_KIT_USER_NOT_FOUND
     )
     const first = await account.operator.resetLink({
       email: 'hooked@example.test',

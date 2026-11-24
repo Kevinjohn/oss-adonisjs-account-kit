@@ -7,8 +7,11 @@ import RevokeAdmission from '../src/admission/commands/revoke.js'
 import GrantInvitationEvidence from '../src/admission/commands/grant_invitation.js'
 import * as admissionCommands from '../src/admission/commands/main.js'
 import type { AdmissionConfig } from '../src/admission/types.js'
-import { AdmissionDecisionError } from '../src/admission/errors.js'
-import { PostCommitError, UserNotFoundError } from '../src/errors.js'
+import {
+  E_ACCOUNT_KIT_ADMISSION_DECISION,
+  E_ACCOUNT_KIT_POST_COMMIT,
+  E_ACCOUNT_KIT_USER_NOT_FOUND,
+} from '../src/errors.js'
 import { AccountAdmission } from '../src/admission/service.js'
 import { aceKernel } from './helpers/ace_kernel.js'
 import { useAdmissionApp } from './helpers/admission_schema.js'
@@ -63,7 +66,7 @@ test.group('admission runtime commands', (group) => {
     ])
     assert.equal(command.exitCode, 1)
     assert.equal(command.failure, 'E_ACCOUNT_KIT_USER_NOT_FOUND')
-    assert.instanceOf(command.error, UserNotFoundError)
+    assert.instanceOf(command.error, E_ACCOUNT_KIT_USER_NOT_FOUND)
     assert.lengthOf(stdout(), 0)
     assert.lengthOf(stderr(), 1)
     assert.include(stderr()[0].message, 'E_ACCOUNT_KIT_USER_NOT_FOUND')
@@ -74,7 +77,7 @@ test.group('admission runtime commands', (group) => {
     ])
     assert.equal(revoke.failure, 'E_ACCOUNT_KIT_ADMISSION_DECISION')
     assert.equal(revoke.exitCode, 1)
-    assert.instanceOf(revoke.error, AdmissionDecisionError)
+    assert.instanceOf(revoke.error, E_ACCOUNT_KIT_ADMISSION_DECISION)
     assert.lengthOf(stderr(), 2)
     assert.include(stderr()[1].message, 'E_ACCOUNT_KIT_ADMISSION_DECISION')
 
@@ -84,7 +87,7 @@ test.group('admission runtime commands', (group) => {
     )
     assert.equal(grant.failure, 'E_ACCOUNT_KIT_USER_NOT_FOUND')
     assert.equal(grant.exitCode, 1)
-    assert.instanceOf(grant.error, UserNotFoundError)
+    assert.instanceOf(grant.error, E_ACCOUNT_KIT_USER_NOT_FOUND)
     assert.lengthOf(stdout(), 0)
     assert.lengthOf(stderr(), 3)
     assert.include(stderr()[2].message, 'E_ACCOUNT_KIT_USER_NOT_FOUND')
@@ -106,7 +109,7 @@ test.group('admission runtime commands', (group) => {
       'boss@example.test',
     ])
 
-    assert.instanceOf(command.error, PostCommitError)
+    assert.instanceOf(command.error, E_ACCOUNT_KIT_POST_COMMIT)
     assert.equal(command.failure, 'E_ACCOUNT_KIT_POST_COMMIT')
     assert.equal(command.exitCode, 1)
     assert.isNull(command.result)

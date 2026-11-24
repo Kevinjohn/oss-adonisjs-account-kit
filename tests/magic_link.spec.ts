@@ -3,11 +3,11 @@ import { DateTime, Settings } from 'luxon'
 import { test } from '@japa/runner'
 import { defineConfig } from '../src/account_kit.js'
 import {
-  CapabilityDisabledError,
-  DeliveryError,
-  InvalidInputError,
-  PostCommitError,
-  ThrottledError,
+  E_ACCOUNT_KIT_CAPABILITY_DISABLED,
+  E_ACCOUNT_KIT_DELIVERY,
+  E_ACCOUNT_KIT_INVALID_INPUT,
+  E_ACCOUNT_KIT_POST_COMMIT,
+  E_ACCOUNT_KIT_THROTTLED,
 } from '../src/errors.js'
 import { deriveClientChallenge } from '../src/magic_link.js'
 import { hashToken } from '../src/tokens.js'
@@ -132,7 +132,7 @@ test.group('magicLink.request', (group) => {
     started = performance.now()
     await assert.rejects(
       () => account.magicLink.request({ email: 'bad', clientKey: 'x', clientChallenge: challenge }),
-      InvalidInputError
+      E_ACCOUNT_KIT_INVALID_INPUT
     )
     assert.isAtLeast(performance.now() - started, 40)
     assert.lengthOf(recorder.calls, 1)
@@ -190,7 +190,7 @@ test.group('magicLink.request', (group) => {
       { email: 'person@example.test', clientKey: 'x', clientChallenge: `${challenge}=` },
       { email: 'person@example.test', clientKey: 'x', clientChallenge: undefined as never },
     ])
-      await assert.rejects(() => account.magicLink.request(input), InvalidInputError)
+      await assert.rejects(() => account.magicLink.request(input), E_ACCOUNT_KIT_INVALID_INPUT)
     assert.equal(lookups, 0)
   })
 
@@ -213,12 +213,12 @@ test.group('magicLink.request', (group) => {
     assert.equal(before, 5)
     await assert.rejects(
       () => request(account, 'unknown5@example.test', 'same-client'),
-      ThrottledError
+      E_ACCOUNT_KIT_THROTTLED
     )
     assert.equal(lookups, before)
     for (let index = 0; index < 5; index++) await request(account, undefined, `client-${index}`)
     before = lookups
-    await assert.rejects(() => request(account, undefined, 'client-5'), ThrottledError)
+    await assert.rejects(() => request(account, undefined, 'client-5'), E_ACCOUNT_KIT_THROTTLED)
     assert.equal(lookups, before)
   })
 
@@ -226,14 +226,17 @@ test.group('magicLink.request', (group) => {
     await insertUser(kit)
     const failing = service()
     failing.recorder.failOn('magicLinkProvision')
-    await assert.rejects(() => request(failing.account), DeliveryError)
+    await assert.rejects(() => request(failing.account), E_ACCOUNT_KIT_DELIVERY)
     assert.lengthOf(await kit.db.from('login_link_tokens'), 1)
     const observer = service({
       onLifecycleEvent: async () => {
         throw new Error('observer down')
       },
     })
-    await assert.rejects(() => request(observer.account, undefined, 'other'), PostCommitError)
+    await assert.rejects(
+      () => request(observer.account, undefined, 'other'),
+      E_ACCOUNT_KIT_POST_COMMIT
+    )
     assert.lengthOf(observer.recorder.calls, 1)
   })
 
@@ -245,11 +248,14 @@ test.group('magicLink.request', (group) => {
       authentication: { guard: 'web', strategy: 'session' },
       minRequestMs: 0,
     })
-    await assert.rejects(() => request(account), CapabilityDisabledError)
-    await assert.rejects(() => account.magicLink.inspect({ token: 'x' }), CapabilityDisabledError)
+    await assert.rejects(() => request(account), E_ACCOUNT_KIT_CAPABILITY_DISABLED)
+    await assert.rejects(
+      () => account.magicLink.inspect({ token: 'x' }),
+      E_ACCOUNT_KIT_CAPABILITY_DISABLED
+    )
     await assert.rejects(
       () => account.magicLink.complete({ token: 'x', verifier }, sessionGuard()),
-      CapabilityDisabledError
+      E_ACCOUNT_KIT_CAPABILITY_DISABLED
     )
     assert.lengthOf(await kit.db.from('login_link_tokens'), 0)
   })

@@ -185,7 +185,7 @@ for a null revision. An absent value must fail closed. Use the same revision rep
 Install the [revision middleware](../../examples/inertia-react/app/middleware/session_revision_middleware.ts)
 after Session and Auth's silent authentication middleware, before application routes and their
 Auth middleware. It passes the stored revision to `authentication.current`, terminates an old
-session on `InvalidSessionError`, and lets the native protected-route middleware redirect to the
+session on `E_ACCOUNT_KIT_INVALID_SESSION`, and lets the native protected-route middleware redirect to the
 original login page. Existing protected routes need this integration too.
 
 Use a server-side Session store such as database or Redis; add its table/configuration where

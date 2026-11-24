@@ -17,6 +17,7 @@
   "githubPages": false,
   "gitRevision": "main",
   "treatWarningsAsErrors": true,
+  "intentionallyNotExported": ["src/admission_decision.ts:AdmissionDecision"],
   "validation": {
     "notExported": true,
     "invalidLink": true,

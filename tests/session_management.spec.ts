@@ -1,10 +1,10 @@
 import { test } from '@japa/runner'
 import { DateTime } from 'luxon'
 import {
-  CapabilityDisabledError,
-  InvalidSessionError,
-  PostCommitError,
-  SessionNotFoundError,
+  E_ACCOUNT_KIT_CAPABILITY_DISABLED,
+  E_ACCOUNT_KIT_INVALID_SESSION,
+  E_ACCOUNT_KIT_POST_COMMIT,
+  E_ACCOUNT_KIT_SESSION_NOT_FOUND,
 } from '../src/errors.js'
 import { getRevocationOutcome } from '../src/session_revocation.js'
 import type {
@@ -128,13 +128,13 @@ test.group('sign-in management with sessions', (group) => {
         current: false,
       }
     )
-    await assert.rejects(() => account.authentication.current(other), InvalidSessionError)
+    await assert.rejects(() => account.authentication.current(other), E_ACCOUNT_KIT_INVALID_SESSION)
     await account.authentication.current(mine)
     assert.deepEqual(
       await account.authentication.sessions.revoke({ current: mine, id: String(myRow.id) }),
       { current: true }
     )
-    await assert.rejects(() => account.authentication.current(mine), InvalidSessionError)
+    await assert.rejects(() => account.authentication.current(mine), E_ACCOUNT_KIT_INVALID_SESSION)
     assert.deepEqual(
       events.map((event) => [event.type, 'count' in event ? event.count : null]),
       [
@@ -158,7 +158,7 @@ test.group('sign-in management with sessions', (group) => {
     for (const id of [theirRow.id, 999, 0, -1, '1.5', 'abc', null, '01'])
       await assert.rejects(
         () => account.authentication.sessions.revoke({ current: mine, id }),
-        SessionNotFoundError
+        E_ACCOUNT_KIT_SESSION_NOT_FOUND
       )
     assert.lengthOf(await kit.db.from('account_sessions'), 2)
     await account.authentication.current(theirs)
@@ -176,7 +176,10 @@ test.group('sign-in management with sessions', (group) => {
       count: 2,
     })
     for (const other of others)
-      await assert.rejects(() => account.authentication.current(other), InvalidSessionError)
+      await assert.rejects(
+        () => account.authentication.current(other),
+        E_ACCOUNT_KIT_INVALID_SESSION
+      )
     await account.authentication.current(mine)
     await account.authentication.current(bystander)
     assert.deepEqual(
@@ -203,7 +206,10 @@ test.group('sign-in management with sessions', (group) => {
     assert.notEqual(after.credentials_changed_at, before.credentials_changed_at)
     assert.lengthOf(await kit.db.from('account_sessions'), 0)
     for (const input of [mine, other])
-      await assert.rejects(() => account.authentication.current(input), InvalidSessionError)
+      await assert.rejects(
+        () => account.authentication.current(input),
+        E_ACCOUNT_KIT_INVALID_SESSION
+      )
     assert.deepEqual(
       inTransaction.map((context) => [context.operation, context.userId]),
       [['sign_out_everywhere', user.id]]
@@ -354,7 +360,7 @@ test.group('sign-in management with sessions', (group) => {
       () => account.authentication.sessions.revokeAll({ current: mine }),
       () => account.authentication.sessions.revoke({ current: mine, id: 1 }),
     ])
-      await assert.rejects(call, InvalidSessionError)
+      await assert.rejects(call, E_ACCOUNT_KIT_INVALID_SESSION)
     await account.authentication.current(other)
   })
 
@@ -370,10 +376,10 @@ test.group('sign-in management with sessions', (group) => {
     const error = await account.authentication.sessions
       .revoke({ current: mine, id: row.id })
       .catch((caught: unknown) => caught)
-    assert.instanceOf(error, PostCommitError)
+    assert.instanceOf(error, E_ACCOUNT_KIT_POST_COMMIT)
     assert.deepEqual(getRevocationOutcome(error), { current: true })
     assert.lengthOf(await kit.db.from('account_sessions'), 0)
-    assert.isUndefined(getRevocationOutcome(new PostCommitError('unrelated')))
+    assert.isUndefined(getRevocationOutcome(new E_ACCOUNT_KIT_POST_COMMIT('unrelated')))
   })
 
   test('every operation needs the capability', async ({ assert }) => {
@@ -394,7 +400,7 @@ test.group('sign-in management with sessions', (group) => {
       assert.doesNotThrow(() => {
         pending = call()
       })
-      await assert.rejects(() => pending!, CapabilityDisabledError)
+      await assert.rejects(() => pending!, E_ACCOUNT_KIT_CAPABILITY_DISABLED)
     }
   })
 
@@ -418,7 +424,7 @@ test.group('sign-in management with sessions', (group) => {
     removeSignIn = true
     await assert.rejects(
       () => account.authentication.sessions.list({ current }),
-      InvalidSessionError
+      E_ACCOUNT_KIT_INVALID_SESSION
     )
   })
 })
@@ -468,18 +474,21 @@ test.group('sign-in management with access tokens', (group) => {
     assert.isNull(list[0].expiresAt)
     await assert.rejects(
       () => account.authentication.sessions.revoke({ current: mine, id: theirs.tokenId }),
-      SessionNotFoundError
+      E_ACCOUNT_KIT_SESSION_NOT_FOUND
     )
     assert.deepEqual(
       await account.authentication.sessions.revoke({ current: mine, id: laptop.tokenId }),
       { current: false }
     )
-    await assert.rejects(() => account.authentication.current(laptop), InvalidSessionError)
+    await assert.rejects(
+      () => account.authentication.current(laptop),
+      E_ACCOUNT_KIT_INVALID_SESSION
+    )
     assert.deepEqual(
       await account.authentication.sessions.revoke({ current: mine, id: mine.tokenId }),
       { current: true }
     )
-    await assert.rejects(() => account.authentication.current(mine), InvalidSessionError)
+    await assert.rejects(() => account.authentication.current(mine), E_ACCOUNT_KIT_INVALID_SESSION)
     await account.authentication.current(theirs)
   })
 

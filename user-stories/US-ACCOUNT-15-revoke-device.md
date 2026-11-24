@@ -36,7 +36,7 @@ flowchart TD
   B -->|Refused| X["Propagate current or ID refusal"]
   B -->|Accepted| C["Delete only the matching account-owned row"]
   C --> D{"Exactly one row deleted?"}
-  D -->|No| E["Throw SessionNotFoundError"]
+  D -->|No| E["Throw E_ACCOUNT_KIT_SESSION_NOT_FOUND"]
   D -->|Yes| F["Run configured transaction hook, retain current marker and commit"]
   F --> G["Run revocation event and return current marker or record it on committed error"]
   G -->|Managed| H["Attempt browser session termination if current was revoked; return 204 on success or rethrow for the managed committed-failure response"]

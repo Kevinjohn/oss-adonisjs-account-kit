@@ -1,3 +1,4 @@
+import { RuntimeException } from '@adonisjs/core/exceptions'
 import type { NotificationCallbacks } from '../src/types.js'
 
 /** The name of a notification callback, such as `passwordResetProvision`. */
@@ -26,6 +27,14 @@ function tokenFrom(actionUrl: string): string | undefined {
 /**
  * Records account notifications in memory for application tests. Pass `notify` as the
  * Account Kit `notify` config, run an operation, then read the link or token it produced.
+ *
+ * @example
+ * ```ts
+ * import { captureNotifications } from '@kevinjohn/adonisjs-account-kit/testing/notifications'
+ *
+ * const mail = captureNotifications()
+ * const config = { ...accountConfig, notify: mail.notify }
+ * ```
  */
 export function captureNotifications() {
   const messages: CapturedNotification[] = []
@@ -67,15 +76,37 @@ export function captureNotifications() {
   return {
     notify,
     messages,
-    /** The latest message of a kind, optionally to one address. */
+    /**
+     * The latest message of a kind, optionally to one address.
+     *
+     * @example
+     * ```ts
+     * const sent = mail.last('passwordResetProvision', 'sam@example.test')
+     * ```
+     */
     last,
-    /** The token from the latest matching message; throws when none was sent. */
+    /**
+     * The token from the latest matching message; throws when none was sent.
+     *
+     * @example
+     * ```ts
+     * const token = mail.tokenFor('passwordResetProvision', 'sam@example.test')
+     * ```
+     */
     tokenFor(kind: NotificationKind, to?: string): string {
       const token = last(kind, to)?.token
-      if (!token) throw new Error(`No ${kind} notification with a token${to ? ` to ${to}` : ''}`)
+      if (!token)
+        throw new RuntimeException(`No ${kind} notification with a token${to ? ` to ${to}` : ''}`)
       return token
     },
-    /** Forget every captured message. */
+    /**
+     * Forget every captured message.
+     *
+     * @example
+     * ```ts
+     * mail.clear()
+     * ```
+     */
     clear() {
       messages.length = 0
     },

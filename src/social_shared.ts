@@ -1,7 +1,10 @@
 // Social helpers shared by the identity, handoff and proof modules: dependencies, clock and actor.
 import { DateTime } from 'luxon'
 import { requireCurrentAccountInTransaction } from './authentication.js'
-import { SocialProofError, SocialUserNotFoundError } from './errors.js'
+import {
+  E_ACCOUNT_KIT_SOCIAL_PROOF_INVALID,
+  E_ACCOUNT_KIT_SOCIAL_USER_NOT_FOUND,
+} from './errors.js'
 import { socialProviderNames } from './social_providers.js'
 import { sqlTimestamp, type DialectSource } from './timestamps.js'
 import type {
@@ -41,9 +44,9 @@ export async function requireAuthenticatedUser(
   current: CurrentAccountInput | undefined,
   trx: Trx
 ): Promise<AccountUser> {
-  if (!current) throw new SocialProofError()
+  if (!current) throw new E_ACCOUNT_KIT_SOCIAL_PROOF_INVALID()
   await requireCurrentAccountInTransaction(deps, current, trx)
   const user = await deps.config.users.findById(current.userId, trx)
-  if (!user) throw new SocialUserNotFoundError()
+  if (!user) throw new E_ACCOUNT_KIT_SOCIAL_USER_NOT_FOUND()
   return user
 }

@@ -2,7 +2,7 @@ import { RequestValidator } from '@adonisjs/core/http'
 import { DateTime } from 'luxon'
 import { test } from '@japa/runner'
 import { transaction } from '../src/db.js'
-import { InvalidInputError, InvitationPendingError } from '../src/errors.js'
+import { E_ACCOUNT_KIT_INVALID_INPUT, E_ACCOUNT_KIT_INVITATION_PENDING } from '../src/errors.js'
 import { matchInvitation } from '../src/invitation_match.js'
 import { registerManagedRoutes } from '../src/http/managed.js'
 import type { AccountKitConfig, AuthorizationContext, LifecycleEvent } from '../src/types.js'
@@ -83,11 +83,11 @@ test.group('invitation scope', (group) => {
 
     await assert.rejects(
       () => account.invitations.send({ actorId: actor.id, email, role: 'member', scope: 'team-a' }),
-      InvitationPendingError
+      E_ACCOUNT_KIT_INVITATION_PENDING
     )
     await assert.rejects(
       () => account.invitations.send({ actorId: actor.id, email, role: 'member' }),
-      InvitationPendingError
+      E_ACCOUNT_KIT_INVITATION_PENDING
     )
     assert.lengthOf(await kit.db.from('account_invitations').where('email', email), 3)
   })
@@ -98,11 +98,11 @@ test.group('invitation scope', (group) => {
     for (const scope of ['', 'x'.repeat(256), 7 as unknown as string]) {
       await assert.rejects(
         () => account.invitations.send({ actorId: actor.id, email, role: 'member', scope }),
-        InvalidInputError
+        E_ACCOUNT_KIT_INVALID_INPUT
       )
       await assert.rejects(
         () => account.invitations.list({ actorId: actor.id, scope }),
-        InvalidInputError
+        E_ACCOUNT_KIT_INVALID_INPUT
       )
     }
     assert.lengthOf(await kit.db.from('account_invitations'), 0)
@@ -275,8 +275,8 @@ test.group('invitation scope', (group) => {
       const error = await account.invitations
         .send({ actorId: actor.id, email, ...input })
         .catch((failure: unknown) => failure)
-      assert.instanceOf(error, InvalidInputError)
-      assert.deepInclude(error as InvalidInputError, {
+      assert.instanceOf(error, E_ACCOUNT_KIT_INVALID_INPUT)
+      assert.deepInclude(error as InstanceType<typeof E_ACCOUNT_KIT_INVALID_INPUT>, {
         message: `Invalid ${field}`,
         code: 'E_ACCOUNT_KIT_INVALID_INPUT',
         status: 422,
@@ -297,8 +297,8 @@ test.group('invitation scope', (group) => {
       const error = await account.invitations
         .list({ actorId: actor.id, limit })
         .catch((failure: unknown) => failure)
-      assert.instanceOf(error, InvalidInputError)
-      assert.deepInclude(error as InvalidInputError, {
+      assert.instanceOf(error, E_ACCOUNT_KIT_INVALID_INPUT)
+      assert.deepInclude(error as InstanceType<typeof E_ACCOUNT_KIT_INVALID_INPUT>, {
         message: 'Invalid invitation page limit',
         code: 'E_ACCOUNT_KIT_INVALID_INPUT',
         status: 422,

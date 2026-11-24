@@ -1,12 +1,13 @@
 import type { HttpContext } from '@adonisjs/core/http'
-import { InvalidInputError } from '@kevinjohn/adonisjs-account-kit'
+import { E_ACCOUNT_KIT_INVALID_INPUT } from '@kevinjohn/adonisjs-account-kit'
 import accountKit from '@kevinjohn/adonisjs-account-kit/services/main'
 import { accountInput } from '#middleware/account_access_middleware'
 import { passwordProofValidator, socialUnlinkValidator } from '#validators/social'
 
 function identityId(value: string): number {
   const id = Number(value)
-  if (!Number.isSafeInteger(id) || id <= 0) throw new InvalidInputError('Invalid identity ID')
+  if (!Number.isSafeInteger(id) || id <= 0)
+    throw new E_ACCOUNT_KIT_INVALID_INPUT('Invalid identity ID')
   return id
 }
 

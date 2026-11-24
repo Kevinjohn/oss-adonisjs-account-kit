@@ -5,6 +5,22 @@ import type { SocialProvider } from './types.js'
  * The application owns the redirect response and returns its Location URL. Each initiation
  * and callback uses an Ally provider scoped to its own incoming request. Stateless mode lets
  * the package's one-use transaction state replace Ally's cookie state.
+ *
+ * @example
+ * ```ts
+ * import { createAllySocialProvider } from '@kevinjohn/adonisjs-account-kit/ally'
+ * import type { HttpContext } from '@adonisjs/core/http'
+ *
+ * const github = createAllySocialProvider({
+ *   authorizationUrl(state, context) {
+ *     return (context as HttpContext).ally.use('github').stateless()
+ *       .redirectUrl((request) => request.param('state', state))
+ *   },
+ *   user(callback) {
+ *     return (callback as HttpContext).ally.use('github').stateless().user()
+ *   },
+ * })
+ * ```
  */
 export function createAllySocialProvider(input: {
   authorizationUrl(state: string, context?: unknown): Promise<string> | string

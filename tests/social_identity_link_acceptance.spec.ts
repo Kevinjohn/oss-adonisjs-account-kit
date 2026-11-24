@@ -1,5 +1,5 @@
 import { test } from '@japa/runner'
-import { SocialLinkRefusedError } from '../src/errors.js'
+import { E_ACCOUNT_KIT_SOCIAL_LINK_REFUSED } from '../src/errors.js'
 import { mapManagedErrorResponse } from '../src/http/responses.js'
 import type { AccountUser, SocialLinkProfile } from '../src/types.js'
 import { useTestApp } from './helpers/app.js'
@@ -72,12 +72,12 @@ test.group('social link acceptance', (group) => {
     const user = await insertUser(kit)
     let refuse = true
     const { account, recorder } = linkService(async () => {
-      if (refuse) throw new SocialLinkRefusedError()
+      if (refuse) throw new E_ACCOUNT_KIT_SOCIAL_LINK_REFUSED()
     })
     const { proof, state } = await beginLink(account, user.id)
     const input = { state, callback: {}, current: current(user.id), proof }
     const refused = await account.socialAuthentication.callback(input).catch((error) => error)
-    assert.instanceOf(refused, SocialLinkRefusedError)
+    assert.instanceOf(refused, E_ACCOUNT_KIT_SOCIAL_LINK_REFUSED)
     assert.equal(refused.code, 'E_ACCOUNT_KIT_SOCIAL_LINK_REFUSED')
     assert.equal(refused.status, 403)
     assert.deepEqual(mapManagedErrorResponse(refused)?.status, 403)
@@ -189,7 +189,7 @@ test.group('social link acceptance', (group) => {
         providers: { github: provider('flow-subject', 'flow@example.test', false) },
         acceptLink: async () => {
           called++
-          throw new SocialLinkRefusedError()
+          throw new E_ACCOUNT_KIT_SOCIAL_LINK_REFUSED()
         },
       },
       authentication: { strategy: 'session', guard: 'web' },
@@ -249,7 +249,7 @@ test.group('social link acceptance', (group) => {
         providers: { google: provider('registered-subject', 'registered@example.test', true) },
         acceptLink: async () => {
           called++
-          throw new SocialLinkRefusedError()
+          throw new E_ACCOUNT_KIT_SOCIAL_LINK_REFUSED()
         },
       },
       authentication: { strategy: 'session', guard: 'web' },

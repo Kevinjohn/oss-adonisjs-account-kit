@@ -1,5 +1,5 @@
 import { HttpRequest } from '@adonisjs/core/http'
-import { AccountKitError } from './errors.js'
+import { E_ACCOUNT_KIT } from './errors.js'
 import {
   buildPublicErrorHeaders,
   mapPublicErrorIdentity,
@@ -44,7 +44,7 @@ export function negotiateRequest(
 }
 
 /** The error's own `field` name, such as `email` on a duplicate registration email. */
-function getOwnErrorField(error: AccountKitError): string | undefined {
+function getOwnErrorField(error: InstanceType<typeof E_ACCOUNT_KIT>): string | undefined {
   if (!Object.hasOwn(error, 'field')) return undefined
   const field = (error as { field?: unknown }).field
   return typeof field === 'string' ? field : undefined
@@ -61,7 +61,7 @@ export function mapManagedErrorResponse(
     i18n?: AccountKitTranslator
   } = {}
 ): ManagedErrorResponse | null {
-  if (!(error instanceof AccountKitError)) return null
+  if (!(error instanceof E_ACCOUNT_KIT)) return null
   const identity = mapPublicErrorIdentity(error, { proof: options.proof })
   const translated =
     options.i18n?.t(`errors.${identity.code}`, {}, identity.message) ?? identity.message
@@ -102,8 +102,8 @@ export interface AccountErrorResponse {
   contentType: 'application/json' | 'application/vnd.api+json'
   /**
    * The error entries. A plain JSON entry carries `message`, plus `field` when the error names
-   * one; a JSON:API entry carries `title` instead. `committed` marks a `PostCommitError`: the
-   * change was saved and a later step failed. A `DeliveryError` also follows a saved change but
+   * one; a JSON:API entry carries `title` instead. `committed` marks a `E_ACCOUNT_KIT_POST_COMMIT`: the
+   * change was saved and a later step failed. A `E_ACCOUNT_KIT_DELIVERY` also follows a saved change but
    * carries no marker.
    */
   body: {
@@ -117,6 +117,21 @@ export interface AccountErrorResponse {
 /**
  * A safe plain JSON response for an Account Kit error. When options are omitted or `undefined`,
  * the response uses `application/json` and each mapped entry carries `message`.
+ *
+ * @example
+ * ```ts
+ * import { accountErrorResponse } from '@kevinjohn/adonisjs-account-kit'
+ *
+ * const mapped = accountErrorResponse(error)
+ * if (mapped) {
+ *   for (const [name, value] of Object.entries(mapped.headers)) {
+ *     if (name === 'Vary') response.vary(value)
+ *     else response.header(name, value)
+ *   }
+ *   response.header('Content-Type', mapped.contentType)
+ *   response.status(mapped.status).send(mapped.body)
+ * }
+ * ```
  */
 export function accountErrorResponse(
   error: unknown,
@@ -136,6 +151,24 @@ export function accountErrorResponse(
  * as `accept` to negotiate JSON:API, and `proof` to get the per-kind code for an invalid token.
  * An options object may negotiate JSON:API, whose entries carry `title` instead of `message`; narrow
  * the entry before reading either property.
+ *
+ * @example
+ * ```ts
+ * import { accountErrorResponse } from '@kevinjohn/adonisjs-account-kit'
+ *
+ * const mapped = accountErrorResponse(error, {
+ *   accept: request.header('accept'),
+ *   proof: 'password',
+ * })
+ * if (mapped) {
+ *   for (const [name, value] of Object.entries(mapped.headers)) {
+ *     if (name === 'Vary') response.vary(value)
+ *     else response.header(name, value)
+ *   }
+ *   response.header('Content-Type', mapped.contentType)
+ *   response.status(mapped.status).send(mapped.body)
+ * }
+ * ```
  */
 export function accountErrorResponse(
   error: unknown,

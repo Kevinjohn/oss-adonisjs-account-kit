@@ -1,9 +1,13 @@
 /* eslint-disable @unicorn/no-await-expression-member -- Keep each assertion next to the operation it inspects. */
 
 import { test } from '@japa/runner'
-import { AdmissionDecisionError } from '../src/admission/errors.js'
+import {
+  E_ACCOUNT_KIT_ADMISSION_DECISION,
+  E_ACCOUNT_KIT_CAPABILITY_DISABLED,
+  E_ACCOUNT_KIT_INVALID_INPUT,
+  E_ACCOUNT_KIT_USER_NOT_FOUND,
+} from '../src/errors.js'
 import type { AdmissionEvent } from '../src/admission/types.js'
-import { CapabilityDisabledError, InvalidInputError, UserNotFoundError } from '../src/errors.js'
 import { useAdmissionApp } from './helpers/admission_schema.js'
 import { allRequirements, makeAdmission } from './helpers/admission.js'
 import { insertUser } from './helpers/fakes.js'
@@ -25,7 +29,7 @@ test.group('admission operator', (group) => {
     assert.equal(approved.approval?.status, 'approved')
     await assert.rejects(
       () => admission.operator.approve({ email: person.email }),
-      AdmissionDecisionError
+      E_ACCOUNT_KIT_ADMISSION_DECISION
     )
     assert.equal(
       (await admission.operator.revoke({ email: person.email })).approval?.status,
@@ -33,7 +37,7 @@ test.group('admission operator', (group) => {
     )
     await assert.rejects(
       () => admission.operator.revoke({ email: person.email }),
-      AdmissionDecisionError
+      E_ACCOUNT_KIT_ADMISSION_DECISION
     )
     assert.deepEqual(events, [
       {
@@ -75,7 +79,7 @@ test.group('admission operator', (group) => {
     )
     await assert.rejects(
       () => admission.operator.grantInvitation({ email: person.email }),
-      AdmissionDecisionError
+      E_ACCOUNT_KIT_ADMISSION_DECISION
     )
     assert.deepEqual(
       events.map((event) => [event.type, event.userId, 'source' in event ? event.source : null]),
@@ -93,24 +97,24 @@ test.group('admission operator', (group) => {
     const { admission } = makeAdmission(kit)
     await assert.rejects(
       () => admission.operator.approve({ email: 'missing@example.test' }),
-      UserNotFoundError
+      E_ACCOUNT_KIT_USER_NOT_FOUND
     )
     await assert.rejects(
       () => admission.operator.approve({ email: 'not-an-email' }),
-      InvalidInputError
+      E_ACCOUNT_KIT_INVALID_INPUT
     )
     const person = await insertUser(kit)
     for (const role of ['', 'x'.repeat(65), 7])
       await assert.rejects(
         () => admission.operator.grantInvitation({ email: person.email, role: role as never }),
-        InvalidInputError
+        E_ACCOUNT_KIT_INVALID_INPUT
       )
     const { admission: noInvitation } = makeAdmission(kit, {
       domain: { allowed: ['example.test'] },
     })
     await assert.rejects(
       () => noInvitation.operator.grantInvitation({ email: person.email }),
-      CapabilityDisabledError
+      E_ACCOUNT_KIT_CAPABILITY_DISABLED
     )
   })
 

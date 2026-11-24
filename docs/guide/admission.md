@@ -132,21 +132,21 @@ guard strategies. To also sign the person out, call `kit.authentication.changeRe
 
 ### Service
 
-| Method                                                            | Does                                                                                                                                                |
-| ----------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `current(input)`                                                  | Checks the credential like `kit.authentication.current`, then evaluates admission, in one transaction. Returns `{ account, decision }`.             |
-| `require(input, { active? })`                                     | Like `current`; throws `UnverifiedEmailError` for an unconfirmed account unless `active: false`, then `AdmissionRequiredError` unless admitted.     |
-| `decide(user, trx)`                                               | Evaluates the requirements for a user row inside your transaction.                                                                                  |
-| `isAdmitted(userId, trx?)`                                        | True when admitted; false for an unknown user. For `authorize` and `exportAccountData` callbacks.                                                   |
-| `record(userId, trx?)`                                            | The user's admission record, including `invitation.role`; null for an unknown user or one with no admission row. Pass your `trx` to see its writes. |
-| `request(input)`                                                  | The signed-in person asks for approval, so the pending list shows them. Idempotent; refuses an unconfirmed account.                                 |
-| `approve`, `reject`, `revoke`                                     | An approver's decision: `{ actorId, userId }`. See [decisions](#decisions).                                                                         |
-| `list({ actorId, status?, cursor?, limit? })`                     | Admission records, oldest first, 1 to 100 a page (default 25), after `authorize.list` returns `true`.                                               |
-| `operator.approve`, `operator.revoke`, `operator.grantInvitation` | Shell-trusted changes by `{ email }` for Ace commands: no actor, no `authorize`. Never expose them to a request.                                    |
-| `eligibleDomain(email)`                                           | Whether an address would meet the domain requirement once confirmed. True when the requirement is off; false for a malformed one.                   |
+| Method                                                            | Does                                                                                                                                                                |
+| ----------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `current(input)`                                                  | Checks the credential like `kit.authentication.current`, then evaluates admission, in one transaction. Returns `{ account, decision }`.                             |
+| `require(input, { active? })`                                     | Like `current`; throws `E_ACCOUNT_KIT_UNVERIFIED_EMAIL` for an unconfirmed account unless `active: false`, then `E_ACCOUNT_KIT_ADMISSION_REQUIRED` unless admitted. |
+| `decide(user, trx)`                                               | Evaluates the requirements for a user row inside your transaction.                                                                                                  |
+| `isAdmitted(userId, trx?)`                                        | True when admitted; false for an unknown user. For `authorize` and `exportAccountData` callbacks.                                                                   |
+| `record(userId, trx?)`                                            | The user's admission record, including `invitation.role`; null for an unknown user or one with no admission row. Pass your `trx` to see its writes.                 |
+| `request(input)`                                                  | The signed-in person asks for approval, so the pending list shows them. Idempotent; refuses an unconfirmed account.                                                 |
+| `approve`, `reject`, `revoke`                                     | An approver's decision: `{ actorId, userId }`. See [decisions](#decisions).                                                                                         |
+| `list({ actorId, status?, cursor?, limit? })`                     | Admission records, oldest first, 1 to 100 a page (default 25), after `authorize.list` returns `true`.                                                               |
+| `operator.approve`, `operator.revoke`, `operator.grantInvitation` | Shell-trusted changes by `{ email }` for Ace commands: no actor, no `authorize`. Never expose them to a request.                                                    |
+| `eligibleDomain(email)`                                           | Whether an address would meet the domain requirement once confirmed. True when the requirement is off; false for a malformed one.                                   |
 
 `input` is the same `CurrentAccountInput` your guard returns: a credential check always comes
-first, so an expired session fails with `InvalidSessionError` before admission is evaluated.
+first, so an expired session fails with `E_ACCOUNT_KIT_INVALID_SESSION` before admission is evaluated.
 
 `list` returns `{ items, nextCursor }`. Pass a returned cursor as `cursor` for the next page.
 A null `nextCursor` marks the final page. The existing `approval.authorize.list` callback
@@ -194,13 +194,13 @@ default Bouncer initialiser and application code see the signed-in user without 
 
 ### Errors
 
-Both errors extend `AccountKitError` and are exported from `@kevinjohn/adonisjs-account-kit/admission` only.
+Both errors extend `E_ACCOUNT_KIT` and are exported from `@kevinjohn/adonisjs-account-kit/admission` only.
 `accountErrorResponse` maps them like any other package error.
 
-| Error                    | Code                               | Status | When                                                                             |
-| ------------------------ | ---------------------------------- | -----: | -------------------------------------------------------------------------------- |
-| `AdmissionRequiredError` | `E_ACCOUNT_KIT_ADMISSION_REQUIRED` |    403 | `require` refused a person who is not admitted. `decision` says what is missing. |
-| `AdmissionDecisionError` | `E_ACCOUNT_KIT_ADMISSION_DECISION` |    409 | An approve, reject or revoke the current approval state does not allow.          |
+| Error                              | Code                               | Status | When                                                                             |
+| ---------------------------------- | ---------------------------------- | -----: | -------------------------------------------------------------------------------- |
+| `E_ACCOUNT_KIT_ADMISSION_REQUIRED` | `E_ACCOUNT_KIT_ADMISSION_REQUIRED` |    403 | `require` refused a person who is not admitted. `decision` says what is missing. |
+| `E_ACCOUNT_KIT_ADMISSION_DECISION` | `E_ACCOUNT_KIT_ADMISSION_DECISION` |    409 | An approve, reject or revoke the current approval state does not allow.          |
 
 `accountErrorResponse` returns one entry under `errors`: `{ code, message }`, or
 `{ code, title }` when its `accept` option asks for JSON:API. Add `error.decision` to the 403 body in
@@ -214,12 +214,12 @@ JSON:API body. The package sends no notification of any kind.
 the actor and the subject in id order, so two approvers deciding on each other cannot deadlock.
 They are refused with:
 
-- `UserNotFoundError` for an unknown subject, `InvalidInputError('Unknown actor')` for an unknown
+- `E_ACCOUNT_KIT_USER_NOT_FOUND` for an unknown subject, `E_ACCOUNT_KIT_INVALID_INPUT('Unknown actor')` for an unknown
   actor;
-- `AuthorizationError` when the actor is the subject, when the actor is not admitted, or when
+- `E_ACCOUNT_KIT_AUTHORIZATION` when the actor is the subject, when the actor is not admitted, or when
   `authorize.decide(actor, subject, { trx })` returns anything but `true`;
-- `AdmissionDecisionError` for a transition the table does not allow;
-- `CapabilityDisabledError` when `approval` is not configured. The same applies to `request`,
+- `E_ACCOUNT_KIT_ADMISSION_DECISION` for a transition the table does not allow;
+- `E_ACCOUNT_KIT_CAPABILITY_DISABLED` when `approval` is not configured. The same applies to `request`,
   `list` and the operator decisions.
 
 | From        | approve  | reject   | revoke  |
@@ -234,14 +234,14 @@ record stores who decided and when; an operator decision stores no actor.
 
 After commit, `onAdmissionEvent` receives `admission.requested`, `admission.approved`,
 `admission.rejected`, `admission.revoked` or `admission.invitation_granted`, with ids and an
-`operationId` only. A failing hook surfaces as `PostCommitError`: the change is saved, so do not
+`operationId` only. A failing hook surfaces as `E_ACCOUNT_KIT_POST_COMMIT`: the change is saved, so do not
 repeat it. Account Kit sends no email about admission; use the hook to notify people.
 `admission.requested` is sent only for a person with no decision yet. A bootstrap approval sends no
 event, either when it is issued or when its invitation creates the account.
 
 `list` filters by `status`: `pending` is a person who asked and has no decision; `approved`,
 `rejected` and `revoked` are the stored decisions; omitted lists every record. The cursor is
-opaque and checked; a forged one is `InvalidInputError`.
+opaque and checked; a forged one is `E_ACCOUNT_KIT_INVALID_INPUT`.
 
 ## Commands
 

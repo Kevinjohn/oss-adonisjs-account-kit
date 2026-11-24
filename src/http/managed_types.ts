@@ -12,13 +12,41 @@ export interface ManagedGuard<Credential> {
   strategy: 'session' | 'access_tokens'
   /** Must match `authentication.guard` in the config. */
   name: string
-  /** Construct the existing selected guard's service adapter for this request. */
+  /**
+   * Construct the existing selected guard's service adapter for this request.
+   *
+   * @example
+   * ```ts
+   * guard.forRequest(context)
+   * ```
+   */
   forRequest(context: HttpContext): AuthenticationGuard<Credential>
-  /** Authenticate through that guard and return its trusted token id or session revision. */
+  /**
+   * Authenticate through that guard and return its trusted token id or session revision.
+   *
+   * @example
+   * ```ts
+   * await guard.current(context)
+   * ```
+   */
   current(context: HttpContext): Promise<CurrentAccountInput>
-  /** Return the current credential for bearer logout. Required for access tokens with `authentication`. */
+  /**
+   * Return the current credential for bearer logout. Required for access tokens with `authentication`.
+   *
+   * @example
+   * ```ts
+   * await tokenGuard.logoutCredential?.(context)
+   * ```
+   */
   logoutCredential?(context: HttpContext): Promise<Credential>
-  /** Expose only the opaque bearer value after successful token issuance. */
+  /**
+   * Expose only the opaque bearer value after successful token issuance.
+   *
+   * @example
+   * ```ts
+   * tokenGuard.publicCredential?.(credential)
+   * ```
+   */
   publicCredential?(credential: Credential): string
 }
 

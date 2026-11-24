@@ -4,7 +4,7 @@ import type { AdmissionEvent, ResolvedAdmissionConfig } from './types.js'
 
 /**
  * Await a committed admission transaction, then report `event` (when there is one). A failing hook
- * surfaces as `PostCommitError` with the change committed, like every core operation.
+ * surfaces as `E_ACCOUNT_KIT_POST_COMMIT` with the change committed, like every core operation.
  */
 export async function withAdmissionEvent<T>(
   config: ResolvedAdmissionConfig,

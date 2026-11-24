@@ -13,7 +13,7 @@ As an application operator, I want to approve an account from the trusted shell 
 
 - The email identifies an existing account. Approval must be enabled. Approval transitions from no decision, `rejected` or `revoked`; a repeat is refused. The decision stores a null actor ID and the decision time. Other enabled requirements still apply.
 - On success the service returns the admission record and the command prints `result: 'approved'`, `userId` and `email`. The configured observer receives `admission.approved` with operator source after commit. The command reports a committed observer failure on stderr with exit code 1 and the write saved.
-- A thrown runtime error, including a `PostCommitError`, stays on Ace's `command.error` and produces one safe diagnostic on stderr with exit code 1.
+- A thrown runtime error, including an `E_ACCOUNT_KIT_POST_COMMIT`, stays on Ace's `command.error` and produces one safe diagnostic on stderr with exit code 1.
 
 ## User flow
 
@@ -42,7 +42,7 @@ flowchart TD
  D -->|Yes| E["applyTransition stores approved status, decision time and null actor ID"]
  E --> F["Commit; withAdmissionEvent invokes configured admission.approved observer"]
  F --> G{"Follow-ups succeed?"}
- G -->|No| H["Ace retains PostCommitError; completed prints one diagnostic and exits nonzero"]
+ G -->|No| H["Ace retains E_ACCOUNT_KIT_POST_COMMIT; completed prints one diagnostic and exits nonzero"]
  G -->|Yes| I["Service returns AdmissionRecord and writeResult prints approved, userId and email"]
 ```
 

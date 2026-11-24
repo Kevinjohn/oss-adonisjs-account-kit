@@ -2,7 +2,7 @@ import { test } from '@japa/runner'
 import { MailManager } from '@adonisjs/mail'
 import { JSONTransport } from '@adonisjs/mail/transports/json'
 import { createMailNotifications, type AccountMailService } from '../src/notifications.js'
-import { DeliveryError } from '../src/errors.js'
+import { E_ACCOUNT_KIT_DELIVERY } from '../src/errors.js'
 import { useTestApp } from './helpers/app.js'
 import { insertUser, makeNotify, makeService } from './helpers/fakes.js'
 
@@ -290,8 +290,11 @@ test.group('maintained mail operation', (group) => {
       await account.passwordReset.request({ email: 'person@example.test', clientKey: 'first' })
       assert.fail('expected delivery failure')
     } catch (error) {
-      assert.instanceOf(error, DeliveryError)
-      assert.equal(((error as DeliveryError).cause as Error).message, 'transport failed')
+      assert.instanceOf(error, E_ACCOUNT_KIT_DELIVERY)
+      assert.equal(
+        ((error as InstanceType<typeof E_ACCOUNT_KIT_DELIVERY>).cause as Error).message,
+        'transport failed'
+      )
     }
     assert.deepEqual(calls, ['queued-after-commit'])
     assert.lengthOf(await kit.db.from('password_reset_tokens'), 1)
@@ -356,7 +359,7 @@ test.group('maintained mail operation', (group) => {
           current,
           proof: linkProof,
         }),
-      DeliveryError
+      E_ACCOUNT_KIT_DELIVERY
     )
     const relations = await account.socialAuthentication.list({ current })
     const relation = relations[0]
@@ -373,7 +376,7 @@ test.group('maintained mail operation', (group) => {
           identityId: relation.id,
           proof: unlinkProof,
         }),
-      DeliveryError
+      E_ACCOUNT_KIT_DELIVERY
     )
     assert.deepEqual(states, ['1', '0'])
     assert.lengthOf(await kit.db.from('social_identities').where('user_id', local.id), 0)

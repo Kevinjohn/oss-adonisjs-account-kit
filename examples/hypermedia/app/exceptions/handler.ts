@@ -55,9 +55,12 @@ export default class HttpExceptionHandler extends ExceptionHandler {
     }
     // Account Kit and limiter errors render JSON on their own; this app answers with a page.
     const throttled =
-      error instanceof accountErrors.ThrottledError ||
+      error instanceof accountErrors.E_ACCOUNT_KIT_THROTTLED ||
       error instanceof limiterErrors.E_TOO_MANY_REQUESTS
-    if ((throttled || error instanceof accountErrors.EmailAlreadyRegisteredError) && ctx.session) {
+    if (
+      (throttled || error instanceof accountErrors.E_ACCOUNT_KIT_EMAIL_ALREADY_REGISTERED) &&
+      ctx.session
+    ) {
       ctx.session.flash(
         'error',
         throttled

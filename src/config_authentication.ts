@@ -2,7 +2,7 @@
 import { DateTime } from 'luxon'
 import { resolveThrottleBudget } from './config_budget.js'
 import { assertObject } from './config_assert.js'
-import { InvalidConfigurationError } from './errors.js'
+import { E_ACCOUNT_KIT_INVALID_CONFIGURATION } from './errors.js'
 import { isSqlIdentifier } from './sql_identifier.js'
 import { computeConfiguredExpiry } from './config_ttl.js'
 import type { AccountKitConfig, ResolvedAuthenticationConfig } from './types.js'
@@ -16,17 +16,17 @@ export function resolveAuthentication(
     const auth = config.authentication
     assertObject(auth, 'authentication')
     if (auth.strategy !== 'session' && auth.strategy !== 'access_tokens')
-      throw new InvalidConfigurationError(
+      throw new E_ACCOUNT_KIT_INVALID_CONFIGURATION(
         'authentication.strategy',
         'account_kit: authentication.strategy must be session or access_tokens'
       )
     if (typeof auth.guard !== 'string' || auth.guard.trim() === '')
-      throw new InvalidConfigurationError(
+      throw new E_ACCOUNT_KIT_INVALID_CONFIGURATION(
         'authentication.guard',
         'account_kit: authentication.guard must name an existing guard'
       )
     if (auth.canAccess !== undefined && typeof auth.canAccess !== 'function')
-      throw new InvalidConfigurationError(
+      throw new E_ACCOUNT_KIT_INVALID_CONFIGURATION(
         'authentication.canAccess',
         'account_kit: authentication.canAccess must be a function'
       )
@@ -36,7 +36,7 @@ export function resolveAuthentication(
         auth.tokenAbilities.length === 0 ||
         auth.tokenAbilities.some((ability) => typeof ability !== 'string' || ability.trim() === ''))
     )
-      throw new InvalidConfigurationError(
+      throw new E_ACCOUNT_KIT_INVALID_CONFIGURATION(
         'authentication.tokenAbilities',
         'account_kit: authentication.tokenAbilities must be non-empty strings'
       )
@@ -44,7 +44,7 @@ export function resolveAuthentication(
       computeConfiguredExpiry('authentication.tokenExpiresIn', DateTime.utc(), auth.tokenExpiresIn)
     const tokenTable = auth.tokenTable ?? 'auth_access_tokens'
     if (typeof tokenTable !== 'string' || !isSqlIdentifier(tokenTable))
-      throw new InvalidConfigurationError(
+      throw new E_ACCOUNT_KIT_INVALID_CONFIGURATION(
         'authentication.tokenTable',
         'account_kit: authentication.tokenTable must be a plain SQL identifier'
       )

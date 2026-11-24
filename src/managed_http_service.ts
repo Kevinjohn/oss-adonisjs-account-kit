@@ -1,7 +1,8 @@
+import { RuntimeException } from '@adonisjs/core/exceptions'
 // Checks and the shared client budget used by the managed HTTP routes.
 import { DateTime } from 'luxon'
 import { expiresAt } from './ttl.js'
-import { AuthorizationError } from './errors.js'
+import { E_ACCOUNT_KIT_AUTHORIZATION } from './errors.js'
 import { isPasswordAllowed as matchesPasswordPolicy } from './password.js'
 import type { Throttler } from './throttle.js'
 import type { ResolvedConfig } from './types.js'
@@ -19,16 +20,18 @@ export function createManagedHttpService(deps: Dependencies) {
     magicLinkExpiresAt: computeMagicLinkExpiry,
     /** Whether `value` is a string that meets the configured password policy. */
     passwordAllowed: isPasswordAllowed,
-    /** Throws `AuthorizationError` unless registration availability is `open`. */
+    /** Throws `E_ACCOUNT_KIT_AUTHORIZATION` unless registration availability is `open`. */
     assertPublicRegistration: (): void => {
       if (deps.config.registration.availability !== 'open')
-        throw new AuthorizationError('Public registration is unavailable')
+        throw new E_ACCOUNT_KIT_AUTHORIZATION('Public registration is unavailable')
     },
     /** Throws unless `guard` has the name and strategy set in the `authentication` config. */
     assertGuard: (guard: { name: string; strategy: 'session' | 'access_tokens' }): void => {
       const selected = deps.config.authentication
       if (!selected || selected.guard !== guard.name || selected.strategy !== guard.strategy)
-        throw new Error('Managed routes must use the configured existing authentication guard')
+        throw new RuntimeException(
+          'Managed routes must use the configured existing authentication guard'
+        )
     },
     /** Spend one request from the per-client budget of a managed endpoint. */
     consume: (input: { endpoint: string; clientKey: string }): Promise<void> => {

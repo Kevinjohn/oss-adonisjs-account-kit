@@ -368,11 +368,11 @@ test.group('setup choice validation', (group) => {
     assert.include(config, 'registrationData.${key} is not allowed')
     assert.include(
       config,
-      "import { InvalidInputError } from '@kevinjohn/adonisjs-account-kit/errors'"
+      "import { E_ACCOUNT_KIT_INVALID_INPUT } from '@kevinjohn/adonisjs-account-kit/errors'"
     )
     assert.include(
       config,
-      'throw new InvalidInputError(`account_kit: registrationData.${field.name} is required`)'
+      'throw new E_ACCOUNT_KIT_INVALID_INPUT(`account_kit: registrationData.${field.name} is required`)'
     )
     choices.policy.registrationFields.push({ name: 'Role', type: 'string', required: true })
     const blocked = await planSetup(choices, await inspectSetup(root), {

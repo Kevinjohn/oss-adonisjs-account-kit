@@ -6,11 +6,8 @@ import { inspectGuards } from './guard_inspection.js'
 import { inspectDatabaseKind } from './database_inspection.js'
 import { readStaticRouteDefinitions } from './route_inspection.js'
 import { readInstalledPackageVersions } from './installed_packages.js'
-import {
-  resolveDefaultMigrationDirectory,
-  inspectMigrationDirectory,
-  MigrationDirectoryError,
-} from './migration_paths.js'
+import { resolveDefaultMigrationDirectory, inspectMigrationDirectory } from './migration_paths.js'
+import { E_ACCOUNT_KIT_MIGRATION_DIRECTORY } from '../errors.js'
 
 const inspectedFiles = [
   'package.json',
@@ -77,7 +74,7 @@ export async function inspectSetup(
     migrationDirectory = directory.path
     migrationNames = directory.names
   } catch (error) {
-    if (!(error instanceof MigrationDirectoryError)) throw error
+    if (!(error instanceof E_ACCOUNT_KIT_MIGRATION_DIRECTORY)) throw error
     migrationDirectoryError = error.message
     migrationDirectoryErrorField = error.field
   }

@@ -1,5 +1,5 @@
 import { test } from '@japa/runner'
-import { InvalidConfigurationError } from '../src/errors.js'
+import { E_ACCOUNT_KIT_INVALID_CONFIGURATION } from '../src/errors.js'
 import { defineAdmission } from '../src/admission/config.js'
 import AdmissionProvider from '../src/admission/provider.js'
 import { AccountAdmission } from '../src/admission/service.js'
@@ -47,8 +47,11 @@ test.group('admission provider', () => {
       } catch (caught) {
         error = caught
       }
-      assert.instanceOf(error, InvalidConfigurationError)
-      assert.equal((error as InvalidConfigurationError).field, 'config/admission.ts')
+      assert.instanceOf(error, E_ACCOUNT_KIT_INVALID_CONFIGURATION)
+      assert.equal(
+        (error as InstanceType<typeof E_ACCOUNT_KIT_INVALID_CONFIGURATION>).field,
+        'config/admission.ts'
+      )
       assert.match((error as Error).message, /config\/admission\.ts/)
     } finally {
       await app.close()

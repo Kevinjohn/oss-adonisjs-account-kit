@@ -3,7 +3,7 @@ import { errors } from '@adonisjs/limiter'
 import limiter from '@adonisjs/limiter/services/main'
 import type { HttpContext } from '@adonisjs/core/http'
 import type { NextFn } from '@adonisjs/core/types/http'
-import { ThrottledError } from '@kevinjohn/adonisjs-account-kit'
+import { E_ACCOUNT_KIT_THROTTLED } from '@kevinjohn/adonisjs-account-kit'
 import env from '#start/env'
 import { accountInput } from '#middleware/account_access_middleware'
 
@@ -30,7 +30,7 @@ export default class SocialThrottleMiddleware {
       await limiter.use({ requests: budgets[options.operation], duration: '15m' }).consume(key)
     } catch (error) {
       if (error instanceof errors.E_TOO_MANY_REQUESTS) {
-        throw new ThrottledError(error.response.availableIn, undefined, { cause: error })
+        throw new E_ACCOUNT_KIT_THROTTLED(error.response.availableIn, { cause: error })
       }
       throw error
     }

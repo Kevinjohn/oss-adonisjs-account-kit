@@ -2,6 +2,56 @@
 
 ## Unreleased
 
+### Changed
+
+- **Breaking:** Catch Account Kit exceptions with the `errors.E_*` constructors from the root
+  export or import the constructors from `/errors`. The previous constructor names are removed.
+  Instance codes, HTTP statuses and response mapping remain stable. `E_ACCOUNT_KIT_THROTTLED`
+  accepts retry seconds and optional `{ cause }`. The constructor supplies the message.
+  On committed operator failures, the JSON `fault.name` and Ace `failure` contain the
+  new class name, such as `PostCommitException`.
+- Add type-checked application examples for public functions, classes and methods in their TSDoc.
+
+| Previous constructor                      | Replacement                                           |
+| ----------------------------------------- | ----------------------------------------------------- |
+| `AccountKitError`                         | `E_ACCOUNT_KIT`                                       |
+| `InvalidConfigurationError`               | `E_ACCOUNT_KIT_INVALID_CONFIGURATION`                 |
+| `AdapterContractError`                    | `E_ACCOUNT_KIT_ADAPTER_CONTRACT`                      |
+| `InvalidInputError`                       | `E_ACCOUNT_KIT_INVALID_INPUT`                         |
+| `InvalidTokenError`                       | `E_ACCOUNT_KIT_INVALID_TOKEN`                         |
+| `ThrottledError`                          | `E_ACCOUNT_KIT_THROTTLED`                             |
+| `AuthorizationError`                      | `E_ACCOUNT_KIT_AUTHORIZATION`                         |
+| `InvitationManagementDeniedError`         | `E_ACCOUNT_KIT_INVITATION_MANAGEMENT_DENIED`          |
+| `AccountAccessDeniedError`                | `E_ACCOUNT_KIT_ACCOUNT_ACCESS_DENIED`                 |
+| `InvitationNotFoundError`                 | `E_ACCOUNT_KIT_INVITATION_NOT_FOUND`                  |
+| `SessionNotFoundError`                    | `E_ACCOUNT_KIT_SESSION_NOT_FOUND`                     |
+| `IdentityNotConfirmedError`               | `E_ACCOUNT_KIT_IDENTITY_NOT_CONFIRMED`                |
+| `NoPasswordError`                         | `E_ACCOUNT_KIT_NO_PASSWORD`                           |
+| `EmailAlreadyRegisteredError`             | `E_ACCOUNT_KIT_EMAIL_ALREADY_REGISTERED`              |
+| `RegistrationEmailAlreadyRegisteredError` | `E_ACCOUNT_KIT_REGISTRATION_EMAIL_ALREADY_REGISTERED` |
+| `UserNotFoundError`                       | `E_ACCOUNT_KIT_USER_NOT_FOUND`                        |
+| `InvitationPendingError`                  | `E_ACCOUNT_KIT_INVITATION_PENDING`                    |
+| `DeliveryError`                           | `E_ACCOUNT_KIT_DELIVERY`                              |
+| `PostCommitError`                         | `E_ACCOUNT_KIT_POST_COMMIT`                           |
+| `CapabilityDisabledError`                 | `E_ACCOUNT_KIT_CAPABILITY_DISABLED`                   |
+| `InvalidCredentialsError`                 | `E_INVALID_CREDENTIALS`                               |
+| `InvalidSessionError`                     | `E_ACCOUNT_KIT_INVALID_SESSION`                       |
+| `UnverifiedEmailError`                    | `E_ACCOUNT_KIT_UNVERIFIED_EMAIL`                      |
+| `SocialTransactionError`                  | `E_ACCOUNT_KIT_SOCIAL_TRANSACTION_INVALID`            |
+| `SocialIdentityAlreadyLinkedError`        | `E_ACCOUNT_KIT_SOCIAL_IDENTITY_ALREADY_LINKED`        |
+| `SocialEmailMissingError`                 | `E_ACCOUNT_KIT_SOCIAL_EMAIL_MISSING`                  |
+| `SocialUserNotFoundError`                 | `E_ACCOUNT_KIT_SOCIAL_USER_NOT_FOUND`                 |
+| `SocialProofError`                        | `E_ACCOUNT_KIT_SOCIAL_PROOF_INVALID`                  |
+| `SocialLinkRefusedError`                  | `E_ACCOUNT_KIT_SOCIAL_LINK_REFUSED`                   |
+| `LastLoginMethodError`                    | `E_ACCOUNT_KIT_SOCIAL_LAST_LOGIN_METHOD`              |
+| `AdmissionRequiredError`                  | `E_ACCOUNT_KIT_ADMISSION_REQUIRED`                    |
+| `AdmissionDecisionError`                  | `E_ACCOUNT_KIT_ADMISSION_DECISION`                    |
+| `BootstrapApprovalChangedError`           | `E_ACCOUNT_KIT_BOOTSTRAP_APPROVAL_CHANGED`            |
+
+The registration duplicate-email constructor preserves `E_ACCOUNT_KIT_EMAIL_ALREADY_REGISTERED`
+as its instance code, HTTP 422 and the `email` field. The bootstrap approval-change constructor
+preserves `E_ACCOUNT_KIT_INVALID_INPUT` and the operator's recovery diagnostic.
+
 ## 0.6.1 - 2026-11-24
 
 - Report Ace operator failures once with safe guidance while preserving the original command error.

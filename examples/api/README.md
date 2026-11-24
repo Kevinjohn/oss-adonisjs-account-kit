@@ -264,7 +264,7 @@ flowchart TD
  H -->|Allowed| J["Return 200 with items and nextCursor"]
  H -->|Refused| L["Exception handler maps the list error"]
  G -->|Valid| I["AccountAdmission approve, reject or revoke checks admission and admissionAuthorize.decide"]
- G -->|Invalid| Z["Exception handler maps InvalidInputError to 422"]
+ G -->|Invalid| Z["Exception handler maps E_ACCOUNT_KIT_INVALID_INPUT to 422"]
  I -->|Allowed| K["Return 200 with userId and approval"]
  I -->|Refused| M["Exception handler maps the decision error"]
 ```

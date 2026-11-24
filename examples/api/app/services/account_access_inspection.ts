@@ -1,5 +1,5 @@
 import { inject } from '@adonisjs/core'
-import { AccountAccessDeniedError, AccountKit } from '@kevinjohn/adonisjs-account-kit'
+import { E_ACCOUNT_KIT_ACCOUNT_ACCESS_DENIED, AccountKit } from '@kevinjohn/adonisjs-account-kit'
 import { AccountAdmission } from '@kevinjohn/adonisjs-account-kit/admission'
 import { isAdmittedOwner } from './account_kit_authorization.js'
 
@@ -24,7 +24,7 @@ export class AccountAccessInspection {
         requireActive: false,
       })
     } catch (error) {
-      if (error instanceof AccountAccessDeniedError) return null
+      if (error instanceof E_ACCOUNT_KIT_ACCOUNT_ACCESS_DENIED) return null
       throw error
     }
   }

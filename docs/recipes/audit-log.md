@@ -38,7 +38,7 @@ deleted.
 `onLifecycleEvent` is an awaited observer after the account transaction commits. A database insert
 in this callback can persist an observed event, but it is not part of the account transaction: if
 the insert fails, the account change still stands and the event is not retried. The operation
-reports `PostCommitError` with `committed: true`. This hook is not a persisted queue and does not
+reports `E_ACCOUNT_KIT_POST_COMMIT` with `committed: true`. This hook is not a persisted queue and does not
 provide delivery or retention guarantees.
 
 For a durable application-owned outbox, record its intent in the same transaction as the state

@@ -155,8 +155,8 @@ import app from '@adonisjs/core/services/app'
 import type { HttpContext } from '@adonisjs/core/http'
 import {
   AccountKit,
-  DeliveryError,
-  PostCommitError,
+  E_ACCOUNT_KIT_DELIVERY,
+  E_ACCOUNT_KIT_POST_COMMIT,
   accountErrorResponse,
 } from '@kevinjohn/adonisjs-account-kit'
 import {
@@ -187,11 +187,11 @@ export default class PasswordResetsController {
     } catch (error) {
       // Both errors follow a committed reset. Keep one response for known and unknown accounts,
       // and log no address or link.
-      if (!(error instanceof DeliveryError || error instanceof PostCommitError))
+      if (!(error instanceof E_ACCOUNT_KIT_DELIVERY || error instanceof E_ACCOUNT_KIT_POST_COMMIT))
         return knownError(ctx, error)
       ctx.logger.error(
         { code: error.code },
-        error instanceof DeliveryError
+        error instanceof E_ACCOUNT_KIT_DELIVERY
           ? 'reset email failed'
           : 'reset follow-up failed; the email may have been sent'
       )
@@ -208,7 +208,7 @@ export default class PasswordResetsController {
     try {
       await kit.passwordReset.reset({ token, password })
     } catch (error) {
-      if (!(error instanceof DeliveryError || error instanceof PostCommitError))
+      if (!(error instanceof E_ACCOUNT_KIT_DELIVERY || error instanceof E_ACCOUNT_KIT_POST_COMMIT))
         return knownError(ctx, error)
       // The password and token revocation already committed; the notice may have been sent.
       ctx.logger.error({ code: error.code }, 'password reset follow-up failed')
@@ -218,8 +218,8 @@ export default class PasswordResetsController {
 }
 ```
 
-Both errors arrive after the change committed. A `DeliveryError` means only the email failed. A
-`PostCommitError` means a lifecycle observer or commit listener failed: the email may have been
+Both errors arrive after the change committed. An `E_ACCOUNT_KIT_DELIVERY` means only the email failed. A
+`E_ACCOUNT_KIT_POST_COMMIT` means a lifecycle observer or commit listener failed: the email may have been
 sent, and when it failed too, its error is part of the `cause`. Log the `code` and keep the cause in
 private reporting; never log the address or the link.
 

@@ -1,6 +1,6 @@
 // Shared output rules for operator commands: one JSON line on stdout, warnings and errors on stderr.
 import type { BaseCommand } from '@adonisjs/core/ace'
-import { AccountKitError } from '../src/errors.js'
+import { E_ACCOUNT_KIT } from '../src/errors.js'
 import type { OperatorFault } from '../src/types.js'
 
 export const BEARER_WARNING =
@@ -34,7 +34,7 @@ export function completeOperatorCommand(
   // Ace sets the exit code even when the thrown value is falsy.
   if (command.exitCode === 0 || command.failure !== null) return false
   const error: unknown = command.error
-  const code = error instanceof AccountKitError ? error.code : 'E_ACCOUNT_KIT_OPERATOR'
+  const code = error instanceof E_ACCOUNT_KIT ? error.code : 'E_ACCOUNT_KIT_OPERATOR'
   const diagnosticCode = Object.hasOwn(FAILURE_MESSAGES, code) ? code : 'E_ACCOUNT_KIT_OPERATOR'
   command.logger.error(`${diagnosticCode}: ${FAILURE_MESSAGES[diagnosticCode]}`)
   command.failure = code

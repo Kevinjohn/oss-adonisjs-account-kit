@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto'
 import type { HttpContext } from '@adonisjs/core/http'
-import { SocialTransactionError } from '../errors.js'
+import { E_ACCOUNT_KIT_SOCIAL_TRANSACTION_INVALID } from '../errors.js'
 import { isSocialProviderName } from '../social_providers.js'
 import type { SocialIntent, SocialProviderName } from '../types.js'
 import { requireSession, type SessionStore } from './session_access.js'
@@ -91,6 +91,6 @@ export function requireSessionState(context: HttpContext, state: string): Sessio
     typeof (stored as SessionSocialState).expiresAt !== 'number' ||
     (stored as SessionSocialState).expiresAt <= Date.now()
   )
-    throw new SocialTransactionError()
+    throw new E_ACCOUNT_KIT_SOCIAL_TRANSACTION_INVALID()
   return stored as SessionSocialState
 }

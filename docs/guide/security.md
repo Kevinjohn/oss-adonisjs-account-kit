@@ -60,12 +60,12 @@ nothing". See [magic-link sign-in](magic-link.md).
 - **Signed-in devices:** an unknown id, a malformed id and another user's id all look the same.
 
 Only known addresses get an email, so a failed send must not change the response. Your
-reset-request controller must catch `DeliveryError` and `PostCommitError` and return the normal
+reset-request controller must catch `E_ACCOUNT_KIT_DELIVERY` and `E_ACCOUNT_KIT_POST_COMMIT` and return the normal
 response. Every controller in these docs does; see [getting started](getting-started.md).
 
 ## Rate limits
 
-Limits use `@adonisjs/limiter`. A limited request throws `ThrottledError` (HTTP 429 with
+Limits use `@adonisjs/limiter`. A limited request throws `E_ACCOUNT_KIT_THROTTLED` (HTTP 429 with
 `Retry-After`).
 
 | Operation                          | Keys                                     | Default                              | Option                         |
@@ -153,10 +153,10 @@ See [authentication](authentication.md) and [signed-in devices](signed-in-device
 - **No half-finished changes.** If an adapter or hook fails, the token use, the password change and
   the revocation roll back together. Pinned by "adapter failure rolls back token consumption and
   password change".
-- **After commit means committed.** Emails and lifecycle hooks run after commit. A `DeliveryError`
-  or `PostCommitError` from a mutating operation means the change happened and only a follow-up
+- **After commit means committed.** Emails and lifecycle hooks run after commit. An `E_ACCOUNT_KIT_DELIVERY`
+  or `E_ACCOUNT_KIT_POST_COMMIT` from a mutating operation means the change happened and only a follow-up
   failed. Do not blindly repeat that mutation. Read-only inspection can instead discard its
-  snapshot on `PostCommitError`; retry only when its adapters and policy callbacks meet the
+  snapshot on `E_ACCOUNT_KIT_POST_COMMIT`; retry only when its adapters and policy callbacks meet the
   documented read-only, retry-safe contract. See [errors](../reference/errors.md).
 
 ## Optional features
@@ -189,7 +189,7 @@ See [authentication](authentication.md) and [signed-in devices](signed-in-device
   instance that shares a limiter store. Rotating `limiterSecret` resets rate-limit budgets.
 - **Configure trusted proxies before deriving `clientKey` from the request IP.** Never accept a
   client key supplied by the caller or an unverified `X-Forwarded-For` value.
-- **Keep the reset response generic.** Catch `DeliveryError` and `PostCommitError` from
+- **Keep the reset response generic.** Catch `E_ACCOUNT_KIT_DELIVERY` and `E_ACCOUNT_KIT_POST_COMMIT` from
   `passwordReset.request` and return the normal response.
 - **Redact proof URLs.** Links carry bearer tokens in their path. Keep them out of access logs,
   analytics, error reporting and logged `mail:queueing` payloads. Links printed by

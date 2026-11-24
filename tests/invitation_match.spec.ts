@@ -2,7 +2,7 @@
 
 import { DateTime } from 'luxon'
 import { test } from '@japa/runner'
-import { InvalidTokenError } from '../src/errors.js'
+import { E_ACCOUNT_KIT_INVALID_TOKEN } from '../src/errors.js'
 import type { AccountKitConfig, LifecycleEvent } from '../src/types.js'
 import { useTestApp } from './helpers/app.js'
 import { dbTime } from './helpers/db_time.js'
@@ -118,7 +118,7 @@ test.group('invitation match', (group) => {
     )
     await check.rejects(
       () => service.account.invitations.accept({ token, password: 'newPassword123' }),
-      InvalidTokenError
+      E_ACCOUNT_KIT_INVALID_TOKEN
     )
   })
 

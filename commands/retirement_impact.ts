@@ -1,13 +1,12 @@
+import { E_ACCOUNT_KIT_INVALID_PROVIDERS_FLAG } from '../src/errors.js'
 import { BaseCommand, flags } from '@adonisjs/core/ace'
 import { AccountKit } from '../src/account_kit.js'
 import { isSocialProviderName, socialProviderNames } from '../src/social_providers.js'
 import type { SocialProviderName } from '../src/types.js'
 
-class InvalidProvidersFlagError extends Error {}
-
 /**
  * Parses `--providers`: absent keeps every configured provider; `none` or an empty list retires
- * them all. Throws an {@link InvalidProvidersFlagError} for an unsupported or repeated name.
+ * them all. Throws an {@link E_ACCOUNT_KIT_INVALID_PROVIDERS_FLAG} for an unsupported or repeated name.
  */
 function parseProviders(value?: string): SocialProviderName[] | undefined {
   if (value === undefined) return undefined
@@ -19,11 +18,11 @@ function parseProviders(value?: string): SocialProviderName[] | undefined {
   const usage = `use a comma-separated list of ${socialProviderNames.join(', ')}, or none`
   for (const [index, name] of names.entries()) {
     if (!isSocialProviderName(name))
-      throw new InvalidProvidersFlagError(
+      throw new E_ACCOUNT_KIT_INVALID_PROVIDERS_FLAG(
         `Invalid --providers: the list contains an unsupported provider; ${usage}`
       )
     if (names.indexOf(name) !== index)
-      throw new InvalidProvidersFlagError(
+      throw new E_ACCOUNT_KIT_INVALID_PROVIDERS_FLAG(
         `Invalid --providers: ${name} is listed more than once; ${usage}`
       )
   }
@@ -69,10 +68,12 @@ export default class RetirementImpact extends BaseCommand {
     if (this.exitCode === 0) return false
     const error: unknown = this.error
     this.failure =
-      error instanceof InvalidProvidersFlagError ? 'invalid_providers' : 'inventory_unavailable'
+      error instanceof E_ACCOUNT_KIT_INVALID_PROVIDERS_FLAG
+        ? 'invalid_providers'
+        : 'inventory_unavailable'
     if (!this.quiet)
       this.logger.error(
-        error instanceof InvalidProvidersFlagError
+        error instanceof E_ACCOUNT_KIT_INVALID_PROVIDERS_FLAG
           ? error.message
           : 'Account inventory unavailable; verify Account Kit configuration and database access'
       )

@@ -17,7 +17,7 @@ async function controllerSnippets(): Promise<{ document: string; code: string }[
 // The shared idiom: return the normal response and log, because the change already committed.
 // Without the log, a broken mail transport fails every request silently.
 const committed =
-  /if \(!(?:isCommittedFailure\(error\)|\(error instanceof DeliveryError \|\| error instanceof PostCommitError\))\)\s+(?:throw error|return knownError\(ctx, error\))\s+(?:\/\/[^\n]*\s+)?(?:(?:ctx\.)?logger\.error\(|privateFault\()/g
+  /if \(!(?:isCommittedFailure\(error\)|\(error instanceof E_ACCOUNT_KIT_DELIVERY \|\| error instanceof E_ACCOUNT_KIT_POST_COMMIT\))\)\s+(?:throw error|return knownError\(ctx, error\))\s+(?:\/\/[^\n]*\s+)?(?:(?:ctx\.)?logger\.error\(|privateFault\()/g
 
 test('password reset snippets give the normal response when a notification fails', async ({
   assert,
@@ -25,7 +25,7 @@ test('password reset snippets give the normal response when a notification fails
   const all = await controllerSnippets()
   const snippets = all.filter(({ code }) => /passwordReset\.(request|reset)\(/.test(code))
   assert.isAbove(snippets.length, 0)
-  // A request emails known addresses only, so an escaping DeliveryError reveals the account. A
+  // A request emails known addresses only, so an escaping E_ACCOUNT_KIT_DELIVERY reveals the account. A
   // reset has already changed the password, so an error would tell the user it failed.
   const leaking = snippets
     .filter(({ code }) => {

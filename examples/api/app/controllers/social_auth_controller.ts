@@ -1,6 +1,6 @@
 import type { HttpContext } from '@adonisjs/core/http'
 import {
-  InvalidInputError,
+  E_ACCOUNT_KIT_INVALID_INPUT,
   type SocialCallbackResult,
   type SocialProviderName,
 } from '@kevinjohn/adonisjs-account-kit'
@@ -26,7 +26,8 @@ import {
 import { socialRegistrationValidator } from '#validators/user'
 
 function providerParam(value: string): SocialProviderName {
-  if (value !== 'google' && value !== 'github') throw new InvalidInputError('Unknown provider')
+  if (value !== 'google' && value !== 'github')
+    throw new E_ACCOUNT_KIT_INVALID_INPUT('Unknown provider')
   return value
 }
 

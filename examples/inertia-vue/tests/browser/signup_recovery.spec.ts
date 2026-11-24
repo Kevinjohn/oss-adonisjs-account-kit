@@ -1,7 +1,7 @@
 import { errors as authErrors } from '@adonisjs/auth'
 import { test } from '@japa/runner'
 import db from '@adonisjs/lucid/services/db'
-import { InvalidTokenError } from '@kevinjohn/adonisjs-account-kit'
+import { E_ACCOUNT_KIT_INVALID_TOKEN } from '@kevinjohn/adonisjs-account-kit'
 import kit from '@kevinjohn/adonisjs-account-kit/services/main'
 import { DateTime } from 'luxon'
 import User from '#models/user'
@@ -91,7 +91,7 @@ test.group('Signup recovery in the browser', (group) => {
       assert.isFalse(await kit.emailVerification.inspect({ token: deliveredToken }))
       await assert.rejects(
         () => kit.emailVerification.complete({ token: failedToken, password: 'UnusedPass123!' }),
-        InvalidTokenError
+        E_ACCOUNT_KIT_INVALID_TOKEN
       )
     } finally {
       notifyOverrides.accountActivationProvision = originalProvision

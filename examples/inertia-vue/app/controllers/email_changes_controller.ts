@@ -38,7 +38,7 @@ export default class EmailChangesController {
         newEmail: email,
       })
     } catch (error) {
-      if (error instanceof errors.EmailAlreadyRegisteredError) {
+      if (error instanceof errors.E_ACCOUNT_KIT_EMAIL_ALREADY_REGISTERED) {
         session.flash('error', 'This address cannot be used. Try another address.')
         return response.redirect().back()
       }
@@ -79,7 +79,7 @@ export default class EmailChangesController {
     try {
       await kit.emailPasswordManagement.completeEmailChange({ token: ctx.params.token })
     } catch (error) {
-      if (error instanceof errors.InvalidTokenError) {
+      if (error instanceof errors.E_ACCOUNT_KIT_INVALID_TOKEN) {
         ctx.session.flash('error', 'This link is invalid, already used, or expired.')
         return ctx.response.redirect().withQs(false).toRoute('session.create')
       }

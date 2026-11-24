@@ -6,7 +6,7 @@ import { makeService, makeUsersAdapter } from './helpers/fakes.js'
 import { dropPackageTables, resetSchema } from './helpers/schema.js'
 import { dbTime } from './helpers/db_time.js'
 import { testEngine } from './helpers/dialect.js'
-import { AccountAccessDeniedError } from '../src/errors.js'
+import { E_ACCOUNT_KIT_ACCOUNT_ACCESS_DENIED } from '../src/errors.js'
 
 const authentication = { strategy: 'session' as const, guard: 'web' }
 
@@ -75,7 +75,7 @@ for (const scenario of [
               requireActive: true,
             })
           ),
-          AccountAccessDeniedError
+          E_ACCOUNT_KIT_ACCOUNT_ACCESS_DENIED
         )
     } finally {
       await kit.close()

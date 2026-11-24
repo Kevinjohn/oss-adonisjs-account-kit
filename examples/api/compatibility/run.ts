@@ -8,7 +8,7 @@ import {
   AccountKit,
   createLucidAdapter,
   defineConfig,
-  DeliveryError,
+  E_ACCOUNT_KIT_DELIVERY,
 } from '@kevinjohn/adonisjs-account-kit'
 import type { AccountUser, Invitation, Trx } from '@kevinjohn/adonisjs-account-kit'
 import {
@@ -194,7 +194,7 @@ try {
   failPasswordNotice = true
   await assert.rejects(
     account.passwordReset.reset({ token: recoveryToken, password: 'CommittedPass123!' }),
-    DeliveryError
+    E_ACCOUNT_KIT_DELIVERY
   )
   failPasswordNotice = false
   console.log('MINIMUM_STAGE post-commit-verified')

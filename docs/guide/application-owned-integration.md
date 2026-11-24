@@ -89,7 +89,7 @@ the helpers the package uses itself; they are stable public API.
   `account_transaction_lock` writer lock first, so the package's transactions and yours serialise,
   and it may retry the callback on write contention. On MySQL it runs at `READ COMMITTED` on a UTC
   connection. On every engine a commit failure is reported instead of swallowed. A
-  `PostCommitError` means the writes committed and a step after the commit failed, so do not run
+  `E_ACCOUNT_KIT_POST_COMMIT` means the writes committed and a step after the commit failed, so do not run
   the callback again. It refuses to run inside a Lucid global transaction or inside another
   package transaction: use the `trx` you were given instead.
 - `lockRow(trx, table, id)` locks the row with that `id` with `select ... for update` on PostgreSQL
@@ -158,7 +158,7 @@ uses this service contract and safe diagnostic.
 The signup route follows the same boundary: validate the email, password, confirmation and
 application fields, then call `kit.registration.register({ email, password, registrationData })`.
 The package creates the inactive account and hashed activation proof together. Map
-`RegistrationEmailAlreadyRegisteredError` to the same email-field validation response for every
+`E_ACCOUNT_KIT_REGISTRATION_EMAIL_ALREADY_REGISTERED` to the same email-field validation response for every
 existing account state. If link delivery or a post-commit observer fails, the account has already
 committed; return the documented recovery guidance and do not retry registration as if it rolled
 back. The [registration guide](registration.md) documents the capability and its availability modes.
@@ -171,7 +171,7 @@ the same status, code, body, `Content-Type` and headers (`Vary: Accept`, `Cache-
 and `Retry-After` on throttling) as the managed routes. Package errors become
 `{ errors: [{ code, message }] }`, or `{ errors: [{ code, title }] }` when the client accepts
 JSON:API. A plain JSON entry carries `field` when the error names one, and `committed: true` marks
-a `PostCommitError`. Pass `proof` to get the per-kind invalid-token code. Invalid credentials map to 401; request-schema failures remain Vine 422 responses.
+an `E_ACCOUNT_KIT_POST_COMMIT`. Pass `proof` to get the per-kind invalid-token code. Invalid credentials map to 401; request-schema failures remain Vine 422 responses.
 Successful login returns 200 and throttled login returns 429 with `Retry-After`. Duplicate signup is
 also a Vine 422, deliberately using the same email-field response for every existing account state:
 `{ errors: [{ field: 'email', rule: 'unique', message: 'The email has already been taken' }] }`.
@@ -237,7 +237,7 @@ acceptance, activation, and password changes; login remains compatible with exis
 The application owns notification transport. Maintained AdonisJS Mail callbacks use `sendLater`
 after the account operation commits; this queues according to the application's Mail transport,
 not an Account Kit outbox. The default best-effort mode does not retry a lost or failed message.
-Failures before queue acceptance surface as `DeliveryError` or `PostCommitError` after commit; a
+Failures before queue acceptance surface as `E_ACCOUNT_KIT_DELIVERY` or `E_ACCOUNT_KIT_POST_COMMIT` after commit; a
 later Mail transport failure is reported by Mail. Log only safe operation IDs and message kinds.
 `onLifecycleEvent` carries safe event identifiers and operation IDs after commit; keep those
 diagnostics separate from message URLs and delivery payloads.

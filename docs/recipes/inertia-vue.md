@@ -34,7 +34,7 @@ guard and clears that revision.
 
 Add a revision-check middleware after silent authentication in `start/kernel.ts` and before named
 `auth` middleware runs. On each authenticated request, pass the current user's ID and stored
-revision to `kit.authentication.current`; terminate the session when it throws `InvalidSessionError`.
+revision to `kit.authentication.current`; terminate the session when it throws `E_ACCOUNT_KIT_INVALID_SESSION`.
 Treat an absent revision as invalid and the empty string as a session created before the first
 credential change. This makes reset revocation visible on the next request to the application's
 existing protected routes. Add other session, API-key or remember-me revocation to the application's

@@ -1,5 +1,8 @@
 import { test } from '@japa/runner'
-import { EmailAlreadyRegisteredError, InvalidInputError } from '../src/errors.js'
+import {
+  E_ACCOUNT_KIT_EMAIL_ALREADY_REGISTERED,
+  E_ACCOUNT_KIT_INVALID_INPUT,
+} from '../src/errors.js'
 import { useTestApp } from './helpers/app.js'
 import {
   insertUser,
@@ -156,7 +159,7 @@ test.group('emailPasswordManagement', (group) => {
           email: 'taken@example.test',
           registrationData: { name: 'Attempted' },
         }),
-      EmailAlreadyRegisteredError
+      E_ACCOUNT_KIT_EMAIL_ALREADY_REGISTERED
     )
     assert.equal(profileWrites, 1)
     const row = await kit.db.from('users').where('id', user.id).first()
@@ -225,7 +228,7 @@ test.group('emailPasswordManagement', (group) => {
           currentPassword: 'oldPassword123',
           registrationData: { role: 'admin' },
         }),
-      InvalidInputError
+      E_ACCOUNT_KIT_INVALID_INPUT
     )
     const configured = service({
       users: adapter,
@@ -241,14 +244,14 @@ test.group('emailPasswordManagement', (group) => {
           currentPassword: 'oldPassword123',
           registrationData: { fullName: 'Person' },
         }),
-      InvalidInputError
+      E_ACCOUNT_KIT_INVALID_INPUT
     )
     const required = service({
       users: adapter,
       registration: {
         availability: 'closed',
         mapFields: (input) => {
-          if (input === undefined) throw new InvalidInputError('Full name is required')
+          if (input === undefined) throw new E_ACCOUNT_KIT_INVALID_INPUT('Full name is required')
           return { fullName: (input as { fullName: string }).fullName }
         },
       },

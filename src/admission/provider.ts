@@ -2,7 +2,7 @@
 import type { ApplicationService } from '@adonisjs/core/types'
 import { AccountKit } from '../account_kit.js'
 import { resolveAccountKitConfig } from '../config_resolution.js'
-import { InvalidConfigurationError } from '../errors.js'
+import { E_ACCOUNT_KIT_INVALID_CONFIGURATION } from '../errors.js'
 import { AdmissionCallbackRegistry } from './callback_registry.js'
 import { resolveAdmissionConfig } from './config.js'
 import { AccountAdmission } from './service.js'
@@ -27,12 +27,12 @@ export default class AdmissionProvider {
       const accountConfig = await resolveAccountKitConfig(this.app)
       const config = this.app.config.get<ResolvedAdmissionConfig | undefined>('admission')
       if (!accountConfig)
-        throw new InvalidConfigurationError(
+        throw new E_ACCOUNT_KIT_INVALID_CONFIGURATION(
           'config/account_kit.ts',
           'Invalid "config/account_kit.ts" file. Make sure it exists and exports defineConfig(...)'
         )
       if (!config)
-        throw new InvalidConfigurationError(
+        throw new E_ACCOUNT_KIT_INVALID_CONFIGURATION(
           'config/admission.ts',
           'Invalid "config/admission.ts" file. Make sure it exists and exports defineAdmission(...)'
         )

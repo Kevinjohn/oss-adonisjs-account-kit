@@ -5,7 +5,7 @@ import { DateTime } from 'luxon'
 import { lockUser, transaction } from './db.js'
 import { finishCommitted, createLifecycleEffect, postCommit, settleCommitted } from './effects.js'
 import { normalizeEmail, isEmailShaped } from './email.js'
-import { InvalidInputError } from './errors.js'
+import { E_ACCOUNT_KIT_INVALID_INPUT } from './errors.js'
 import { waitForFloor } from './timing.js'
 import { generateToken, hashToken } from './tokens.js'
 import { expiresAt } from './ttl.js'
@@ -18,9 +18,9 @@ export async function requestPasswordReset(
 ): Promise<void> {
   const started = performance.now()
   try {
-    if (!isEmailShaped(input.email)) throw new InvalidInputError('Invalid email')
+    if (!isEmailShaped(input.email)) throw new E_ACCOUNT_KIT_INVALID_INPUT('Invalid email')
     if (typeof input.clientKey !== 'string' || input.clientKey.trim() === '')
-      throw new InvalidInputError('Invalid client key')
+      throw new E_ACCOUNT_KIT_INVALID_INPUT('Invalid client key')
     const email = normalizeEmail(input.email)
 
     await deps.throttler.consume('recovery:client', input.clientKey, deps.config.throttle)

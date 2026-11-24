@@ -11,7 +11,7 @@ As an account holder with an unconfirmed address, I want to request another veri
 
 ## Acceptance criteria
 
-- Required input is the account `userId`; an unknown id throws `InvalidInputError`. The result is `sent` or `already_verified`. A repeated request during the one-minute cooldown reuses the active link and does not send another message.
+- Required input is the account `userId`; an unknown id throws `E_ACCOUNT_KIT_INVALID_INPUT`. The result is `sent` or `already_verified`. A repeated request during the one-minute cooldown reuses the active link and does not send another message.
 - An active account returns `already_verified` without spending the per-user throttle budget. An account is active when its pending email differs from its current email, including when the pending email is null. The historical verification timestamp does not determine activation. A pending account outside the cooldown gets an activation provision after issuance commits.
 - The managed handler derives `userId` from the authenticated account and returns 200 with `{ result }`. When delivery fails after issuance commits, the service attempts to reopen the cooldown so another request can deliver a fresh link.
 - If the managed write recognises a committed follow-up failure, it returns 202 with `{ committed: true }`.
@@ -34,7 +34,7 @@ flowchart TD
 flowchart TD
  M["Managed route resolves actor; host may supply authorised ID directly"] --> A["emailVerification.send checks emailVerification capability"]
  A --> B{"Account found?"}
- B -->|No| X["Throw InvalidInputError"]
+ B -->|No| X["Throw E_ACCOUNT_KIT_INVALID_INPUT"]
  B -->|Yes| C{"Does pending email differ from current email?"}
  C -->|Yes| D["Return already_verified before any throttle"]
  C -->|No| T["Consume verification:user throttle budget"]

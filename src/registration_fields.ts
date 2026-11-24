@@ -1,4 +1,4 @@
-import { InvalidInputError } from './errors.js'
+import { E_ACCOUNT_KIT_INVALID_INPUT } from './errors.js'
 import type { ResolvedConfig } from './types.js'
 
 /** Lower-cased account field names that registration data may never set. */
@@ -25,7 +25,7 @@ export async function mapRegistrationFields(
 ): Promise<Record<string, unknown> | undefined> {
   if (!config.registration?.mapFields) {
     if (input === undefined) return undefined
-    throw new InvalidInputError('Registration fields are not configured')
+    throw new E_ACCOUNT_KIT_INVALID_INPUT('Registration fields are not configured')
   }
   const data = await config.registration.mapFields(input)
   if (
@@ -35,6 +35,6 @@ export async function mapRegistrationFields(
     (Object.getPrototypeOf(data) !== Object.prototype && Object.getPrototypeOf(data) !== null) ||
     Object.keys(data).some((key) => PROTECTED_FIELDS.has(key.toLowerCase()))
   )
-    throw new InvalidInputError('Invalid registration fields')
+    throw new E_ACCOUNT_KIT_INVALID_INPUT('Invalid registration fields')
   return data
 }

@@ -1,6 +1,6 @@
 import { test } from '@japa/runner'
 import { createPrismaAdapter, type PrismaModelDefinition } from '../adapters/prisma.js'
-import { InvalidConfigurationError } from '../src/errors.js'
+import { E_ACCOUNT_KIT_INVALID_CONFIGURATION } from '../src/errors.js'
 import { assertUsersAdapterContract } from '../testing/adapter_contract.js'
 import { useTestApp } from './helpers/app.js'
 import { createAppUsersTable } from './helpers/app_users_table.js'
@@ -112,12 +112,15 @@ test.group('Prisma users adapter', (group) => {
         () => adapter.findByEmail('a@example.test'),
       ]) {
         const error = await run().catch((caught: unknown) => caught)
-        assert.instanceOf(error, InvalidConfigurationError)
+        assert.instanceOf(error, E_ACCOUNT_KIT_INVALID_CONFIGURATION)
         assert.equal(
-          (error as InvalidConfigurationError).code,
+          (error as InstanceType<typeof E_ACCOUNT_KIT_INVALID_CONFIGURATION>).code,
           'E_ACCOUNT_KIT_INVALID_CONFIGURATION'
         )
-        assert.equal((error as InvalidConfigurationError).field, field)
+        assert.equal(
+          (error as InstanceType<typeof E_ACCOUNT_KIT_INVALID_CONFIGURATION>).field,
+          field
+        )
         assert.match((error as Error).message, message)
         assert.isUndefined((error as Error).cause)
       }

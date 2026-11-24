@@ -1,3 +1,4 @@
+import { InvalidArgumentsException } from '@adonisjs/core/exceptions'
 import { isSocialProviderName } from '../social_providers.js'
 import type { SocialProviderName } from '../types.js'
 import type { GuardStrategy, SetupChoices } from './types.js'
@@ -34,7 +35,7 @@ export async function collectSocialChoices(
           .filter(Boolean)
       : previous!.providers
     if (providers.some((name) => !isSocialProviderName(name)))
-      throw new Error('social.providers: choose from google, github')
+      throw new InvalidArgumentsException('social.providers: choose from google, github')
     choices.social = {
       status: 'enabled',
       providers: [...new Set(providers)] as SocialProviderName[],

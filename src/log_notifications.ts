@@ -1,3 +1,4 @@
+import { InvalidArgumentsException } from '@adonisjs/core/exceptions'
 import { createMailNotifications } from './notifications.js'
 import type { NotificationCallbacks } from './types.js'
 
@@ -32,10 +33,17 @@ async function resolveLogger(option: LogNotificationOptions['logger']): Promise<
 /**
  * Development notifications that print each rendered account message, action link included,
  * instead of sending mail. Swap for createMailNotifications once a mail transport is configured.
+ *
+ * @example
+ * ```ts
+ * import { createLogNotifications } from '@kevinjohn/adonisjs-account-kit'
+ *
+ * const notify = createLogNotifications({ brandName: 'Example Studio', environment: 'development' })
+ * ```
  */
 export function createLogNotifications(options: LogNotificationOptions): NotificationCallbacks {
   if (options.environment === 'production')
-    throw new Error('account_kit: log notifications are for development only')
+    throw new InvalidArgumentsException('account_kit: log notifications are for development only')
   return createMailNotifications({
     from: 'account-kit@localhost',
     brandName: options.brandName,

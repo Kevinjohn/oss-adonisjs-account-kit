@@ -1,21 +1,19 @@
+import { RuntimeException } from '@adonisjs/core/exceptions'
+import { E_ACCOUNT_KIT_INVALID_SETUP_SOURCE } from '../errors.js'
 import type * as TypeScript from 'typescript'
 
 export type SetupSource = { ts: typeof TypeScript; file: TypeScript.SourceFile; text: string }
 
 /** TypeScript is a setup-time dependency. Other package entries do not load it. */
-/** The source does not compile, so setup cannot inspect it. Planners report it against the file. */
-export class InvalidSetupSourceError extends Error {
-  constructor() {
-    super('Setup cannot inspect invalid TypeScript source')
-  }
-}
 
 export async function parseSetupSource(text: string): Promise<SetupSource> {
   let ts: typeof TypeScript
   try {
     ts = await import('typescript')
   } catch {
-    throw new Error('Setup requires TypeScript 5.9 or 6.0; install a supported version first')
+    throw new RuntimeException(
+      'Setup requires TypeScript 5.9 or 6.0; install a supported version first'
+    )
   }
   const file = ts.createSourceFile(
     'application.ts',
@@ -30,7 +28,7 @@ export async function parseSetupSource(text: string): Promise<SetupSource> {
     reportDiagnostics: true,
   }).diagnostics
   if (diagnostics?.some((item) => item.category === ts.DiagnosticCategory.Error))
-    throw new InvalidSetupSourceError()
+    throw new E_ACCOUNT_KIT_INVALID_SETUP_SOURCE()
   return { ts, file, text }
 }
 

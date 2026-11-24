@@ -1,3 +1,4 @@
+import { RuntimeException } from '@adonisjs/core/exceptions'
 // Profile update: registration fields, and the address change that issues the `email_change` proof.
 import { randomUUID } from 'node:crypto'
 import { sqlTimestamp } from './timestamps.js'
@@ -6,7 +7,11 @@ import { isActiveAccount } from './account_projection.js'
 import { isUserEmailUniqueViolation, transaction } from './db.js'
 import { finishCommitted, createLifecycleEffect, postCommit, settleCommitted } from './effects.js'
 import { isEmailShaped, normalizeEmail } from './email.js'
-import { EmailAlreadyRegisteredError, InvalidInputError, type PostCommitError } from './errors.js'
+import {
+  E_ACCOUNT_KIT_EMAIL_ALREADY_REGISTERED,
+  E_ACCOUNT_KIT_INVALID_INPUT,
+  type E_ACCOUNT_KIT_POST_COMMIT,
+} from './errors.js'
 import { mapRegistrationFields } from './registration_fields.js'
 import { clearRecoveryTokens } from './credential_cleanup.js'
 import { confirmActor, requireUser } from './actor_confirmation.js'
@@ -36,9 +41,9 @@ export async function updateProfile(
 ): Promise<AccountUser> {
   const hasRegistrationData = Object.hasOwn(input, 'registrationData')
   if (input.email === undefined && !hasRegistrationData)
-    throw new InvalidInputError('Profile update is empty')
+    throw new E_ACCOUNT_KIT_INVALID_INPUT('Profile update is empty')
   if (input.email !== undefined && !isEmailShaped(input.email))
-    throw new InvalidInputError('Invalid email')
+    throw new E_ACCOUNT_KIT_INVALID_INPUT('Invalid email')
   const newEmail = input.email === undefined ? undefined : normalizeEmail(input.email)
   const registrationData = hasRegistrationData
     ? await mapRegistrationFields(deps.config, input.registrationData)
@@ -53,7 +58,7 @@ export async function updateProfile(
     send: boolean
     revision?: string | null
   }
-  let fault: PostCommitError | undefined
+  let fault: InstanceType<typeof E_ACCOUNT_KIT_POST_COMMIT> | undefined
   try {
     ;({ value: issued, fault } = await settleCommitted(
       transaction(deps.db, async (trx) => {
@@ -65,7 +70,9 @@ export async function updateProfile(
         })
         if (registrationData !== undefined) {
           if (!deps.config.users.updateRegistrationData)
-            throw new InvalidInputError('Profile fields are not supported by the user adapter')
+            throw new E_ACCOUNT_KIT_INVALID_INPUT(
+              'Profile fields are not supported by the user adapter'
+            )
           await deps.config.users.updateRegistrationData(current.id, registrationData, trx)
         }
         if (newEmail === undefined || newEmail === current.email) {
@@ -81,7 +88,7 @@ export async function updateProfile(
           return { user: reloaded, changedConfirmedEmail: false, send: false }
         }
         if (await deps.config.users.findByEmail(newEmail, trx))
-          throw new EmailAlreadyRegisteredError()
+          throw new E_ACCOUNT_KIT_EMAIL_ALREADY_REGISTERED()
 
         const now = DateTime.utc()
         const inactive = !isActiveAccount(current)
@@ -143,7 +150,7 @@ export async function updateProfile(
     ))
   } catch (error) {
     if (await isUserEmailUniqueViolation(error, deps.config, deps.db))
-      throw new EmailAlreadyRegisteredError()
+      throw new E_ACCOUNT_KIT_EMAIL_ALREADY_REGISTERED()
     throw error
   }
   if (!issued.send) {
@@ -152,7 +159,7 @@ export async function updateProfile(
   }
 
   const { user: actor, changedConfirmedEmail } = issued
-  if (newEmail === undefined) throw new Error('Missing email for issued profile proof')
+  if (newEmail === undefined) throw new RuntimeException('Missing email for issued profile proof')
   const context = { operation: 'email_change' as const, operationId, userId: actor.id }
   const committed = issued.revision
   if (committed !== undefined) rememberCorrectionRevision(actor, committed)
