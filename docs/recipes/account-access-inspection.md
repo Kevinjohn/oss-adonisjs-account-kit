@@ -71,6 +71,7 @@ router
 The service implementation lives in
 [`examples/api/app/services/account_access_inspection.ts`](../../examples/api/app/services/account_access_inspection.ts).
 AdonisJS injects `AccountKit` and `AccountAdmission` into `AccountAccessInspection`.
+Constructor injection is safe here because no registered callback factory builds this service.
 The controller passes the authenticated actor ID and canonical target ID. The service checks
 admission and the owner role before calling:
 

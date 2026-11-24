@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Document that callback factories run while `AccountKit` or `AccountAdmission` is being built, so application services that depend on them are resolved inside the callbacks; the README admission example now does this. Checked against the registry, provider and container code paths named in the issue, with the format and docs-build checks.
+
 ### Changed
 
 - **Breaking:** Catch Account Kit exceptions with the `errors.E_*` constructors from the root

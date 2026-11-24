@@ -93,8 +93,9 @@ the signed-in model and the Auth Japa plugin's `loginAs(user)` works in tests (r
 
 `config/account_kit.ts` and `config/admission.ts` may leave out the callbacks that call
 application code. Register them from an application provider instead, listed in `adonisrc.ts`
-before `@kevinjohn/adonisjs-account-kit/account_kit_provider`. Call `register` in `boot()`; the
-factory runs when the service is first resolved, so it can import application services lazily.
+before `@kevinjohn/adonisjs-account-kit/account_kit_provider`. Call `register` in `boot()`. The
+factory runs while `AccountKit` or `AccountAdmission` is being built, the first time that service
+is resolved.
 
 ```ts
 import type { ApplicationService } from '@adonisjs/core/types'
@@ -109,13 +110,37 @@ export default class PackageCallbacksProvider {
       return { users, onInvitationAccepted: async (user, invitation, trx) => {} }
     })
     const admission = await this.app.container.make('account_admission.callbacks')
-    admission.register(async () => {
-      const { admissionAuthorize } = await import('#services/account_kit/policy')
-      return { approvalAuthorize: admissionAuthorize }
+    admission.register(() => {
+      const rules = async () => {
+        const { default: AdmissionRules } = await import('#services/account_kit/admission_rules')
+        return this.app.container.make(AdmissionRules)
+      }
+      return {
+        approvalAuthorize: {
+          decide: async (actor, subject, context) => {
+            const service = await rules()
+            return service.decide(actor, subject, context)
+          },
+          list: async (actor, context) => {
+            const service = await rules()
+            return service.list(actor, context)
+          },
+        },
+      }
     })
   }
 }
 ```
+
+Resolve application services inside the callbacks, not in the factory body. The factory runs
+before the package service exists, so a service built there must not take `AccountKit` or
+`AccountAdmission` through its constructor, directly or through another service. If it does,
+resolving the package service never settles and no error is raised: the container has no cycle
+detection. A callback runs after the package service is built, so resolving the application service
+there is safe. The cost is that a failure to build the application service appears when a callback
+first runs, not when the package service is resolved. A plain module with no constructor
+dependencies, as in the `account_kit.callbacks` half of the example, can be imported in the factory
+body.
 
 Account Kit accepts `users`, `authorize`, `mapRegistrationFields` (`registration.mapFields`),
 `onInvitationAccepted`, `onCredentialsChangedTransaction` and `onAccountDeletingTransaction`;
