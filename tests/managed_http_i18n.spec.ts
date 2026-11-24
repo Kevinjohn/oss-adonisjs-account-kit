@@ -3,7 +3,7 @@ import { test } from '@japa/runner'
 import type { HttpContext } from '@adonisjs/core/http'
 import type { AccountKit } from '../src/account_kit.js'
 import {
-  E_ACCOUNT_KIT_EMAIL_ALREADY_REGISTERED,
+  E_ACCOUNT_KIT_REGISTRATION_EMAIL_ALREADY_REGISTERED,
   E_ACCOUNT_KIT_INVITATION_MANAGEMENT_DENIED,
   E_ACCOUNT_KIT_THROTTLED,
 } from '../src/errors.js'
@@ -16,7 +16,7 @@ const french: Record<string, string> = {
   'errors.E_ACCOUNT_KIT_THROTTLED': 'Trop de requêtes.',
   'errors.E_ACCOUNT_KIT_INVALID_PASSWORD_TOKEN': 'Ce lien est invalide ou expiré.',
   'validator.shared.messages.passwordPolicy': 'Le {field} est refusé.',
-  'validator.shared.messages.unique': 'Le champ {field} est déjà utilisé.',
+  'errors.E_ACCOUNT_KIT_REGISTRATION_EMAIL_ALREADY_REGISTERED': 'Le champ e-mail est déjà utilisé.',
   'validator.shared.fields.password': 'mot de passe',
   'validator.shared.fields.email': 'e-mail',
   'account_kit.password_reset_requested': 'Si le compte existe, les instructions seront envoyées.',
@@ -112,7 +112,7 @@ test.group('managed HTTP translation', () => {
         },
         registration: {
           register: async () => {
-            throw new E_ACCOUNT_KIT_EMAIL_ALREADY_REGISTERED()
+            throw new E_ACCOUNT_KIT_REGISTRATION_EMAIL_ALREADY_REGISTERED()
           },
         },
       },
@@ -122,7 +122,13 @@ test.group('managed HTTP translation', () => {
     assert.deepEqual(await signup.get('POST /api/v1/auth/signup')!(ctx), {
       status: 422,
       body: {
-        errors: [{ field: 'email', rule: 'unique', message: 'Le champ e-mail est déjà utilisé.' }],
+        errors: [
+          {
+            field: 'email',
+            code: 'E_ACCOUNT_KIT_REGISTRATION_EMAIL_ALREADY_REGISTERED',
+            message: 'Le champ e-mail est déjà utilisé.',
+          },
+        ],
       },
     })
   })

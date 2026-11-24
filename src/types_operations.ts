@@ -34,6 +34,8 @@ export interface OperatorResetLinkInput {
 
 /** A committed follow-up failure, reduced to safe fields: no cause, stack, or URL. */
 export interface OperatorFault {
+  /** The recorded committed failure code. */
+  code: string
   name: string
   message: string
 }

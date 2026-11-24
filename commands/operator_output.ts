@@ -35,6 +35,7 @@ export function completeOperatorCommand(
   if (command.exitCode === 0 || command.failure !== null) return false
   const error: unknown = command.error
   const code = error instanceof E_ACCOUNT_KIT ? error.code : 'E_ACCOUNT_KIT_OPERATOR'
+  // Protect application and infrastructure details in operator-facing failure summaries.
   const diagnosticCode = Object.hasOwn(FAILURE_MESSAGES, code) ? code : 'E_ACCOUNT_KIT_OPERATOR'
   command.logger.error(`${diagnosticCode}: ${FAILURE_MESSAGES[diagnosticCode]}`)
   command.failure = code
@@ -57,7 +58,7 @@ export interface OperatorOutcome {
 
 /**
  * Write the warnings and the JSON result line, then report any fault after commit and fail the
- * command. Returns the fault name, or null.
+ * command. Returns the fault code, or null.
  */
 export function reportOperatorOutcome(
   command: BaseCommand,
@@ -77,5 +78,5 @@ export function reportOperatorOutcome(
     `${outcome.faultLabel} committed but a follow-up failed: ${result.fault.message}`
   )
   command.exitCode = 1
-  return result.fault.name
+  return result.fault.code
 }

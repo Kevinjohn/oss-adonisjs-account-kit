@@ -23,6 +23,11 @@ import { assessRetirementImpact } from './login_method_retirement.js'
 import { finishCommitted, postCommit, settleCommitted } from './effects.js'
 import {
   E_INVALID_CREDENTIALS,
+  E_ACCOUNT_KIT_CREDENTIALS_ACCOUNT_UNAVAILABLE,
+  E_ACCOUNT_KIT_CREDENTIALS_PASSWORD_MISMATCH,
+  E_ACCOUNT_KIT_CREDENTIALS_ACCESS_DENIED,
+  E_ACCOUNT_KIT_CREDENTIALS_INPUT_INVALID,
+  E_ACCOUNT_KIT_CREDENTIAL_ISSUANCE_REJECTED,
   E_ACCOUNT_KIT_INVALID_SESSION,
   E_ACCOUNT_KIT_THROTTLED,
   E_ACCOUNT_KIT_UNVERIFIED_EMAIL,
@@ -165,10 +170,13 @@ export function createAuthenticationService(deps: ServiceDependencies) {
     /**
      * Looks up the account, checks its password and `canAccess`, then signs in through `guard`.
      * Unknown accounts, passwordless accounts, wrong passwords and access-decision denials throw
-     * `E_INVALID_CREDENTIALS`, count against failed-login limits and wait out `minRequestMs`.
-     * Malformed input also throws `E_INVALID_CREDENTIALS`, without counting or waiting.
+     * subclasses of `E_INVALID_CREDENTIALS`, count against failed-login limits and wait out
+     * `minRequestMs`. The HTTP response hides the individual causes.
+     * Malformed input throws `E_ACCOUNT_KIT_CREDENTIALS_INPUT_INVALID`, without counting or waiting.
      * Guard/configuration errors, throttling, infrastructure failures and credential-establishment
      * failures have their own outcomes.
+     *
+     * @throws {AggregateError} Account work or credential issuance and its cleanup both failed. The primary failure is first.
      *
      * @example
      * ```ts
@@ -188,7 +196,7 @@ export function createAuthenticationService(deps: ServiceDependencies) {
         typeof input.clientKey !== 'string' ||
         input.clientKey.length === 0
       )
-        throw new E_INVALID_CREDENTIALS()
+        throw new E_ACCOUNT_KIT_CREDENTIALS_INPUT_INVALID()
 
       const email = normalizeEmail(input.email)
       const key = deps.throttler.deriveKey
@@ -212,17 +220,15 @@ export function createAuthenticationService(deps: ServiceDependencies) {
       try {
         verified = await transaction(deps.db, async (trx) => {
           const candidate = await deps.config.users.findByEmail(email, trx)
-          if (!candidate?.hasPassword) throw new E_INVALID_CREDENTIALS()
+          if (!candidate?.hasPassword) throw new E_ACCOUNT_KIT_CREDENTIALS_ACCOUNT_UNAVAILABLE()
           await lockUser(trx, deps.config, candidate.id)
           const user = await deps.config.users.findById(candidate.id, trx)
-          if (
-            !user ||
-            user.email !== email ||
-            !user.hasPassword ||
-            !(await deps.config.users.verifyPassword(user.id, input.password, trx)) ||
-            !requireAccountAccessDecision(await auth.canAccess(user, trx))
-          )
-            throw new E_INVALID_CREDENTIALS()
+          if (!user || user.email !== email || !user.hasPassword)
+            throw new E_ACCOUNT_KIT_CREDENTIALS_ACCOUNT_UNAVAILABLE()
+          if (!(await deps.config.users.verifyPassword(user.id, input.password, trx)))
+            throw new E_ACCOUNT_KIT_CREDENTIALS_PASSWORD_MISMATCH()
+          if (!requireAccountAccessDecision(await auth.canAccess(user, trx)))
+            throw new E_ACCOUNT_KIT_CREDENTIALS_ACCESS_DENIED()
           return {
             account: buildAccountProjection(user),
             revision: await revision(trx, deps.config, user.id),
@@ -248,7 +254,7 @@ export function createAuthenticationService(deps: ServiceDependencies) {
       const credential = await establishCredential(deps, auth, guard, verified, {
         label: typeof input.sessionLabel === 'string' ? input.sessionLabel : undefined,
         stillValid: async (_trx, user) => user.email === email,
-        rejected: () => new E_INVALID_CREDENTIALS(),
+        rejected: () => new E_ACCOUNT_KIT_CREDENTIAL_ISSUANCE_REJECTED(),
         cleanupFailed: 'Login failed and credential cleanup failed',
       })
       return { account: verified.account, credential }
@@ -257,6 +263,8 @@ export function createAuthenticationService(deps: ServiceDependencies) {
     /**
      * Safe account data for the signed-in credential. Throws `E_ACCOUNT_KIT_INVALID_SESSION` if it was
      * revoked or is older than the latest credential change.
+     *
+     * @throws {AggregateError} Transaction work and cleanup both failed. The work failure is first.
      *
      * @example
      * ```ts
@@ -269,6 +277,8 @@ export function createAuthenticationService(deps: ServiceDependencies) {
 
     /**
      * Like `current`, and also throws `E_ACCOUNT_KIT_UNVERIFIED_EMAIL` until the address is confirmed.
+     *
+     * @throws {AggregateError} Transaction work and cleanup both failed. The work failure is first.
      *
      * @example
      * ```ts
@@ -292,6 +302,8 @@ export function createAuthenticationService(deps: ServiceDependencies) {
      * calling this. `signInId` is the caller's row in the sign-in table under the session strategy
      * with the registry enabled, else undefined. Throws `E_ACCOUNT_KIT_INVALID_SESSION` exactly as `current`
      * does; a throw from `run` rolls everything back and surfaces unchanged.
+     *
+     * @throws {AggregateError} Transaction work and cleanup both failed. The work failure is first.
      *
      * @example
      * ```ts
@@ -325,6 +337,8 @@ export function createAuthenticationService(deps: ServiceDependencies) {
      * read-only through the supplied transaction and safe to retry. Missing, restricted and (when
      * required) inactive accounts share `E_ACCOUNT_KIT_ACCOUNT_ACCESS_DENIED`. A `E_ACCOUNT_KIT_POST_COMMIT` discards
      * the snapshot; retry is safe under that dependency contract.
+     *
+     * @throws {AggregateError} Transaction work and cleanup both failed. The work failure is first.
      *
      * @example
      * ```ts
@@ -362,6 +376,8 @@ export function createAuthenticationService(deps: ServiceDependencies) {
      * Runs `change` to update your restriction state under the account lock, then ends the user's
      * sessions and tokens in the same transaction.
      *
+     * @throws {AggregateError} Transaction work and cleanup both failed. The work failure is first.
+     *
      * @example
      * ```ts
      * await kit.authentication.changeRestriction({
@@ -382,7 +398,7 @@ export function createAuthenticationService(deps: ServiceDependencies) {
         transaction(deps.db, async (trx) => {
           await lockUser(trx, deps.config, input.userId)
           const current = await deps.config.users.findById(input.userId, trx)
-          if (!current) throw new E_INVALID_CREDENTIALS()
+          if (!current) throw new E_ACCOUNT_KIT_CREDENTIALS_ACCOUNT_UNAVAILABLE()
           const context = {
             operation: 'access_restriction' as const,
             operationId,

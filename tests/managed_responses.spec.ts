@@ -291,7 +291,8 @@ test.group('managed HTTP error wording docs', () => {
       // The managed HTTP routes do not mount the admission service.
       if (
         ErrorClass === errors.E_ACCOUNT_KIT_ADMISSION_REQUIRED ||
-        ErrorClass === errors.E_ACCOUNT_KIT_ADMISSION_DECISION
+        ErrorClass === errors.E_ACCOUNT_KIT_ADMISSION_DECISION ||
+        ErrorClass === errors.E_ACCOUNT_KIT_BOOTSTRAP_APPROVAL_CHANGED
       )
         continue
       if (

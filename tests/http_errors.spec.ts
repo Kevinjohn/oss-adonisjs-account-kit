@@ -52,10 +52,48 @@ test.group('account HTTP error mapping', () => {
     ])
   })
 
+  test('masks credential and inspection details while keeping session failures distinct', ({
+    assert,
+  }) => {
+    const login = accountErrorResponse(new errors.E_INVALID_CREDENTIALS())
+    for (const rejection of [
+      new errors.E_ACCOUNT_KIT_CREDENTIALS_ACCOUNT_UNAVAILABLE(),
+      new errors.E_ACCOUNT_KIT_CREDENTIALS_PASSWORD_MISMATCH(),
+      new errors.E_ACCOUNT_KIT_CREDENTIALS_ACCESS_DENIED(),
+      new errors.E_ACCOUNT_KIT_CREDENTIALS_INPUT_INVALID(),
+      new errors.E_ACCOUNT_KIT_CREDENTIAL_ISSUANCE_REJECTED(),
+    ])
+      assert.deepEqual(accountErrorResponse(rejection), login)
+    const inspection = accountErrorResponse(new errors.E_ACCOUNT_KIT_ACCOUNT_ACCESS_DENIED())
+    for (const denial of [
+      new errors.E_ACCOUNT_KIT_INSPECTION_ACCOUNT_MISSING(),
+      new errors.E_ACCOUNT_KIT_INSPECTION_ACCOUNT_RESTRICTED(),
+      new errors.E_ACCOUNT_KIT_INSPECTION_ACCOUNT_INACTIVE(),
+    ])
+      assert.deepEqual(accountErrorResponse(denial), inspection)
+
+    const session = accountErrorResponse(new errors.E_ACCOUNT_KIT_INVALID_SESSION())
+    assert.equal(session?.body.errors[0].code, 'E_ACCOUNT_KIT_INVALID_SESSION')
+  })
+
+  test('conceals whether a social callback reached the upstream provider', ({ assert }) => {
+    const unknown = new errors.E_ACCOUNT_KIT_SOCIAL_TRANSACTION_INVALID()
+    const upstream = new errors.E_ACCOUNT_KIT_SOCIAL_PROVIDER_FAILED({
+      cause: new Error('upstream detail'),
+    })
+    assert.notEqual(upstream.code, unknown.code)
+    assert.deepEqual(accountErrorResponse(upstream), accountErrorResponse(unknown))
+    for (const error of [
+      new errors.E_ACCOUNT_KIT_SOCIAL_HANDOFF_INVALID(),
+      new errors.E_ACCOUNT_KIT_SOCIAL_REGISTRATION_INVALID(),
+    ])
+      assert.equal(accountErrorResponse(error)?.body.errors[0].code, error.code)
+  })
+
   test('maps public error statuses and returns a rounded-up Retry-After value', ({ assert }) => {
     assert.equal(accountErrorResponse(new E_ACCOUNT_KIT_AUTHORIZATION())?.status, 403)
     assert.deepEqual(accountErrorResponse(new E_ACCOUNT_KIT_AUTHORIZATION())?.body.errors, [
-      { code: 'E_ACCOUNT_KIT_FORBIDDEN', message: 'Access denied.' },
+      { code: 'E_ACCOUNT_KIT_AUTHORIZATION', message: 'Access denied.' },
     ])
     assert.equal(accountErrorResponse(new E_ACCOUNT_KIT())?.status, 500)
     assert.equal(
@@ -121,7 +159,7 @@ test.group('account HTTP error mapping', () => {
       'Access denied.'
     )
     assert.notInclude(lookups, 'errors.E_ACCOUNT_KIT_INVITATION_MANAGEMENT_DENIED')
-    assert.include(lookups, 'errors.E_ACCOUNT_KIT_FORBIDDEN')
+    assert.include(lookups, 'errors.E_ACCOUNT_KIT_AUTHORIZATION')
     assert.equal(
       messageOf(accountErrorResponse(new E_ACCOUNT_KIT_DELIVERY())!),
       'Account operation failed.'
@@ -178,7 +216,7 @@ test.group('account HTTP error mapping', () => {
     })!
     assert.equal(response.contentType, 'application/vnd.api+json')
     assert.deepEqual(response.body.errors, [
-      { code: 'E_ACCOUNT_KIT_FORBIDDEN', title: 'Access denied.' },
+      { code: 'E_ACCOUNT_KIT_AUTHORIZATION', title: 'Access denied.' },
     ])
     assert.notProperty(response.body.errors[0], 'message')
     assert.equal(response.headers['Vary'], 'Accept')
@@ -201,14 +239,14 @@ test.group('account HTTP error mapping', () => {
   test('keeps field for a duplicate registration email', ({ assert }) => {
     const duplicate = new E_ACCOUNT_KIT_REGISTRATION_EMAIL_ALREADY_REGISTERED()
     assert.instanceOf(duplicate, E_ACCOUNT_KIT_EMAIL_ALREADY_REGISTERED)
-    assert.equal(duplicate.code, 'E_ACCOUNT_KIT_EMAIL_ALREADY_REGISTERED')
+    assert.equal(duplicate.code, 'E_ACCOUNT_KIT_REGISTRATION_EMAIL_ALREADY_REGISTERED')
     assert.equal(duplicate.status, 422)
     assert.equal(duplicate.field, 'email')
     const response = accountErrorResponse(duplicate)!
     assert.equal(response.status, 422)
     assert.deepEqual(response.body.errors, [
       {
-        code: 'E_ACCOUNT_KIT_EMAIL_ALREADY_REGISTERED',
+        code: 'E_ACCOUNT_KIT_REGISTRATION_EMAIL_ALREADY_REGISTERED',
         message: 'The account request conflicts with an existing account.',
         field: 'email',
       },

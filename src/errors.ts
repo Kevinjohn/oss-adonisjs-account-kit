@@ -23,7 +23,10 @@ class AccountKitException extends Exception {
   }
 
   constructor(message?: string, options?: ErrorOptions) {
-    super(message ?? new.target.message ?? new.target.name, options)
+    super(
+      message ?? new.target.message ?? new.target.name,
+      options && 'cause' in options ? { cause: options.cause } : undefined
+    )
     this.name = new.target.name
   }
 
@@ -54,9 +57,7 @@ class InvalidConfigurationException extends RuntimeException {
 export const E_ACCOUNT_KIT_INVALID_CONFIGURATION = InvalidConfigurationException
 
 /**
- * The `authentication.canAccess` callback resolved to a value other than a boolean, or the
- * application's token guard returned no token, token identifier or bearer value to a managed
- * route. Clients get the generic `E_ACCOUNT_KIT_OPERATION_FAILED` 500 from the managed routes,
+ * Base for faults in the values returned by an application adapter or guard. Clients get the generic `E_ACCOUNT_KIT_OPERATION_FAILED` 500 from the managed routes,
  * `accountErrorResponse` and `E_ACCOUNT_KIT.handle`. Managed routes log the error with the route
  * name through the request logger; on the application's own routes the AdonisJS exception handler
  * reports it, and a caller of `accountErrorResponse` logs it itself.
@@ -64,6 +65,10 @@ export const E_ACCOUNT_KIT_INVALID_CONFIGURATION = InvalidConfigurationException
 class AdapterContractException extends AccountKitException {
   static code = 'E_ACCOUNT_KIT_ADAPTER_CONTRACT'
   static status = 500
+
+  constructor(message?: string, options?: ErrorOptions) {
+    super(message, options)
+  }
 }
 
 /** @reexport */
@@ -76,6 +81,10 @@ export const E_ACCOUNT_KIT_ADAPTER_CONTRACT = AdapterContractException
 class InvalidInputException extends AccountKitException {
   static code = 'E_ACCOUNT_KIT_INVALID_INPUT'
   static status = 422
+
+  constructor(message?: string, options?: ErrorOptions) {
+    super(message, options)
+  }
 }
 
 /** @reexport */
@@ -88,6 +97,10 @@ export const E_ACCOUNT_KIT_INVALID_INPUT = InvalidInputException
 class InvalidTokenException extends AccountKitException {
   static code = 'E_ACCOUNT_KIT_INVALID_TOKEN'
   static status = 400
+
+  constructor(message?: string, options?: ErrorOptions) {
+    super(message, options)
+  }
 }
 
 /** @reexport */
@@ -118,6 +131,10 @@ export const E_ACCOUNT_KIT_THROTTLED = ThrottledException
 class AuthorizationException extends AccountKitException {
   static code = 'E_ACCOUNT_KIT_AUTHORIZATION'
   static status = 403
+
+  constructor(message?: string, options?: ErrorOptions) {
+    super(message, options)
+  }
 }
 
 /** @reexport */
@@ -130,6 +147,10 @@ export const E_ACCOUNT_KIT_AUTHORIZATION = AuthorizationException
 class InvitationManagementDeniedException extends AuthorizationException {
   static code = 'E_ACCOUNT_KIT_INVITATION_MANAGEMENT_DENIED'
   static status = 404
+
+  constructor(message?: string, options?: ErrorOptions) {
+    super(message, options)
+  }
 }
 
 /** @reexport */
@@ -140,6 +161,10 @@ class AccountAccessDeniedException extends AccountKitException {
   static code = 'E_ACCOUNT_KIT_ACCOUNT_ACCESS_DENIED'
   static status = 403
   static message = 'Account access denied'
+
+  constructor(options?: ErrorOptions) {
+    super(undefined, options)
+  }
 }
 
 /** @reexport */
@@ -149,6 +174,10 @@ export const E_ACCOUNT_KIT_ACCOUNT_ACCESS_DENIED = AccountAccessDeniedException
 class InvitationNotFoundException extends AccountKitException {
   static code = 'E_ACCOUNT_KIT_INVITATION_NOT_FOUND'
   static status = 404
+
+  constructor(message?: string, options?: ErrorOptions) {
+    super(message, options)
+  }
 }
 
 /** @reexport */
@@ -158,6 +187,10 @@ export const E_ACCOUNT_KIT_INVITATION_NOT_FOUND = InvitationNotFoundException
 class SessionNotFoundException extends AccountKitException {
   static code = 'E_ACCOUNT_KIT_SESSION_NOT_FOUND'
   static status = 404
+
+  constructor(message?: string, options?: ErrorOptions) {
+    super(message, options)
+  }
 }
 
 /** @reexport */
@@ -170,6 +203,10 @@ export const E_ACCOUNT_KIT_SESSION_NOT_FOUND = SessionNotFoundException
 class IdentityNotConfirmedException extends AccountKitException {
   static code = 'E_ACCOUNT_KIT_IDENTITY_NOT_CONFIRMED'
   static status = 403
+
+  constructor(message?: string, options?: ErrorOptions) {
+    super(message, options)
+  }
 }
 
 /** @reexport */
@@ -182,6 +219,10 @@ export const E_ACCOUNT_KIT_IDENTITY_NOT_CONFIRMED = IdentityNotConfirmedExceptio
 class NoPasswordException extends AccountKitException {
   static code = 'E_ACCOUNT_KIT_NO_PASSWORD'
   static status = 403
+
+  constructor(message?: string, options?: ErrorOptions) {
+    super(message, options)
+  }
 }
 
 /** @reexport */
@@ -191,6 +232,10 @@ export const E_ACCOUNT_KIT_NO_PASSWORD = NoPasswordException
 class EmailAlreadyRegisteredException extends AccountKitException {
   static code = 'E_ACCOUNT_KIT_EMAIL_ALREADY_REGISTERED'
   static status = 409
+
+  constructor(message?: string, options?: ErrorOptions) {
+    super(message, options)
+  }
 }
 
 /** @reexport */
@@ -201,11 +246,14 @@ export const E_ACCOUNT_KIT_EMAIL_ALREADY_REGISTERED = EmailAlreadyRegisteredExce
  * as a field error.
  */
 class RegistrationEmailAlreadyRegisteredException extends EmailAlreadyRegisteredException {
-  // Both duplicate-address cases share the public code; signup carries its own status and field.
-  static code = 'E_ACCOUNT_KIT_EMAIL_ALREADY_REGISTERED'
+  static code = 'E_ACCOUNT_KIT_REGISTRATION_EMAIL_ALREADY_REGISTERED'
   static status = 422
   /** The request field to attach the error to. */
   readonly field = 'email'
+
+  constructor(message?: string, options?: ErrorOptions) {
+    super(message, options)
+  }
 }
 
 /** @reexport */
@@ -219,6 +267,10 @@ class UserNotFoundException extends AccountKitException {
   static code = 'E_ACCOUNT_KIT_USER_NOT_FOUND'
   static status = 404
   static message = 'No account uses that email address'
+
+  constructor(options?: ErrorOptions) {
+    super(undefined, options)
+  }
 }
 
 /** @reexport */
@@ -228,6 +280,10 @@ export const E_ACCOUNT_KIT_USER_NOT_FOUND = UserNotFoundException
 class InvitationPendingException extends AccountKitException {
   static code = 'E_ACCOUNT_KIT_INVITATION_PENDING'
   static status = 409
+
+  constructor(message?: string, options?: ErrorOptions) {
+    super(message, options)
+  }
 }
 
 /** @reexport */
@@ -240,14 +296,18 @@ export const E_ACCOUNT_KIT_INVITATION_PENDING = InvitationPendingException
 class DeliveryException extends AccountKitException {
   static code = 'E_ACCOUNT_KIT_DELIVERY'
   static status = 500
+
+  constructor(message?: string, options?: ErrorOptions) {
+    super(message, options)
+  }
 }
 
 /** @reexport */
 export const E_ACCOUNT_KIT_DELIVERY = DeliveryException
 
 /**
- * A post-commit observer or commit listener failed. Any delivery failures from the same follow-up
- * batch are included in the cause. Do not repeat a committed mutation.
+ * A post-commit observer failed. Transaction finalisation and activation issuance identify their
+ * own causes. Any delivery failures from the same follow-up batch are included in the cause. Do not repeat a committed mutation.
  * Read-only account inspection returns no snapshot; retry is safe when its dependencies satisfy
  * the documented read-only, retry-safe contract.
  */
@@ -256,6 +316,10 @@ class PostCommitException extends AccountKitException {
   static status = 500
   /** Always true: the transaction committed; an inspection snapshot may still be discarded. */
   readonly committed = true
+
+  constructor(message?: string, options?: ErrorOptions) {
+    super(message, options)
+  }
 }
 
 /** @reexport */
@@ -287,20 +351,27 @@ export function isCommittedFailure(
 class CapabilityDisabledException extends AccountKitException {
   static code = 'E_ACCOUNT_KIT_CAPABILITY_DISABLED'
   static status = 500
+
+  constructor(message?: string, options?: ErrorOptions) {
+    super(message, options)
+  }
 }
 
 /** @reexport */
 export const E_ACCOUNT_KIT_CAPABILITY_DISABLED = CapabilityDisabledException
 
 /**
- * Login failed. One error covers unknown email, wrong password, restricted and passwordless
- * accounts, so it reveals nothing about which.
+ * Base for credential rejection. The HTTP mapper masks the specific account and password causes.
  */
 class InvalidCredentialsException extends AccountKitException {
   static code = 'E_INVALID_CREDENTIALS'
   // Official `@adonisjs/auth` uses 400; this package documents 401.
   static status = 401
   static message = 'Invalid email or password'
+
+  constructor(options?: ErrorOptions) {
+    super(undefined, options)
+  }
 }
 
 /** @reexport */
@@ -311,6 +382,10 @@ class InvalidSessionException extends AccountKitException {
   static code = 'E_ACCOUNT_KIT_INVALID_SESSION'
   static status = 401
   static message = 'Invalid session'
+
+  constructor(options?: ErrorOptions) {
+    super(undefined, options)
+  }
 }
 
 /** @reexport */
@@ -321,6 +396,10 @@ class UnverifiedEmailException extends AccountKitException {
   static code = 'E_ACCOUNT_KIT_UNVERIFIED_EMAIL'
   static status = 403
   static message = 'Email verification is required'
+
+  constructor(options?: ErrorOptions) {
+    super(undefined, options)
+  }
 }
 
 /** @reexport */
@@ -345,6 +424,10 @@ class SocialIdentityAlreadyLinkedException extends AccountKitException {
   static code = 'E_ACCOUNT_KIT_SOCIAL_IDENTITY_ALREADY_LINKED'
   static status = 409
   static message = 'Social identity is already linked'
+
+  constructor(options?: ErrorOptions) {
+    super(undefined, options)
+  }
 }
 
 /** @reexport */
@@ -355,6 +438,10 @@ class SocialEmailMissingException extends AccountKitException {
   static code = 'E_ACCOUNT_KIT_SOCIAL_EMAIL_MISSING'
   static status = 422
   static message = 'Social email is required'
+
+  constructor(options?: ErrorOptions) {
+    super(undefined, options)
+  }
 }
 
 /** @reexport */
@@ -365,6 +452,10 @@ class SocialUserNotFoundException extends AccountKitException {
   static code = 'E_ACCOUNT_KIT_SOCIAL_USER_NOT_FOUND'
   static status = 404
   static message = 'Social account was not found'
+
+  constructor(options?: ErrorOptions) {
+    super(undefined, options)
+  }
 }
 
 /** @reexport */
@@ -375,6 +466,10 @@ class SocialProofException extends AccountKitException {
   static code = 'E_ACCOUNT_KIT_SOCIAL_PROOF_INVALID'
   static status = 403
   static message = 'Invalid recent authentication proof'
+
+  constructor(options?: ErrorOptions) {
+    super(undefined, options)
+  }
 }
 
 /** @reexport */
@@ -385,6 +480,10 @@ class SocialLinkRefusedException extends AccountKitException {
   static code = 'E_ACCOUNT_KIT_SOCIAL_LINK_REFUSED'
   static status = 403
   static message = 'Social link refused'
+
+  constructor(options?: ErrorOptions) {
+    super(undefined, options)
+  }
 }
 
 /** @reexport */
@@ -395,6 +494,10 @@ class LastLoginMethodException extends AccountKitException {
   static code = 'E_ACCOUNT_KIT_SOCIAL_LAST_LOGIN_METHOD'
   static status = 409
   static message = 'At least one login method must remain'
+
+  constructor(options?: ErrorOptions) {
+    super(undefined, options)
+  }
 }
 
 /** @reexport */
@@ -412,8 +515,8 @@ class AdmissionRequiredException extends AccountKitException {
 
   static message = 'Admission is required'
 
-  constructor(decision: AdmissionDecision) {
-    super()
+  constructor(decision: AdmissionDecision, options?: ErrorOptions) {
+    super(undefined, options)
     this.decision = decision
   }
 }
@@ -425,17 +528,24 @@ export const E_ACCOUNT_KIT_ADMISSION_REQUIRED = AdmissionRequiredException
 class AdmissionDecisionException extends AccountKitException {
   static code = 'E_ACCOUNT_KIT_ADMISSION_DECISION'
   static status = 409
+
+  constructor(message?: string, options?: ErrorOptions) {
+    super(message, options)
+  }
 }
 
 /** @reexport */
 export const E_ACCOUNT_KIT_ADMISSION_DECISION = AdmissionDecisionException
 
 /** The invitation committed, but its matching waiting approval is no longer available. */
-class BootstrapApprovalChangedException extends InvalidInputException {
-  // The command recognises this cause while reporting its existing input diagnostic code.
-  static code = 'E_ACCOUNT_KIT_INVALID_INPUT'
+class BootstrapApprovalChangedException extends AccountKitException {
+  static code = 'E_ACCOUNT_KIT_BOOTSTRAP_APPROVAL_CHANGED'
   static status = 422
   static message = 'Bootstrap approval was replaced or cancelled. Run bootstrap again.'
+
+  constructor(options?: ErrorOptions) {
+    super(undefined, options)
+  }
 }
 
 /** @reexport */
@@ -445,6 +555,10 @@ export const E_ACCOUNT_KIT_BOOTSTRAP_APPROVAL_CHANGED = BootstrapApprovalChanged
 class UnsupportedProvidersConfigurationException extends Exception {
   static code = 'E_ACCOUNT_KIT_UNSUPPORTED_PROVIDERS_CONFIGURATION'
   static status = 500
+
+  constructor(message?: string, options?: ErrorOptions) {
+    super(message, options && 'cause' in options ? { cause: options.cause } : undefined)
+  }
 }
 
 /** @reexport */
@@ -455,6 +569,10 @@ export const E_ACCOUNT_KIT_UNSUPPORTED_PROVIDERS_CONFIGURATION =
 class UnsupportedConfigShapeException extends Exception {
   static code = 'E_ACCOUNT_KIT_UNSUPPORTED_CONFIG_SHAPE'
   static status = 500
+
+  constructor(message?: string, options?: ErrorOptions) {
+    super(message, options && 'cause' in options ? { cause: options.cause } : undefined)
+  }
 }
 
 /** @reexport */
@@ -464,6 +582,10 @@ export const E_ACCOUNT_KIT_UNSUPPORTED_CONFIG_SHAPE = UnsupportedConfigShapeExce
 class InvalidProvidersFlagException extends Exception {
   static code = 'E_ACCOUNT_KIT_INVALID_PROVIDERS_FLAG'
   static status = 500
+
+  constructor(message?: string, options?: ErrorOptions) {
+    super(message, options && 'cause' in options ? { cause: options.cause } : undefined)
+  }
 }
 
 /** @reexport */
@@ -476,8 +598,8 @@ class MigrationDirectoryException extends Exception {
   /** The setup diagnostic field: the directory at fault, or the database config that chose it. */
   readonly field: string
 
-  constructor(message: string, field = 'config/database.ts') {
-    super(message)
+  constructor(message: string, field = 'config/database.ts', options?: ErrorOptions) {
+    super(message, options && 'cause' in options ? { cause: options.cause } : undefined)
     this.field = field
   }
 }
@@ -491,11 +613,12 @@ class SetupApplyInterruptedException extends Exception {
   static status = 500
   readonly written: string[]
 
-  constructor(written: string[], cause: unknown) {
+  constructor(written: string[], options?: ErrorOptions) {
+    const cause = options?.cause
     const reason = cause instanceof Error ? cause.message : String(cause)
     super(
       `Setup failed after writing ${written.length} file(s): ${reason}. Already written: ${written.join(', ')}. Fix the cause and rerun setup; it continues from there.`,
-      { cause }
+      options && 'cause' in options ? { cause } : undefined
     )
     this.written = written
   }
@@ -509,6 +632,10 @@ class InvalidSetupSourceException extends Exception {
   static code = 'E_ACCOUNT_KIT_INVALID_SETUP_SOURCE'
   static status = 500
   static message = 'Setup cannot inspect invalid TypeScript source'
+
+  constructor(options?: ErrorOptions) {
+    super(undefined, options && 'cause' in options ? { cause: options.cause } : undefined)
+  }
 }
 
 /** @reexport */
@@ -518,6 +645,10 @@ export const E_ACCOUNT_KIT_INVALID_SETUP_SOURCE = InvalidSetupSourceException
 class SelectedEnvironmentValueException extends Exception {
   static code = 'E_ACCOUNT_KIT_SELECTED_ENVIRONMENT_VALUE'
   static status = 500
+
+  constructor(message?: string, options?: ErrorOptions) {
+    super(message, options && 'cause' in options ? { cause: options.cause } : undefined)
+  }
 }
 
 /** @reexport */
@@ -528,7 +659,303 @@ class IndirectEnvironmentValueException extends SelectedEnvironmentValueExceptio
   static code = 'E_ACCOUNT_KIT_INDIRECT_ENVIRONMENT_VALUE'
   static status = 500
   static message = 'Selected environment assignment must be a direct value'
+
+  constructor(options?: ErrorOptions) {
+    super(undefined, options)
+  }
 }
 
 /** @reexport */
 export const E_ACCOUNT_KIT_INDIRECT_ENVIRONMENT_VALUE = IndirectEnvironmentValueException
+
+/** The access policy returned a value other than a boolean. */
+class InvalidAccessDecisionException extends AdapterContractException {
+  static code = 'E_ACCOUNT_KIT_INVALID_ACCESS_DECISION'
+  static status = 500
+  static message = 'account_kit: canAccess must resolve to a boolean'
+
+  constructor(options?: ErrorOptions) {
+    super(undefined, options)
+  }
+}
+
+/** @reexport */
+export const E_ACCOUNT_KIT_INVALID_ACCESS_DECISION = InvalidAccessDecisionException
+
+/** The access-token provider returned no issued token. */
+class TokenNotIssuedException extends AdapterContractException {
+  static code = 'E_ACCOUNT_KIT_TOKEN_NOT_ISSUED'
+  static status = 500
+  static message = 'Token guard did not return a token'
+
+  constructor(options?: ErrorOptions) {
+    super(undefined, options)
+  }
+}
+
+/** @reexport */
+export const E_ACCOUNT_KIT_TOKEN_NOT_ISSUED = TokenNotIssuedException
+
+/** The issued token cannot be identified safely for cleanup. */
+class InvalidTokenIdentifierException extends AdapterContractException {
+  static code = 'E_ACCOUNT_KIT_INVALID_TOKEN_IDENTIFIER'
+  static status = 500
+  static message = 'Token guard did not return a token identifier'
+
+  constructor(options?: ErrorOptions) {
+    super(undefined, options)
+  }
+}
+
+/** @reexport */
+export const E_ACCOUNT_KIT_INVALID_TOKEN_IDENTIFIER = InvalidTokenIdentifierException
+
+/** The issued credential has no releasable bearer value. */
+class MissingBearerValueException extends AdapterContractException {
+  static code = 'E_ACCOUNT_KIT_MISSING_BEARER_VALUE'
+  static status = 500
+  static message = 'Token guard did not return a bearer value'
+
+  constructor(options?: ErrorOptions) {
+    super(undefined, options)
+  }
+}
+
+/** @reexport */
+export const E_ACCOUNT_KIT_MISSING_BEARER_VALUE = MissingBearerValueException
+
+/** The application policy closes public registration. */
+class RegistrationClosedException extends AuthorizationException {
+  static code = 'E_ACCOUNT_KIT_REGISTRATION_CLOSED'
+  static status = 403
+
+  constructor(message: string, options?: ErrorOptions) {
+    super(message, options)
+  }
+}
+
+/** @reexport */
+export const E_ACCOUNT_KIT_REGISTRATION_CLOSED = RegistrationClosedException
+
+/** The account has no usable password credential or is no longer present. */
+class CredentialsAccountUnavailableException extends InvalidCredentialsException {
+  static code = 'E_ACCOUNT_KIT_CREDENTIALS_ACCOUNT_UNAVAILABLE'
+  static status = 401
+
+  constructor(options?: ErrorOptions) {
+    super(options)
+  }
+}
+
+/** @reexport */
+export const E_ACCOUNT_KIT_CREDENTIALS_ACCOUNT_UNAVAILABLE = CredentialsAccountUnavailableException
+
+/** The password did not verify. */
+class CredentialsPasswordMismatchException extends InvalidCredentialsException {
+  static code = 'E_ACCOUNT_KIT_CREDENTIALS_PASSWORD_MISMATCH'
+  static status = 401
+
+  constructor(options?: ErrorOptions) {
+    super(options)
+  }
+}
+
+/** @reexport */
+export const E_ACCOUNT_KIT_CREDENTIALS_PASSWORD_MISMATCH = CredentialsPasswordMismatchException
+
+/** The access policy denied the credential request. */
+class CredentialsAccessDeniedException extends InvalidCredentialsException {
+  static code = 'E_ACCOUNT_KIT_CREDENTIALS_ACCESS_DENIED'
+  static status = 401
+
+  constructor(options?: ErrorOptions) {
+    super(options)
+  }
+}
+
+/** @reexport */
+export const E_ACCOUNT_KIT_CREDENTIALS_ACCESS_DENIED = CredentialsAccessDeniedException
+
+/** The credential request is malformed. */
+class CredentialsInputInvalidException extends InvalidCredentialsException {
+  static code = 'E_ACCOUNT_KIT_CREDENTIALS_INPUT_INVALID'
+  static status = 401
+
+  constructor(options?: ErrorOptions) {
+    super(options)
+  }
+}
+
+/** @reexport */
+export const E_ACCOUNT_KIT_CREDENTIALS_INPUT_INVALID = CredentialsInputInvalidException
+
+/** A previously verified credential became invalid during issuance. */
+class CredentialIssuanceRejectedException extends InvalidCredentialsException {
+  static code = 'E_ACCOUNT_KIT_CREDENTIAL_ISSUANCE_REJECTED'
+  static status = 401
+
+  constructor(options?: ErrorOptions) {
+    super(options)
+  }
+}
+
+/** @reexport */
+export const E_ACCOUNT_KIT_CREDENTIAL_ISSUANCE_REJECTED = CredentialIssuanceRejectedException
+
+/** The account to inspect is no longer present. */
+class InspectionAccountMissingException extends AccountAccessDeniedException {
+  static code = 'E_ACCOUNT_KIT_INSPECTION_ACCOUNT_MISSING'
+  static status = 403
+
+  constructor(options?: ErrorOptions) {
+    super(options)
+  }
+}
+
+/** @reexport */
+export const E_ACCOUNT_KIT_INSPECTION_ACCOUNT_MISSING = InspectionAccountMissingException
+
+/** The access policy denied the account being inspected. */
+class InspectionAccountRestrictedException extends AccountAccessDeniedException {
+  static code = 'E_ACCOUNT_KIT_INSPECTION_ACCOUNT_RESTRICTED'
+  static status = 403
+
+  constructor(options?: ErrorOptions) {
+    super(options)
+  }
+}
+
+/** @reexport */
+export const E_ACCOUNT_KIT_INSPECTION_ACCOUNT_RESTRICTED = InspectionAccountRestrictedException
+
+/** The caller required an active account and the inspected account is inactive. */
+class InspectionAccountInactiveException extends AccountAccessDeniedException {
+  static code = 'E_ACCOUNT_KIT_INSPECTION_ACCOUNT_INACTIVE'
+  static status = 403
+
+  constructor(options?: ErrorOptions) {
+    super(options)
+  }
+}
+
+/** @reexport */
+export const E_ACCOUNT_KIT_INSPECTION_ACCOUNT_INACTIVE = InspectionAccountInactiveException
+
+/** Transaction finalisation failed after the database commit. */
+class CommittedTransactionFailedException extends PostCommitException {
+  static code = 'E_ACCOUNT_KIT_COMMITTED_TRANSACTION_FAILED'
+  static status = 500
+
+  constructor(message: string, options?: ErrorOptions) {
+    super(message, options)
+  }
+}
+
+/** @reexport */
+export const E_ACCOUNT_KIT_COMMITTED_TRANSACTION_FAILED = CommittedTransactionFailedException
+
+/** A social signup committed before its activation link could be issued. */
+class SocialActivationFailedException extends PostCommitException {
+  static code = 'E_ACCOUNT_KIT_SOCIAL_ACTIVATION_FAILED'
+  static status = 500
+
+  constructor(message: string, options?: ErrorOptions) {
+    super(message, options)
+  }
+}
+
+/** @reexport */
+export const E_ACCOUNT_KIT_SOCIAL_ACTIVATION_FAILED = SocialActivationFailedException
+
+/** A social provider failed to supply a usable callback profile or assurance. */
+class SocialProviderFailedException extends SocialTransactionException {
+  static code = 'E_ACCOUNT_KIT_SOCIAL_PROVIDER_FAILED'
+  static status = 400
+
+  constructor(options?: ErrorOptions) {
+    super(options)
+  }
+}
+
+/** @reexport */
+export const E_ACCOUNT_KIT_SOCIAL_PROVIDER_FAILED = SocialProviderFailedException
+
+/** The one-use social handoff cannot be redeemed. */
+class SocialHandoffInvalidException extends SocialTransactionException {
+  static code = 'E_ACCOUNT_KIT_SOCIAL_HANDOFF_INVALID'
+  static status = 400
+
+  constructor(options?: ErrorOptions) {
+    super(options)
+  }
+}
+
+/** @reexport */
+export const E_ACCOUNT_KIT_SOCIAL_HANDOFF_INVALID = SocialHandoffInvalidException
+
+/** The continuation or policy for social registration does not permit completion. */
+class SocialRegistrationInvalidException extends SocialTransactionException {
+  static code = 'E_ACCOUNT_KIT_SOCIAL_REGISTRATION_INVALID'
+  static status = 400
+
+  constructor(options?: ErrorOptions) {
+    super(options)
+  }
+}
+
+/** @reexport */
+export const E_ACCOUNT_KIT_SOCIAL_REGISTRATION_INVALID = SocialRegistrationInvalidException
+
+/** Ordered failures from independent follow-up effects after an account operation committed. */
+class CommittedEffectsFailedException extends AccountKitException {
+  static code = 'E_ACCOUNT_KIT_COMMITTED_EFFECTS_FAILED'
+  static status = 500
+
+  constructor(
+    /** Original failures in the order they were observed. */
+    readonly errors: readonly unknown[],
+    options?: ErrorOptions
+  ) {
+    super('Multiple committed effects failed', options)
+  }
+}
+
+/** @reexport */
+export const E_ACCOUNT_KIT_COMMITTED_EFFECTS_FAILED = CommittedEffectsFailedException
+
+/** Multiple failures while cleaning up a connection after successful transaction work. */
+class TransactionCleanupFailedException extends AccountKitException {
+  static code = 'E_ACCOUNT_KIT_TRANSACTION_CLEANUP_FAILED'
+  static status = 500
+
+  constructor(
+    /** Original failures in the order they were observed. */
+    readonly errors: readonly unknown[],
+    options?: ErrorOptions
+  ) {
+    super('Transaction cleanup failed', options)
+  }
+}
+
+/** @reexport */
+export const E_ACCOUNT_KIT_TRANSACTION_CLEANUP_FAILED = TransactionCleanupFailedException
+
+/** Multiple failures while cleaning up a setup operation after successful work. */
+class SetupCleanupFailedException extends Exception {
+  static code = 'E_ACCOUNT_KIT_SETUP_CLEANUP_FAILED'
+  static status = 500
+
+  constructor(
+    /** Original failures in the order they were observed. */
+    readonly errors: readonly unknown[],
+    options?: ErrorOptions
+  ) {
+    super(
+      'Setup cleanup failed',
+      options && 'cause' in options ? { cause: options.cause } : undefined
+    )
+  }
+}
+
+/** @reexport */
+export const E_ACCOUNT_KIT_SETUP_CLEANUP_FAILED = SetupCleanupFailedException

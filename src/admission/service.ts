@@ -86,6 +86,8 @@ export class AccountAdmission {
    * Checks the credential like `kit.authentication.current`, then evaluates admission, in one
    * transaction. Use it for the status read the limited surface shows.
    *
+   * @throws {AggregateError} Transaction work and cleanup both failed. The work failure is first.
+   *
    * @example
    * ```ts
    * const { account, decision } = await admission.current(current)
@@ -109,6 +111,8 @@ export class AccountAdmission {
   /**
    * The gate for protected routes. Like `current`, then throws `E_ACCOUNT_KIT_UNVERIFIED_EMAIL` for an
    * unconfirmed account (unless `active: false`) and `E_ACCOUNT_KIT_ADMISSION_REQUIRED` unless admitted.
+   *
+   * @throws {AggregateError} Transaction work and cleanup both failed. The work failure is first.
    *
    * @example
    * ```ts
@@ -180,6 +184,8 @@ export class AccountAdmission {
    * Records that the signed-in person asked for approval, so `list({ status: 'pending' })` shows
    * them. Idempotent; emits `admission.requested` once. Refuses an unconfirmed account.
    *
+   * @throws {AggregateError} Transaction work and cleanup both failed. The work failure is first.
+   *
    * @example
    * ```ts
    * const record = await admission.request(current)
@@ -191,6 +197,8 @@ export class AccountAdmission {
 
   /**
    * Approves `userId`. The actor must be admitted, not the subject, and allowed by `decide`.
+   *
+   * @throws {AggregateError} Transaction work and cleanup both failed. The work failure is first.
    *
    * @example
    * ```ts
@@ -204,6 +212,8 @@ export class AccountAdmission {
   /**
    * Rejects `userId`, who has no decision yet. Same actor rules as `approve`.
    *
+   * @throws {AggregateError} Transaction work and cleanup both failed. The work failure is first.
+   *
    * @example
    * ```ts
    * await admission.reject({ actorId, userId })
@@ -215,6 +225,8 @@ export class AccountAdmission {
 
   /**
    * Revokes an approved `userId`. Sessions stay; the next gated request is refused.
+   *
+   * @throws {AggregateError} Transaction work and cleanup both failed. The work failure is first.
    *
    * @example
    * ```ts
@@ -251,6 +263,8 @@ export class AccountAdmission {
       /**
        * Approve a person from the operator console.
        *
+       * @throws {AggregateError} Transaction work and cleanup both failed. The work failure is first.
+       *
        * @example
        * ```ts
        * await admission.operator.approve({ email: 'sam@example.test' })
@@ -260,6 +274,8 @@ export class AccountAdmission {
         applyOperatorDecision(this.deps, input, 'approve'),
       /**
        * Revoke admission from the operator console.
+       *
+       * @throws {AggregateError} Transaction work and cleanup both failed. The work failure is first.
        *
        * @example
        * ```ts
@@ -271,6 +287,8 @@ export class AccountAdmission {
       /**
        * Record operator-provided invitation evidence.
        *
+       * @throws {AggregateError} Transaction work and cleanup both failed. The work failure is first.
+       *
        * @example
        * ```ts
        * await admission.operator.grantInvitation({ email: 'sam@example.test' })
@@ -281,6 +299,8 @@ export class AccountAdmission {
       /**
        * Issues an operator invitation and an approval waiting for the account it creates; that
        * account lands admitted once its invitation evidence is recorded.
+       *
+       * @throws {AggregateError} Transaction work and cleanup both failed. The work failure is first.
        *
        * @example
        * ```ts

@@ -54,7 +54,7 @@ length and character variety; a long passphrase can score higher without mixed c
 an inactive account with `email` and `unverifiedEmail` equal. The account and a hashed one-use
 activation proof commit in one transaction. A unique email constraint decides concurrent attempts;
 all duplicate account states produce `E_ACCOUNT_KIT_REGISTRATION_EMAIL_ALREADY_REGISTERED` (422). An HTTP
-controller should translate it to the same `email` field error using the `unique` rule, regardless
+controller should translate it to the same `email` field error using that code, regardless
 of whether the account is verified, inactive, passwordless, or restricted.
 
 After commit, the configured callback delivers the proof. Delivery or observer failure reports a

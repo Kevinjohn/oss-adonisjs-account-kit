@@ -1,11 +1,12 @@
-import { DateTime } from 'luxon'
-import { test } from '@japa/runner'
 import {
+  E_ACCOUNT_KIT_COMMITTED_EFFECTS_FAILED,
   E_ACCOUNT_KIT_DELIVERY,
   E_ACCOUNT_KIT_EMAIL_ALREADY_REGISTERED,
   E_ACCOUNT_KIT_INVALID_TOKEN,
   E_ACCOUNT_KIT_POST_COMMIT,
 } from '../src/errors.js'
+import { DateTime } from 'luxon'
+import { test } from '@japa/runner'
 import { hashToken } from '../src/tokens.js'
 import { useTestApp } from './helpers/app.js'
 import { makeNotify, makeUsersAdapter, tokenFrom } from './helpers/fakes.js'
@@ -297,8 +298,11 @@ test.group('emailPasswordManagement', (group) => {
     } catch (error) {
       assert.instanceOf(error, E_ACCOUNT_KIT_POST_COMMIT)
       const cause = (error as InstanceType<typeof E_ACCOUNT_KIT_POST_COMMIT>).cause
-      assert.instanceOf(cause, AggregateError)
-      assert.deepEqual((cause as AggregateError).errors, [callbackFailure, noticeFailure])
+      assert.instanceOf(cause, E_ACCOUNT_KIT_COMMITTED_EFFECTS_FAILED)
+      assert.deepEqual(
+        (cause as InstanceType<typeof E_ACCOUNT_KIT_COMMITTED_EFFECTS_FAILED>).errors,
+        [callbackFailure, noticeFailure]
+      )
     }
     const stored = await kit.db.from('users').where('id', user.id).first()
     assert.equal(stored.email, 'new@example.test')
@@ -436,8 +440,11 @@ test.group('emailPasswordManagement', (group) => {
       assert.instanceOf(error, E_ACCOUNT_KIT_POST_COMMIT)
       assert.isTrue((error as InstanceType<typeof E_ACCOUNT_KIT_POST_COMMIT>).committed)
       const cause = (error as InstanceType<typeof E_ACCOUNT_KIT_POST_COMMIT>).cause
-      assert.instanceOf(cause, AggregateError)
-      assert.deepEqual((cause as AggregateError).errors, [failure, observerFailure])
+      assert.instanceOf(cause, E_ACCOUNT_KIT_COMMITTED_EFFECTS_FAILED)
+      assert.deepEqual(
+        (cause as InstanceType<typeof E_ACCOUNT_KIT_COMMITTED_EFFECTS_FAILED>).errors,
+        [failure, observerFailure]
+      )
     }
     assert.lengthOf(recorder.calls, 1)
     assert.lengthOf(await kit.db.from('email_verification_tokens'), 1)

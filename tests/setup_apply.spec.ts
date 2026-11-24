@@ -1,4 +1,8 @@
 import {
+  E_ACCOUNT_KIT_SETUP_APPLY_INTERRUPTED,
+  E_ACCOUNT_KIT_SETUP_CLEANUP_FAILED,
+} from '../src/errors.js'
+import {
   lstat,
   mkdtemp,
   mkdir,
@@ -158,63 +162,76 @@ test.group('setup apply', (group) => {
     await originalRm(temporaryPath, { force: true })
   })
 
-  test('attempts both lock cleanups and preserves the apply failure', async ({ assert }) => {
-    const { root, choices } = await fixture()
-    const plan = await planSetup(choices, await inspectSetup(root), {
-      apply: true,
-      timestamp: 1234,
-    })
-    const lockPath = join(root, '.account-kit-setup.lock')
-    const originalOpen = fsPromises.open
-    const originalRm = fsPromises.rm
-    const applyFailure = new Error('apply failed')
-    const closeFailure = new Error('lock close failed')
-    const removeFailure = new Error('lock removal failed')
-    let lockRemovalAttempted = false
-    fsPromises.open = async (...args) => {
-      const handle = await originalOpen(...args)
-      if (String(args[0]) !== lockPath) return handle
-      return new Proxy(handle, {
-        get(target, property, receiver) {
-          if (property === 'close')
-            return async () => {
-              await target.close()
-              throw closeFailure
-            }
-          return Reflect.get(target, property, receiver)
-        },
+  for (const workFailed of [true, false]) {
+    const scenario = workFailed ? 'work and cleanup fail' : 'cleanup alone fails'
+    test(`attempts both lock cleanups when ${scenario}`, async ({ assert }) => {
+      const { root, choices } = await fixture()
+      const plan = await planSetup(choices, await inspectSetup(root), {
+        apply: true,
+        timestamp: 1234,
       })
-    }
-    fsPromises.rm = async (path, options) => {
-      if (String(path) === lockPath) {
-        lockRemovalAttempted = true
-        throw removeFailure
+      const lockPath = join(root, '.account-kit-setup.lock')
+      const originalOpen = fsPromises.open
+      const originalRm = fsPromises.rm
+      const applyFailure = new Error('apply failed')
+      const closeFailure = new Error('lock close failed')
+      const removeFailure = new Error('lock removal failed')
+      let lockRemovalAttempted = false
+      fsPromises.open = async (...args) => {
+        const handle = await originalOpen(...args)
+        if (String(args[0]) !== lockPath) return handle
+        return new Proxy(handle, {
+          get(target, property, receiver) {
+            if (property === 'close')
+              return async () => {
+                await target.close()
+                throw closeFailure
+              }
+            return Reflect.get(target, property, receiver)
+          },
+        })
       }
-      return originalRm(path, options)
-    }
+      fsPromises.rm = async (path, options) => {
+        if (String(path) === lockPath) {
+          lockRemovalAttempted = true
+          throw removeFailure
+        }
+        return originalRm(path, options)
+      }
 
-    let error: AggregateError | undefined
-    try {
-      error = (await applySetup(root, plan, {
-        beforePublish: async () => {
-          throw applyFailure
-        },
-      }).then(
-        () => assert.fail('expected rejection'),
-        (caught) => caught
-      )) as AggregateError
-    } finally {
-      fsPromises.open = originalOpen
-      fsPromises.rm = originalRm
-    }
+      let error: unknown
+      try {
+        error = await applySetup(root, plan, {
+          beforePublish: async () => {
+            if (workFailed) throw applyFailure
+          },
+        }).then(
+          () => assert.fail('expected rejection'),
+          (caught) => caught
+        )
+      } finally {
+        fsPromises.open = originalOpen
+        fsPromises.rm = originalRm
+      }
 
-    assert.isTrue(lockRemovalAttempted)
-    assert.instanceOf(error, AggregateError)
-    assert.strictEqual(error?.cause, applyFailure)
-    assert.include(error?.errors ?? [], applyFailure)
-    assert.include(error?.errors ?? [], closeFailure)
-    assert.include(error?.errors ?? [], removeFailure)
-  })
+      assert.isTrue(lockRemovalAttempted)
+      if (workFailed) {
+        assert.instanceOf(error, AggregateError)
+        const failure = error as AggregateError
+        assert.strictEqual(failure.cause, applyFailure)
+        assert.deepEqual(failure.errors, [applyFailure, closeFailure, removeFailure])
+      } else {
+        assert.instanceOf(error, E_ACCOUNT_KIT_SETUP_APPLY_INTERRUPTED)
+        const interruption = error as InstanceType<typeof E_ACCOUNT_KIT_SETUP_APPLY_INTERRUPTED>
+        assert.isAbove(interruption.written.length, 0)
+        const failure = interruption.cause as InstanceType<
+          typeof E_ACCOUNT_KIT_SETUP_CLEANUP_FAILED
+        >
+        assert.instanceOf(failure, E_ACCOUNT_KIT_SETUP_CLEANUP_FAILED)
+        assert.deepEqual(failure.errors, [closeFailure, removeFailure])
+      }
+    })
+  }
 
   test('replays an interrupted run and leaves application files untouched', async ({ assert }) => {
     const { root, choices } = await fixture()

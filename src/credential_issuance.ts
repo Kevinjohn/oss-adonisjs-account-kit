@@ -36,6 +36,9 @@ export interface IssuanceOptions {
  * `sessionManagement` receive a fresh handle; only its hash is stored, in that same transaction.
  * A failure attempts to terminate the credential. If termination also fails, both errors are
  * reported and the credential may remain active.
+ *
+ * @throws {AggregateError} Credential issuance or rechecking failed and cleanup also failed.
+ * The primary failure precedes cleanup failures.
  */
 export async function establishCredential<Credential>(
   deps: Pick<ServiceDependencies, 'config' | 'db'>,

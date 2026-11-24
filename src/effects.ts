@@ -1,5 +1,10 @@
 import { getCommittedResult } from './transaction.js'
-import { E_ACCOUNT_KIT_DELIVERY, E_ACCOUNT_KIT_POST_COMMIT } from './errors.js'
+import {
+  E_ACCOUNT_KIT_COMMITTED_EFFECTS_FAILED,
+  E_ACCOUNT_KIT_COMMITTED_TRANSACTION_FAILED,
+  E_ACCOUNT_KIT_DELIVERY,
+  E_ACCOUNT_KIT_POST_COMMIT,
+} from './errors.js'
 import type { LifecycleEvent, ResolvedConfig } from './types.js'
 
 export interface PostCommitEffect {
@@ -20,7 +25,8 @@ export async function postCommit(message: string, effects: PostCommitEffect[]): 
     }
   }
   if (failures.length === 0) return
-  const cause = failures.length === 1 ? failures[0] : new AggregateError(failures)
+  const cause =
+    failures.length === 1 ? failures[0] : new E_ACCOUNT_KIT_COMMITTED_EFFECTS_FAILED(failures)
   if (observerFailed) throw new E_ACCOUNT_KIT_POST_COMMIT(message, { cause })
   throw new E_ACCOUNT_KIT_DELIVERY(message, { cause })
 }
@@ -67,8 +73,15 @@ export async function finishCommitted(
     await followUps()
   } catch (error) {
     if (!fault) throw error
-    throw new E_ACCOUNT_KIT_POST_COMMIT(message, {
-      cause: new AggregateError([fault.cause, (error as Error).cause ?? error]),
+    const cause =
+      (error instanceof E_ACCOUNT_KIT_DELIVERY || error instanceof E_ACCOUNT_KIT_POST_COMMIT) &&
+      'cause' in error
+        ? error.cause
+        : error
+    const followUpFailures =
+      cause instanceof E_ACCOUNT_KIT_COMMITTED_EFFECTS_FAILED ? cause.errors : [cause]
+    throw new E_ACCOUNT_KIT_COMMITTED_TRANSACTION_FAILED(message, {
+      cause: new E_ACCOUNT_KIT_COMMITTED_EFFECTS_FAILED([fault.cause, ...followUpFailures]),
     })
   }
   if (fault) throw fault

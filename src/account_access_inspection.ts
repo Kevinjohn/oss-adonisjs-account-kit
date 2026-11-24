@@ -6,7 +6,13 @@ import { readIsoTimestamp } from './timestamps.js'
 import { requireAuthentication } from './authentication_config.js'
 import { buildAccountProjection } from './account_projection.js'
 import { isUserId } from './user_id.js'
-import { E_ACCOUNT_KIT_ACCOUNT_ACCESS_DENIED, E_ACCOUNT_KIT_INVALID_INPUT } from './errors.js'
+import {
+  E_ACCOUNT_KIT_ACCOUNT_ACCESS_DENIED,
+  E_ACCOUNT_KIT_INVALID_INPUT,
+  E_ACCOUNT_KIT_INSPECTION_ACCOUNT_MISSING,
+  E_ACCOUNT_KIT_INSPECTION_ACCOUNT_RESTRICTED,
+  E_ACCOUNT_KIT_INSPECTION_ACCOUNT_INACTIVE,
+} from './errors.js'
 import type { AccountAccessInput, AccountAccessSnapshot } from './types.js'
 import type { ServiceDependencies } from './service_dependencies.js'
 
@@ -51,10 +57,10 @@ export async function inspectAccountAccess(
     let query = trx.from(table).select('id', 'credentials_changed_at').where('id', userId)
     if (trx.dialect.name !== 'better-sqlite3') query = query.forUpdate()
     const witness = await query.first()
-    if (!witness) throw new E_ACCOUNT_KIT_ACCOUNT_ACCESS_DENIED()
+    if (!witness) throw new E_ACCOUNT_KIT_INSPECTION_ACCOUNT_MISSING()
     const revision = readInspectionRevision(witness)
     const user = await guardDependency(() => deps.config.users.findById(userId, trx))
-    if (!user) throw new E_ACCOUNT_KIT_ACCOUNT_ACCESS_DENIED()
+    if (!user) throw new E_ACCOUNT_KIT_INSPECTION_ACCOUNT_MISSING()
     if (!isUserId(user.id))
       throw new RuntimeException('account_kit: users adapter returned a malformed account id')
     if (String(user.id) !== String(witness.id))
@@ -62,9 +68,10 @@ export async function inspectAccountAccess(
         'account_kit: users adapter returned a different account than requested'
       )
     const allowed = await guardDependency(() => auth.canAccess(user, trx))
-    if (!requireAccountAccessDecision(allowed)) throw new E_ACCOUNT_KIT_ACCOUNT_ACCESS_DENIED()
+    if (!requireAccountAccessDecision(allowed))
+      throw new E_ACCOUNT_KIT_INSPECTION_ACCOUNT_RESTRICTED()
     const account = buildAccountProjection(user)
-    if (requireActive && !account.active) throw new E_ACCOUNT_KIT_ACCOUNT_ACCESS_DENIED()
+    if (requireActive && !account.active) throw new E_ACCOUNT_KIT_INSPECTION_ACCOUNT_INACTIVE()
     return { account, revision }
   })
 }

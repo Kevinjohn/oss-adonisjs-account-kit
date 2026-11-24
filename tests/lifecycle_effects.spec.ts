@@ -1,10 +1,11 @@
-import { DateTime } from 'luxon'
-import { test } from '@japa/runner'
 import {
+  E_ACCOUNT_KIT_COMMITTED_EFFECTS_FAILED,
   E_ACCOUNT_KIT_DELIVERY,
   E_ACCOUNT_KIT_INVALID_TOKEN,
   E_ACCOUNT_KIT_POST_COMMIT,
 } from '../src/errors.js'
+import { DateTime } from 'luxon'
+import { test } from '@japa/runner'
 import { generateToken, hashToken } from '../src/tokens.js'
 import type { CredentialChangeContext, LifecycleEvent } from '../src/types.js'
 import { useTestApp } from './helpers/app.js'
@@ -151,8 +152,11 @@ test.group('credential and lifecycle effects', (group) => {
     }
     assert.instanceOf(error, E_ACCOUNT_KIT_POST_COMMIT)
     const cause = (error as InstanceType<typeof E_ACCOUNT_KIT_POST_COMMIT>).cause
-    assert.instanceOf(cause, AggregateError)
-    assert.deepEqual((cause as AggregateError).errors, failures)
+    assert.instanceOf(cause, E_ACCOUNT_KIT_COMMITTED_EFFECTS_FAILED)
+    assert.deepEqual(
+      (cause as InstanceType<typeof E_ACCOUNT_KIT_COMMITTED_EFFECTS_FAILED>).errors,
+      failures
+    )
     assert.deepEqual(
       order.map((entry) => entry.split(':')[0]),
       ['legacy', 'notice', 'event']
@@ -333,7 +337,11 @@ test.group('credential and lifecycle effects', (group) => {
     }
     assert.instanceOf(failure, E_ACCOUNT_KIT_POST_COMMIT)
     assert.deepEqual(
-      ((failure as InstanceType<typeof E_ACCOUNT_KIT_POST_COMMIT>).cause as AggregateError).errors,
+      (
+        (failure as InstanceType<typeof E_ACCOUNT_KIT_POST_COMMIT>).cause as InstanceType<
+          typeof E_ACCOUNT_KIT_COMMITTED_EFFECTS_FAILED
+        >
+      ).errors,
       [first, last]
     )
     assert.deepEqual(order, ['legacy', 'notice', 'event'])
@@ -381,7 +389,11 @@ test.group('credential and lifecycle effects', (group) => {
     }
     assert.instanceOf(failure, E_ACCOUNT_KIT_POST_COMMIT)
     assert.deepEqual(
-      ((failure as InstanceType<typeof E_ACCOUNT_KIT_POST_COMMIT>).cause as AggregateError).errors,
+      (
+        (failure as InstanceType<typeof E_ACCOUNT_KIT_POST_COMMIT>).cause as InstanceType<
+          typeof E_ACCOUNT_KIT_COMMITTED_EFFECTS_FAILED
+        >
+      ).errors,
       errors
     )
     assert.deepEqual(order, ['legacy', 'notice', 'event'])

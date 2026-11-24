@@ -1,5 +1,9 @@
+import {
+  E_ACCOUNT_KIT_COMMITTED_EFFECTS_FAILED,
+  E_ACCOUNT_KIT_DELIVERY,
+  E_ACCOUNT_KIT_POST_COMMIT,
+} from '../src/errors.js'
 import { test } from '@japa/runner'
-import { E_ACCOUNT_KIT_DELIVERY, E_ACCOUNT_KIT_POST_COMMIT } from '../src/errors.js'
 import { createLifecycleEffect, postCommit } from '../src/effects.js'
 import type { LifecycleEvent } from '../src/types.js'
 
@@ -32,8 +36,13 @@ test.group('post-commit effects', () => {
     assert.instanceOf(failure, E_ACCOUNT_KIT_DELIVERY)
     assert.deepEqual(events, ['one', 'two'])
     assert.deepEqual(
-      (failure as InstanceType<typeof E_ACCOUNT_KIT_DELIVERY>).cause instanceof AggregateError
-        ? ((failure as InstanceType<typeof E_ACCOUNT_KIT_DELIVERY>).cause as AggregateError).errors
+      (failure as InstanceType<typeof E_ACCOUNT_KIT_DELIVERY>).cause instanceof
+        E_ACCOUNT_KIT_COMMITTED_EFFECTS_FAILED
+        ? (
+            (failure as InstanceType<typeof E_ACCOUNT_KIT_DELIVERY>).cause as InstanceType<
+              typeof E_ACCOUNT_KIT_COMMITTED_EFFECTS_FAILED
+            >
+          ).errors
         : [],
       [first, second]
     )
@@ -65,9 +74,13 @@ test.group('post-commit effects', () => {
     }
     assert.instanceOf(failure, E_ACCOUNT_KIT_POST_COMMIT)
     assert.deepEqual(
-      (failure as InstanceType<typeof E_ACCOUNT_KIT_POST_COMMIT>).cause instanceof AggregateError
-        ? ((failure as InstanceType<typeof E_ACCOUNT_KIT_POST_COMMIT>).cause as AggregateError)
-            .errors
+      (failure as InstanceType<typeof E_ACCOUNT_KIT_POST_COMMIT>).cause instanceof
+        E_ACCOUNT_KIT_COMMITTED_EFFECTS_FAILED
+        ? (
+            (failure as InstanceType<typeof E_ACCOUNT_KIT_POST_COMMIT>).cause as InstanceType<
+              typeof E_ACCOUNT_KIT_COMMITTED_EFFECTS_FAILED
+            >
+          ).errors
         : [],
       [delivery, observer]
     )

@@ -11,7 +11,12 @@ import { requireAuthentication } from '../authentication_config.js'
 import { establishCredential } from '../credential_issuance.js'
 import { revision } from '../credential_revision.js'
 import { lockUser, transaction } from '../db.js'
-import { E_INVALID_CREDENTIALS, E_ACCOUNT_KIT_INVALID_SESSION } from '../errors.js'
+import {
+  E_ACCOUNT_KIT_CREDENTIAL_ISSUANCE_REJECTED,
+  E_ACCOUNT_KIT_CREDENTIALS_ACCOUNT_UNAVAILABLE,
+  E_ACCOUNT_KIT_CREDENTIALS_ACCESS_DENIED,
+  E_ACCOUNT_KIT_INVALID_SESSION,
+} from '../errors.js'
 import { createSessionGuard } from '../http/managed_session_guard.js'
 import type { AuthenticationGuard, CurrentAccountInput, UserId } from '../types.js'
 
@@ -75,6 +80,8 @@ export class AccountKitSessionGuard<
    * Authenticates the session as `SessionGuard` does, then checks its credential revision and
    * registry handle as `authentication.current` does. Fails with `E_UNAUTHORIZED_ACCESS`.
    *
+   * @throws {AggregateError} Transaction work and cleanup both failed. The work failure is first.
+   *
    * @example
    * ```ts
    * const user = await guard.authenticate()
@@ -114,6 +121,8 @@ export class AccountKitSessionGuard<
    * Creates a registry sign-in for `user`, with the `canAccess` checks of `authentication.login`
    * after its password check, and returns the session data for the test client.
    *
+   * @throws {AggregateError} Account work or credential issuance and its cleanup both failed. The primary failure is first.
+   *
    * @example
    * ```ts
    * const { session } = await guard.authenticateAsClient(user)
@@ -128,8 +137,9 @@ export class AccountKitSessionGuard<
     const verified = await transaction(deps.db, async (trx) => {
       await lockUser(trx, deps.config, userId)
       const account = await deps.config.users.findById(userId, trx)
-      if (!account || !requireAccountAccessDecision(await auth.canAccess(account, trx)))
-        throw new E_INVALID_CREDENTIALS()
+      if (!account) throw new E_ACCOUNT_KIT_CREDENTIALS_ACCOUNT_UNAVAILABLE()
+      if (!requireAccountAccessDecision(await auth.canAccess(account, trx)))
+        throw new E_ACCOUNT_KIT_CREDENTIALS_ACCESS_DENIED()
       return {
         account: buildAccountProjection(account),
         revision: await revision(trx, deps.config, account.id),
@@ -151,13 +161,18 @@ export class AccountKitSessionGuard<
         async terminate() {},
       },
       verified,
-      { rejected: () => new E_INVALID_CREDENTIALS(), cleanupFailed: 'Client sign-in failed' }
+      {
+        rejected: () => new E_ACCOUNT_KIT_CREDENTIAL_ISSUANCE_REJECTED(),
+        cleanupFailed: 'Client sign-in failed',
+      }
     )
     return { session }
   }
 
   /**
    * The verified sign-in for `authentication.current` / `withCurrent`; `ManagedGuard.current` without a context.
+   *
+   * @throws {AggregateError} Transaction work and cleanup both failed. The work failure is first.
    *
    * @example
    * ```ts

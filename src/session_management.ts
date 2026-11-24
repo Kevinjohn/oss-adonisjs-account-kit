@@ -150,6 +150,8 @@ export function createSessionManagementService(deps: Pick<ServiceDependencies, '
     /**
      * Every live sign-in of the caller, newest first, with the caller's own marked `current`.
      *
+     * @throws {AggregateError} Transaction work and cleanup both failed. The work failure is first.
+     *
      * @example
      * ```ts
      * await kit.authentication.sessions.list({ current })
@@ -178,6 +180,8 @@ export function createSessionManagementService(deps: Pick<ServiceDependencies, '
 
     /**
      * Sign out one sign-in. Unknown ids and other users' ids are indistinguishable.
+     *
+     * @throws {AggregateError} Transaction work and cleanup both failed. The work failure is first.
      *
      * @example
      * ```ts
@@ -210,6 +214,8 @@ export function createSessionManagementService(deps: Pick<ServiceDependencies, '
     /**
      * Sign out every other sign-in; the caller's own stays valid.
      *
+     * @throws {AggregateError} Transaction work and cleanup both failed. The work failure is first.
+     *
      * @example
      * ```ts
      * await kit.authentication.sessions.revokeOthers({ current })
@@ -232,6 +238,8 @@ export function createSessionManagementService(deps: Pick<ServiceDependencies, '
 
     /**
      * Sign out everywhere, including here: a credential change with its usual hooks.
+     *
+     * @throws {AggregateError} Transaction work and cleanup both failed. The work failure is first.
      *
      * @example
      * ```ts

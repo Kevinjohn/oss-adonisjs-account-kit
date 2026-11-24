@@ -2,7 +2,7 @@ import { InvalidArgumentsException, RuntimeException } from '@adonisjs/core/exce
 // Checks and the shared client budget used by the managed HTTP routes.
 import { DateTime } from 'luxon'
 import { expiresAt } from './ttl.js'
-import { E_ACCOUNT_KIT_AUTHORIZATION } from './errors.js'
+import { E_ACCOUNT_KIT_REGISTRATION_CLOSED } from './errors.js'
 import { isPasswordAllowed as matchesPasswordPolicy } from './password.js'
 import type { Throttler } from './throttle.js'
 import type { ResolvedConfig } from './types.js'
@@ -20,10 +20,10 @@ export function createManagedHttpService(deps: Dependencies) {
     magicLinkExpiresAt: computeMagicLinkExpiry,
     /** Whether `value` is a string that meets the configured password policy. */
     passwordAllowed: isPasswordAllowed,
-    /** Throws `E_ACCOUNT_KIT_AUTHORIZATION` unless registration availability is `open`. */
+    /** Throws `E_ACCOUNT_KIT_REGISTRATION_CLOSED` unless registration availability is `open`. */
     assertPublicRegistration: (): void => {
       if (deps.config.registration.availability !== 'open')
-        throw new E_ACCOUNT_KIT_AUTHORIZATION('Public registration is unavailable')
+        throw new E_ACCOUNT_KIT_REGISTRATION_CLOSED('Public registration is unavailable')
     },
     /** Throws unless `guard` has the name and strategy set in the `authentication` config. */
     assertGuard: (guard: { name: string; strategy: 'session' | 'access_tokens' }): void => {

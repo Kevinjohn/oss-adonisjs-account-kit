@@ -41,6 +41,8 @@ export function createSocialIdentityService(deps: Dependencies) {
     /**
      * Starts a provider flow and returns the one-use state and the provider URL to redirect to.
      *
+     * @throws {AggregateError} Transaction work and cleanup both failed. The work failure is first.
+     *
      * @example
      * ```ts
      * await kit.socialAuthentication.begin({ provider: 'github', intent: 'login', clientChallenge })
@@ -84,6 +86,8 @@ export function createSocialIdentityService(deps: Dependencies) {
     /**
      * Starts the fresh provider callback that confirms a pending identity, bound to its email
      * verification proof.
+     *
+     * @throws {AggregateError} Transaction work and cleanup both failed. The work failure is first.
      *
      * @example
      * ```ts
@@ -136,6 +140,8 @@ export function createSocialIdentityService(deps: Dependencies) {
     /**
      * Consumes the state once, resolves the provider profile and returns the outcome.
      *
+     * @throws {AggregateError} Transaction work and cleanup both failed. The work failure is first.
+     *
      * @example
      * ```ts
      * await kit.socialAuthentication.callback({ provider: 'github', state, callback: context })
@@ -148,6 +154,8 @@ export function createSocialIdentityService(deps: Dependencies) {
     /**
      * Exchanges a one-use handoff code and its verifier for a real session or token through
      * `guard`.
+     *
+     * @throws {AggregateError} Account work or credential issuance and its cleanup both failed. The primary failure is first.
      *
      * @example
      * ```ts
@@ -164,6 +172,8 @@ export function createSocialIdentityService(deps: Dependencies) {
 
     /**
      * Finishes a `new` sign-in with the collected email or registration fields.
+     *
+     * @throws {AggregateError} Transaction work and cleanup both failed. The work failure is first.
      *
      * @example
      * ```ts
@@ -185,6 +195,8 @@ export function createSocialIdentityService(deps: Dependencies) {
     /**
      * Checks the password and issues a 10-minute, single-use proof for one sensitive purpose.
      *
+     * @throws {AggregateError} Transaction work and cleanup both failed. The work failure is first.
+     *
      * @example
      * ```ts
      * await kit.socialAuthentication.provePassword({ current, password, purpose: 'social_unlink' })
@@ -201,6 +213,8 @@ export function createSocialIdentityService(deps: Dependencies) {
     /**
      * The caller's confirmed linked providers.
      *
+     * @throws {AggregateError} Transaction work and cleanup both failed. The work failure is first.
+     *
      * @example
      * ```ts
      * await kit.socialAuthentication.list({ current })
@@ -212,6 +226,8 @@ export function createSocialIdentityService(deps: Dependencies) {
 
     /**
      * Returns a confirmed link owned by the caller, or throws `E_ACCOUNT_KIT_SOCIAL_USER_NOT_FOUND`.
+     *
+     * @throws {AggregateError} Transaction work and cleanup both failed. The work failure is first.
      *
      * @example
      * ```ts
@@ -231,6 +247,8 @@ export function createSocialIdentityService(deps: Dependencies) {
     /**
      * Unlinks a provider with a `social_unlink` proof, keeping at least one way to sign in. A
      * credential change: older sessions and tokens end.
+     *
+     * @throws {AggregateError} Transaction work and cleanup both failed. The work failure is first.
      *
      * @example
      * ```ts

@@ -5,7 +5,7 @@ import { transaction, isUserEmailUniqueViolation } from './db.js'
 import { finishCommitted, createLifecycleEffect, postCommit, settleCommitted } from './effects.js'
 import { normalizeEmail, isEmailShaped } from './email.js'
 import {
-  E_ACCOUNT_KIT_AUTHORIZATION,
+  E_ACCOUNT_KIT_REGISTRATION_CLOSED,
   E_ACCOUNT_KIT_REGISTRATION_EMAIL_ALREADY_REGISTERED,
   E_ACCOUNT_KIT_INVALID_INPUT,
 } from './errors.js'
@@ -24,7 +24,7 @@ export async function register(
   input: RegistrationInput
 ): Promise<AccountUser> {
   if (deps.config.registration?.availability === 'closed')
-    throw new E_ACCOUNT_KIT_AUTHORIZATION('Registration is closed')
+    throw new E_ACCOUNT_KIT_REGISTRATION_CLOSED('Registration is closed')
   if (!isEmailShaped(input.email)) throw new E_ACCOUNT_KIT_INVALID_INPUT('Invalid email')
   const email = normalizeEmail(input.email)
   if (!isPasswordAllowed(input.password, deps.config.passwordPolicy))

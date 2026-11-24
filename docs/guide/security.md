@@ -55,7 +55,7 @@ nothing". See [magic-link sign-in](magic-link.md).
 - **Login** gives one error for absent accounts, wrong passwords, restricted accounts and accounts
   without a password, and waits out the same floor. Pinned by `authentication.spec.ts`: "rejects
   invalid credentials with one public error and counts failures only".
-- **Managed signup** returns the same `email`/`unique` validation error for every existing account,
+- **Managed signup** returns the same `email` field with code `E_ACCOUNT_KIT_REGISTRATION_EMAIL_ALREADY_REGISTERED` validation error for every existing account,
   whatever its state.
 - **Signed-in devices:** an unknown id, a malformed id and another user's id all look the same.
 

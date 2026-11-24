@@ -3,7 +3,7 @@ import { DateTime } from 'luxon'
 import { requireUserMetadata } from './db.js'
 import { clearSocialPending } from './credential_cleanup.js'
 import { sessionTable } from './session_registry.js'
-import { E_INVALID_CREDENTIALS } from './errors.js'
+import { E_ACCOUNT_KIT_CREDENTIALS_ACCOUNT_UNAVAILABLE } from './errors.js'
 import type { AccountUser, ChangePasswordInput, ResolvedConfig, Trx, UserId } from './types.js'
 import { hashToken } from './tokens.js'
 import { readIsoTimestamp } from './timestamps.js'
@@ -16,7 +16,7 @@ export async function revision(
   const metadata = await requireUserMetadata(config)
   const table = metadata.table
   const row = await trx.from(table).select('credentials_changed_at').where('id', userId).first()
-  if (!row) throw new E_INVALID_CREDENTIALS()
+  if (!row) throw new E_ACCOUNT_KIT_CREDENTIALS_ACCOUNT_UNAVAILABLE()
   return readIsoTimestamp(row.credentials_changed_at)
 }
 

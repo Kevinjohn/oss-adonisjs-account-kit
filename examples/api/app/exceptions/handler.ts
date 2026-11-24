@@ -53,6 +53,9 @@ export default class HttpExceptionHandler extends ExceptionHandler {
       social && !provider && !(error instanceof errors.E_ACCOUNT_KIT) && !(status && status < 500)
     if (provider || (social && status && status >= 500) || unexpected) {
       logSocialFailure(ctx, provider, unexpected)
+    } else if (social && error instanceof errors.E_ACCOUNT_KIT_SOCIAL_TRANSACTION_INVALID) {
+      // A correlation header must not reveal that a callback reached the provider.
+      ctx.response.header('X-Correlation-ID', randomUUID())
     }
     if (error instanceof shieldErrors.E_BAD_CSRF_TOKEN) {
       return accountError(ctx, 403, 'E_BAD_CSRF_TOKEN', error.message)

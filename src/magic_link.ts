@@ -12,7 +12,7 @@ import { consumeUserToken, lockUser, transaction } from './db.js'
 import { finishCommitted, createLifecycleEffect, postCommit, settleCommitted } from './effects.js'
 import { isEmailShaped, normalizeEmail } from './email.js'
 import {
-  E_INVALID_CREDENTIALS,
+  E_ACCOUNT_KIT_CREDENTIAL_ISSUANCE_REJECTED,
   E_ACCOUNT_KIT_INVALID_INPUT,
   E_ACCOUNT_KIT_INVALID_TOKEN,
 } from './errors.js'
@@ -167,7 +167,7 @@ export async function completeMagicLink<Credential>(
   if (!verified) throw new E_ACCOUNT_KIT_INVALID_TOKEN()
   const credential = await establishCredential(deps, auth, guard, verified, {
     stillValid: async (_trx, user) => user.email === verified.email,
-    rejected: () => new E_INVALID_CREDENTIALS(),
+    rejected: () => new E_ACCOUNT_KIT_CREDENTIAL_ISSUANCE_REJECTED(),
     cleanupFailed: 'Magic-link sign-in failed and credential cleanup failed',
   })
   return { account: verified.account, credential }

@@ -5,7 +5,7 @@ import { mapRegistrationFields } from './registration_fields.js'
 import { mapSocialIdentityRow } from './social_links.js'
 import {
   E_ACCOUNT_KIT_SOCIAL_EMAIL_MISSING,
-  E_ACCOUNT_KIT_SOCIAL_TRANSACTION_INVALID,
+  E_ACCOUNT_KIT_SOCIAL_REGISTRATION_INVALID,
 } from './errors.js'
 import { readSqlTimestamp, type Dependencies } from './social_shared.js'
 import type { AccountUser, SocialIdentity, SocialProviderName, Trx, UserId } from './types.js'
@@ -26,12 +26,12 @@ export function requireProviderProfile(value: ProviderProfile): ProviderProfile 
     value.subject.length === 0 ||
     value.subject.length > 255
   )
-    throw new E_ACCOUNT_KIT_SOCIAL_TRANSACTION_INVALID()
+    throw new E_ACCOUNT_KIT_SOCIAL_REGISTRATION_INVALID()
   if (value.email !== null && !isEmailShaped(value.email))
-    throw new E_ACCOUNT_KIT_SOCIAL_TRANSACTION_INVALID()
+    throw new E_ACCOUNT_KIT_SOCIAL_REGISTRATION_INVALID()
   for (const key of ['name', 'nickname', 'avatarUrl'] as const) {
     if (value[key] !== undefined && value[key] !== null && typeof value[key] !== 'string')
-      throw new E_ACCOUNT_KIT_SOCIAL_TRANSACTION_INVALID()
+      throw new E_ACCOUNT_KIT_SOCIAL_REGISTRATION_INVALID()
   }
   return {
     subject: value.subject,
@@ -69,7 +69,7 @@ export async function createAssociation(
     .where('provider', name)
     .where('provider_user_id', profile.subject)
     .first()
-  if (!created) throw new E_ACCOUNT_KIT_SOCIAL_TRANSACTION_INVALID()
+  if (!created) throw new E_ACCOUNT_KIT_SOCIAL_REGISTRATION_INVALID()
   return mapSocialIdentityRow(created)
 }
 
@@ -86,13 +86,13 @@ export async function createAccount(
   onUserCreateFailure?: (error: unknown) => void
 ): Promise<{ user: AccountUser; relation: SocialIdentity; invitationIds: number[] }> {
   const registration = deps.config.registration!
-  if (registration.availability === 'closed') throw new E_ACCOUNT_KIT_SOCIAL_TRANSACTION_INVALID()
+  if (registration.availability === 'closed') throw new E_ACCOUNT_KIT_SOCIAL_REGISTRATION_INVALID()
   if (registration.availability === 'application' && !admit)
-    throw new E_ACCOUNT_KIT_SOCIAL_TRANSACTION_INVALID()
+    throw new E_ACCOUNT_KIT_SOCIAL_REGISTRATION_INVALID()
   if (!profile.email) throw new E_ACCOUNT_KIT_SOCIAL_EMAIL_MISSING()
   if (admit) await admit({ provider: name, subject: profile.subject, email: profile.email }, trx)
   if (await deps.config.users.findByEmail(profile.email, trx))
-    throw new E_ACCOUNT_KIT_SOCIAL_TRANSACTION_INVALID()
+    throw new E_ACCOUNT_KIT_SOCIAL_REGISTRATION_INVALID()
   const mapped = await mapRegistrationFields(deps.config, registrationData)
   let user: AccountUser
   try {
@@ -116,6 +116,6 @@ export async function createAccount(
     ? await matchInvitation(deps.config, trx, user, verifiedAt)
     : []
   const latest = await deps.config.users.findById(user.id, trx)
-  if (!latest) throw new E_ACCOUNT_KIT_SOCIAL_TRANSACTION_INVALID()
+  if (!latest) throw new E_ACCOUNT_KIT_SOCIAL_REGISTRATION_INVALID()
   return { user: latest, relation, invitationIds }
 }

@@ -188,7 +188,12 @@ export type AuthenticationGuard<Credential> =
       strategy: 'access_tokens'
       /** The guard's name in `config/auth.ts`. */
       name: string
-      /** Issue a token for the user; the credential carries the token value once. */
+      /**
+       * Issue a token for the user; the credential carries the token value once.
+       *
+       * @throws {AggregateError} The managed access-token guard failed to issue the token and
+       * failed to remove it. The issuance failure comes first.
+       */
       establish(
         userId: UserId,
         abilities: string[],

@@ -1,7 +1,11 @@
 import { performance } from 'node:perf_hooks'
 import { test } from '@japa/runner'
 import { transaction } from '../src/db.js'
-import { E_ACCOUNT_KIT_POST_COMMIT } from '../src/errors.js'
+import {
+  E_ACCOUNT_KIT_POST_COMMIT,
+  E_ACCOUNT_KIT_COMMITTED_TRANSACTION_FAILED,
+  E_ACCOUNT_KIT_TRANSACTION_CLEANUP_FAILED,
+} from '../src/errors.js'
 import { bootTestApp, useTestApp } from './helpers/app.js'
 import { resetSchema } from './helpers/schema.js'
 import { locksRows } from './helpers/dialect.js'
@@ -427,7 +431,7 @@ test.group('managed transaction wrapper', (group) => {
     .skip(locksRows, 'SQLite serializes writers instead of locking rows')
     .timeout(5000)
 
-  test('pool-one committed timeout restoration fault keeps outcome known and drains queued work', async ({
+  test('pool-one committed cleanup faults keeps outcome known and drains queued work', async ({
     assert,
   }) => {
     const customKit = await bootTestApp({ sqlitePoolMax: 1 })
@@ -438,11 +442,21 @@ test.group('managed transaction wrapper', (group) => {
     }
     const original = native.pragma.bind(native)
     const restoreFault = new Error('timeout restoration failed')
+    const releaseFault = new Error('connection release failed')
+    let restorationAttempted = false
     native.pragma = (sql, options) => {
-      if (sql === 'busy_timeout = 5000') throw restoreFault
+      if (sql === 'busy_timeout = 5000') {
+        restorationAttempted = true
+        throw restoreFault
+      }
       return original(sql, options)
     }
     await client.releaseConnection(native)
+    const release = client.releaseConnection
+    client.releaseConnection = async (connection: unknown) => {
+      await release.call(client, connection)
+      if (connection === native && restorationAttempted) throw releaseFault
+    }
     let entered!: () => void
     const started = new Promise<void>((resolve) => {
       entered = resolve
@@ -466,8 +480,14 @@ test.group('managed transaction wrapper', (group) => {
         await writing
         assert.fail('expected postcommit fault')
       } catch (error) {
-        assert.instanceOf(error, E_ACCOUNT_KIT_POST_COMMIT)
-        assert.equal((error as InstanceType<typeof E_ACCOUNT_KIT_POST_COMMIT>).cause, restoreFault)
+        assert.instanceOf(error, E_ACCOUNT_KIT_COMMITTED_TRANSACTION_FAILED)
+        const fault = (error as InstanceType<typeof E_ACCOUNT_KIT_COMMITTED_TRANSACTION_FAILED>)
+          .cause
+        assert.instanceOf(fault, E_ACCOUNT_KIT_TRANSACTION_CLEANUP_FAILED)
+        assert.deepEqual(
+          (fault as InstanceType<typeof E_ACCOUNT_KIT_TRANSACTION_CLEANUP_FAILED>).errors,
+          [restoreFault, releaseFault]
+        )
       }
       assert.equal(attempts, 1)
       assert.isNotNull(await reading)
@@ -478,6 +498,7 @@ test.group('managed transaction wrapper', (group) => {
         await customKit.db.from('users').where('email', 'clark@example.test').first()
       )
     } finally {
+      client.releaseConnection = release
       native.pragma = original
       await customKit.close()
     }

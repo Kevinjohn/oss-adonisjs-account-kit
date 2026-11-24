@@ -51,8 +51,8 @@ async function followUps(
     await finishCommitted(committedFault, message, () => postCommit(message, effects))
     return undefined
   } catch (error) {
-    const failure = error as Error
-    return { name: failure.name, message: failure.message }
+    const failure = error as InstanceType<typeof E_ACCOUNT_KIT_POST_COMMIT>
+    return { code: failure.code, name: failure.name, message: failure.message }
   }
 }
 

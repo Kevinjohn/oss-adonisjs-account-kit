@@ -80,7 +80,7 @@ type Strategy = 'session' | 'access_tokens'
 export const managedEndpointSchemas: Record<ManagedEndpointName, EndpointSchemas> = {
   'auth.signup': {
     summary: 'Register with email and password, then sign in',
-    description: `${policyNote} An email that is already registered is reported as a 422 \`unique\` error on \`email\`.`,
+    description: `${policyNote} An email that is already registered is reported as a 422 \`E_ACCOUNT_KIT_REGISTRATION_EMAIL_ALREADY_REGISTERED\` error on \`email\`.`,
     requestBody: () =>
       buildRequestBodySchema(
         {

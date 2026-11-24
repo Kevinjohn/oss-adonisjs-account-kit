@@ -1,4 +1,5 @@
 import { test } from '@japa/runner'
+import * as errors from '../src/errors.js'
 import {
   E_ACCOUNT_KIT_ACCOUNT_ACCESS_DENIED,
   E_ACCOUNT_KIT,
@@ -18,6 +19,30 @@ import {
 } from '../src/errors.js'
 
 test.group('account kit errors', () => {
+  test('each exception export has its own matching raw code', ({ assert }) => {
+    const codes = new Set<string>()
+    for (const [name, constructor] of Object.entries(errors)) {
+      if (typeof constructor !== 'function' || !('code' in constructor)) continue
+      assert.equal(constructor.code, name)
+      assert.isFalse(codes.has(name))
+      codes.add(name)
+    }
+    assert.isAbove(codes.size, 0)
+  })
+
+  test('base and inherited exceptions keep fixed metadata and preserve the cause', ({ assert }) => {
+    const cause = new Error('underlying failure')
+    const options = { cause, code: 'E_OTHER', status: 200 }
+    const base = new errors.E_ACCOUNT_KIT('base failure', options)
+    const inherited = new errors.E_ACCOUNT_KIT_INVALID_ACCESS_DECISION(options)
+    assert.equal(base.code, 'E_ACCOUNT_KIT')
+    assert.equal(base.status, 500)
+    assert.equal(base.cause, cause)
+    assert.equal(inherited.code, 'E_ACCOUNT_KIT_INVALID_ACCESS_DECISION')
+    assert.equal(inherited.status, 500)
+    assert.equal(inherited.cause, cause)
+  })
+
   test('inspection denial has one generic public identity without an authorization cause', ({
     assert,
   }) => {

@@ -1,11 +1,7 @@
 import User from '#models/user'
 import { signupValidator } from '#validators/user'
 import type { HttpContext } from '@adonisjs/core/http'
-import {
-  E_ACCOUNT_KIT_DELIVERY,
-  E_ACCOUNT_KIT_POST_COMMIT,
-  E_ACCOUNT_KIT_REGISTRATION_EMAIL_ALREADY_REGISTERED,
-} from '@kevinjohn/adonisjs-account-kit'
+import { E_ACCOUNT_KIT_DELIVERY, E_ACCOUNT_KIT_POST_COMMIT } from '@kevinjohn/adonisjs-account-kit'
 import accountKit from '@kevinjohn/adonisjs-account-kit/services/main'
 import UserTransformer from '#transformers/user_transformer'
 import { accessTokenGuard, accountKitSessionGuard } from '#services/account_kit_guards'
@@ -23,11 +19,6 @@ export default class NewAccountController {
     try {
       await accountKit.registration.register({ email, password, registrationData: { fullName } })
     } catch (error) {
-      if (error instanceof E_ACCOUNT_KIT_REGISTRATION_EMAIL_ALREADY_REGISTERED) {
-        return response.unprocessableEntity({
-          errors: [{ field: 'email', rule: 'unique', message: 'The email has already been taken' }],
-        })
-      }
       if (error instanceof E_ACCOUNT_KIT_DELIVERY || error instanceof E_ACCOUNT_KIT_POST_COMMIT) {
         reportCommittedFailure(ctx.logger, error, 'registration.signup')
         return response.accepted({

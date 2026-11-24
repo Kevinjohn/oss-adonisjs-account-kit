@@ -59,7 +59,7 @@
           "registration"
         ],
         "summary": "Register with email and password, then sign in",
-        "description": "The new password must also satisfy the configured password policy (422 `passwordPolicy`). An email that is already registered is reported as a 422 `unique` error on `email`.",
+        "description": "The new password must also satisfy the configured password policy (422 `passwordPolicy`). An email that is already registered is reported as a 422 `E_ACCOUNT_KIT_REGISTRATION_EMAIL_ALREADY_REGISTERED` error on `email`.",
         "security": [],
         "requestBody": {
           "required": true,

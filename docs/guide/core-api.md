@@ -224,7 +224,6 @@ import {
   E_ACCOUNT_KIT_DELIVERY,
   E_ACCOUNT_KIT_POST_COMMIT,
   isCommittedFailure,
-  E_ACCOUNT_KIT_REGISTRATION_EMAIL_ALREADY_REGISTERED,
   passwordChangeRevision,
 } from '@kevinjohn/adonisjs-account-kit'
 import accountKit from '@kevinjohn/adonisjs-account-kit/services/main'
@@ -247,7 +246,7 @@ function activeInput(ctx: HttpContext) {
 
 function privateFault(
   ctx: HttpContext,
-  error: E_ACCOUNT_KIT_DELIVERY | E_ACCOUNT_KIT_POST_COMMIT,
+  error: InstanceType<typeof E_ACCOUNT_KIT_DELIVERY | typeof E_ACCOUNT_KIT_POST_COMMIT>,
   operation: string
 ) {
   ctx.logger.error({ code: error.code, operation }, 'account follow-up failed')
@@ -259,10 +258,6 @@ export default class AccountJourneyController {
     try {
       await accountKit.registration.register({ email, password })
     } catch (error) {
-      if (error instanceof E_ACCOUNT_KIT_REGISTRATION_EMAIL_ALREADY_REGISTERED)
-        return ctx.response.unprocessableEntity({
-          errors: [{ field: 'email', rule: 'unique', message: 'The email has already been taken' }],
-        })
       if (!isCommittedFailure(error)) throw error
       privateFault(ctx, error, 'signup')
       return ctx.response.accepted({

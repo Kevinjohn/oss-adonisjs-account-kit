@@ -8,7 +8,7 @@ import { buildAccountProjection } from './account_projection.js'
 import { lockUser, transaction } from './db.js'
 import { consumeRows } from './consume_rows.js'
 import { isClientVerifier, verifierMatches } from './client_challenge.js'
-import { E_ACCOUNT_KIT_SOCIAL_TRANSACTION_INVALID } from './errors.js'
+import { E_ACCOUNT_KIT_SOCIAL_HANDOFF_INVALID } from './errors.js'
 import { listEnabledSocialProviders, readSqlTimestamp, type Dependencies } from './social_shared.js'
 import { generateToken, hashToken, isTokenShaped } from './tokens.js'
 import type {
@@ -72,13 +72,13 @@ export async function redeemSocialHandoff<Credential>(
     input.guard.strategy !== auth.strategy ||
     input.guard.name !== auth.guard
   )
-    throw new E_ACCOUNT_KIT_SOCIAL_TRANSACTION_INVALID()
+    throw new E_ACCOUNT_KIT_SOCIAL_HANDOFF_INVALID()
   const verified = await transaction(deps.db, async (trx) => {
     const candidate = await trx
       .from('social_handoff_codes')
       .where('hash', hashToken(input.code))
       .first()
-    if (!candidate) throw new E_ACCOUNT_KIT_SOCIAL_TRANSACTION_INVALID()
+    if (!candidate) throw new E_ACCOUNT_KIT_SOCIAL_HANDOFF_INVALID()
     await lockUser(trx, deps.config, candidate.user_id)
     const rows = await consumeRows<typeof candidate>(
       trx,
@@ -92,10 +92,10 @@ export async function redeemSocialHandoff<Credential>(
       row.user_id !== candidate.user_id ||
       !verifierMatches(input.verifier, row.client_challenge)
     )
-      throw new E_ACCOUNT_KIT_SOCIAL_TRANSACTION_INVALID()
+      throw new E_ACCOUNT_KIT_SOCIAL_HANDOFF_INVALID()
     const user = await deps.config.users.findById(row.user_id, trx)
     if (!user || !requireAccountAccessDecision(await auth.canAccess(user, trx)))
-      throw new E_ACCOUNT_KIT_SOCIAL_TRANSACTION_INVALID()
+      throw new E_ACCOUNT_KIT_SOCIAL_HANDOFF_INVALID()
     const currentRevision = await revision(trx, deps.config, user.id)
     const establishedProvider = await getUsableHandoffProvider(
       trx,
@@ -104,7 +104,7 @@ export async function redeemSocialHandoff<Credential>(
       row.social_identity_id
     )
     if (currentRevision !== row.credential_revision || !establishedProvider)
-      throw new E_ACCOUNT_KIT_SOCIAL_TRANSACTION_INVALID()
+      throw new E_ACCOUNT_KIT_SOCIAL_HANDOFF_INVALID()
     return {
       account: buildAccountProjection(user),
       revision: currentRevision,
@@ -116,7 +116,7 @@ export async function redeemSocialHandoff<Credential>(
     stillValid: async (trx, user) =>
       (await getUsableHandoffProvider(trx, deps.config, user.id, verified.socialIdentityId)) ===
       verified.provider,
-    rejected: () => new E_ACCOUNT_KIT_SOCIAL_TRANSACTION_INVALID(),
+    rejected: () => new E_ACCOUNT_KIT_SOCIAL_HANDOFF_INVALID(),
     cleanupFailed: 'Social credential cleanup failed',
   })
   return { account: verified.account, credential, provider: verified.provider }

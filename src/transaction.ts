@@ -3,7 +3,11 @@ import { RuntimeException } from '@adonisjs/core/exceptions'
 import { AsyncLocalStorage } from 'node:async_hooks'
 import { performance } from 'node:perf_hooks'
 import type { Database } from '@adonisjs/lucid/database'
-import { E_ACCOUNT_KIT_POST_COMMIT } from './errors.js'
+import {
+  E_ACCOUNT_KIT_POST_COMMIT,
+  E_ACCOUNT_KIT_COMMITTED_TRANSACTION_FAILED,
+  E_ACCOUNT_KIT_TRANSACTION_CLEANUP_FAILED,
+} from './errors.js'
 import type { Trx } from './types.js'
 
 const SQLITE_RETRY_MS = 10
@@ -52,6 +56,7 @@ async function lockSQLiteTransaction(trx: Trx): Promise<void> {
 async function commitTransaction(
   trx: Trx,
   onCommitted: () => void,
+  cleanup: unknown[],
   sqlite?: SQLiteConnection
 ): Promise<void> {
   const knexTrx = trx.getWriteClient()
@@ -67,7 +72,6 @@ async function commitTransaction(
       await completion
       onCommitted()
     } catch (error) {
-      const cleanup: unknown[] = []
       try {
         if (sqlite?.inTransaction) sqlite.exec('ROLLBACK')
       } catch (failure) {
@@ -85,7 +89,7 @@ async function commitTransaction(
       } finally {
         knexTrx.rollback = originalRollback
       }
-      throw combineFailures(error, cleanup)
+      throw error
     }
   }) as typeof originalCommit
 
@@ -101,21 +105,24 @@ async function runAndCommit<T>(
   callback: (trx: Trx) => Promise<T>,
   onCommitted: () => void,
   onResult: (result: T) => void,
-  sqlite?: SQLiteConnection
+  sqlite?: SQLiteConnection,
+  cleanup?: unknown[]
 ): Promise<T> {
+  const failures = cleanup ?? []
   try {
     const result = await callback(trx)
     onResult(result)
-    await commitTransaction(trx, onCommitted, sqlite)
+    await commitTransaction(trx, onCommitted, failures, sqlite)
     return result
   } catch (error) {
     if (!trx.isCompleted) {
       try {
         await trx.rollback()
       } catch (failure) {
-        throw combineFailures(error, [failure])
+        failures.push(failure)
       }
     }
+    if (!cleanup && failures.length) throw new AggregateError([error, ...failures])
     throw error
   }
 }
@@ -132,18 +139,14 @@ function createCommittedFailure<T>(
   cause: unknown,
   result: T
 ): InstanceType<typeof E_ACCOUNT_KIT_POST_COMMIT> {
-  const error = new E_ACCOUNT_KIT_POST_COMMIT('Account change committed but a follow-up failed', {
-    cause,
-  })
+  const error = new E_ACCOUNT_KIT_COMMITTED_TRANSACTION_FAILED(
+    'Account change committed but a follow-up failed',
+    {
+      cause,
+    }
+  )
   committedResults.set(error, result)
   return error
-}
-
-function combineFailures(primary: unknown, cleanup: unknown[]): unknown {
-  if (cleanup.length === 0) return primary
-  return primary === undefined && cleanup.length === 1
-    ? cleanup[0]
-    : new AggregateError(primary === undefined ? cleanup : [primary, ...cleanup])
 }
 
 /**
@@ -244,7 +247,8 @@ async function runSqliteTransactionAttempt<T>(
       },
       commit.onCommitted,
       commit.onResult,
-      sqlite
+      sqlite,
+      cleanup
     )
   } catch (error) {
     failure = error
@@ -269,7 +273,12 @@ async function runSqliteTransactionAttempt<T>(
       cleanup.push(error)
     }
   }
-  if (failed || cleanup.length > 0) throw combineFailures(failure, cleanup)
+  if (failed) {
+    if (cleanup.length) throw new AggregateError([failure, ...cleanup])
+    throw failure
+  }
+  if (cleanup.length === 1) throw cleanup[0]
+  if (cleanup.length > 1) throw new E_ACCOUNT_KIT_TRANSACTION_CLEANUP_FAILED(cleanup)
   return result as T
 }
 
@@ -298,6 +307,10 @@ const insideTransaction = new AsyncLocalStorage<true>()
 
 /**
  * Run a database-only callback; callers perform notifications after this resolves.
+ *
+ * @throws {AggregateError} Transaction work and cleanup both failed. The work failure is first,
+ * followed by cleanup failures in observed order.
+ * @throws {E_ACCOUNT_KIT_COMMITTED_TRANSACTION_FAILED} Finalisation failed after commit.
  *
  * @example
  * ```ts

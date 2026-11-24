@@ -158,6 +158,8 @@ export class AccountKit {
      * Creates an account when registration availability allows it and sends the confirmation link.
      * Throws `E_ACCOUNT_KIT_REGISTRATION_EMAIL_ALREADY_REGISTERED` for a taken address.
      *
+     * @throws {AggregateError} Transaction work and cleanup both failed. The work failure is first.
+     *
      * @example
      * ```ts
      * await kit.registration.register({ email: 'sam@example.test', password })
@@ -179,6 +181,8 @@ export class AccountKit {
     /**
      * Emails a sign-in link. Answers the same way, after `minRequestMs`, whether or not the address
      * has an account.
+     *
+     * @throws {AggregateError} Transaction work and cleanup both failed. The work failure is first.
      *
      * @example
      * ```ts
@@ -202,6 +206,8 @@ export class AccountKit {
      * Uses the link once and signs the user in through `guard`. The verifier must match the
      * challenge sent with the request.
      *
+     * @throws {AggregateError} Account work or credential issuance and its cleanup both failed. The primary failure is first.
+     *
      * @example
      * ```ts
      * await kit.magicLink.complete({ token, verifier }, requestGuard)
@@ -219,6 +225,8 @@ export class AccountKit {
     /**
      * Emails a reset link to a known address. Answers the same way, after `minRequestMs`, whether
      * or not the address has an account.
+     *
+     * @throws {AggregateError} Transaction work and cleanup both failed. The work failure is first.
      *
      * @example
      * ```ts
@@ -241,6 +249,8 @@ export class AccountKit {
      * Uses the link once, sets the new password, ends older sessions and tokens, and sends the
      * completed notice. Throws `E_ACCOUNT_KIT_INVALID_TOKEN` for a bad link.
      *
+     * @throws {AggregateError} Transaction work and cleanup both failed. The work failure is first.
+     *
      * @example
      * ```ts
      * await kit.passwordReset.reset({ token, password })
@@ -254,6 +264,8 @@ export class AccountKit {
     /**
      * Ensures an activation link is current, or returns `already_verified`. A `sent` result
      * inside the one-minute resend cooldown reuses the link without delivering another message.
+     *
+     * @throws {AggregateError} Transaction work and cleanup both failed. The work failure is first.
      *
      * @example
      * ```ts
@@ -275,6 +287,8 @@ export class AccountKit {
     /**
      * Uses the link once, confirms the address and sets the password.
      *
+     * @throws {AggregateError} Transaction work and cleanup both failed. The work failure is first.
+     *
      * @example
      * ```ts
      * await kit.emailVerification.complete({ token, password })
@@ -287,6 +301,8 @@ export class AccountKit {
   readonly invitations = {
     /**
      * Invites an address with a role and emails the link; checks `authorize.invite`.
+     *
+     * @throws {AggregateError} Transaction work and cleanup both failed. The work failure is first.
      *
      * @example
      * ```ts
@@ -319,6 +335,8 @@ export class AccountKit {
      * Uses the invitation token once, creates the account and runs `onInvitationAccepted` in the
      * same transaction. It does not call an actor authorization callback.
      *
+     * @throws {AggregateError} Transaction work and cleanup both failed. The work failure is first.
+     *
      * @example
      * ```ts
      * await kit.invitations.accept({ token, password })
@@ -330,6 +348,8 @@ export class AccountKit {
      * Replaces the invitation's link and emails it again; checks `authorize.manageInvitation` and
      * `authorize.invite` for the invitation's role.
      *
+     * @throws {AggregateError} Transaction work and cleanup both failed. The work failure is first.
+     *
      * @example
      * ```ts
      * await kit.invitations.resend({ actorId, invitationId })
@@ -339,6 +359,8 @@ export class AccountKit {
       this.runEnabledCapability('invitations', () => resendInvitation(this.deps, input)),
     /**
      * Deletes a pending invitation; checks `authorize.manageInvitation`.
+     *
+     * @throws {AggregateError} Transaction work and cleanup both failed. The work failure is first.
      *
      * @example
      * ```ts
@@ -356,6 +378,8 @@ export class AccountKit {
     /**
      * Send an invitation on behalf of the system, without an inviting user.
      *
+     * @throws {AggregateError} Transaction work and cleanup both failed. The work failure is first.
+     *
      * @example
      * ```ts
      * await kit.operator.invite({ email: 'sam@example.test', role: 'member', deliver: 'send' })
@@ -367,6 +391,8 @@ export class AccountKit {
       ),
     /**
      * Issue a password reset link for an address, without the public throttle.
+     *
+     * @throws {AggregateError} Transaction work and cleanup both failed. The work failure is first.
      *
      * @example
      * ```ts
@@ -384,6 +410,8 @@ export class AccountKit {
     /**
      * Changes the password, ends older sessions and tokens, and sends the changed notice.
      *
+     * @throws {AggregateError} Transaction work and cleanup both failed. The work failure is first.
+     *
      * @example
      * ```ts
      * await kit.emailPasswordManagement.changePassword({ actorId, currentPassword, newPassword })
@@ -393,6 +421,8 @@ export class AccountKit {
       this.runEnabledCapability('emailPasswordManagement', () => changePassword(this.deps, input)),
     /**
      * Emails a confirmation link to the new address. The email changes only when it is confirmed.
+     *
+     * @throws {AggregateError} Transaction work and cleanup both failed. The work failure is first.
      *
      * @example
      * ```ts
@@ -405,6 +435,8 @@ export class AccountKit {
       ),
     /**
      * Updates profile fields, and starts an email change when `email` differs.
+     *
+     * @throws {AggregateError} Transaction work and cleanup both failed. The work failure is first.
      *
      * @example
      * ```ts
@@ -429,6 +461,8 @@ export class AccountKit {
      * Uses the link once, switches the address, ends older sessions and tokens, and tells the old
      * address.
      *
+     * @throws {AggregateError} Transaction work and cleanup both failed. The work failure is first.
+     *
      * @example
      * ```ts
      * await kit.emailPasswordManagement.completeEmailChange({ token })
@@ -447,6 +481,8 @@ export class AccountKit {
     /**
      * Returns a JSON export of the account, merged with `exportAccountData`.
      *
+     * @throws {AggregateError} Transaction work and cleanup both failed. The work failure is first.
+     *
      * @example
      * ```ts
      * await kit.accountData.export({ actorId, currentPassword })
@@ -457,6 +493,8 @@ export class AccountKit {
     /**
      * Deletes the user and every row Account Kit owns, runs `onAccountDeletingTransaction` first,
      * and sends the confirmation email.
+     *
+     * @throws {AggregateError} Transaction work and cleanup both failed. The work failure is first.
      *
      * @example
      * ```ts

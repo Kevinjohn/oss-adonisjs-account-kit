@@ -3,8 +3,9 @@
 // helper cannot disagree.
 import type { E_ACCOUNT_KIT } from './errors.js'
 import {
-  E_ACCOUNT_KIT_AUTHORIZATION,
-  E_ACCOUNT_KIT_INVALID_SESSION,
+  E_INVALID_CREDENTIALS,
+  E_ACCOUNT_KIT_ACCOUNT_ACCESS_DENIED,
+  E_ACCOUNT_KIT_SOCIAL_PROVIDER_FAILED,
   E_ACCOUNT_KIT_INVALID_TOKEN,
   E_ACCOUNT_KIT_INVITATION_MANAGEMENT_DENIED,
   E_ACCOUNT_KIT_INVITATION_NOT_FOUND,
@@ -34,7 +35,10 @@ const invalidTokenCodes: Record<ProofKind, string> = {
 const publicMessages: Record<string, string> = {
   E_INVALID_CREDENTIALS: 'Authentication failed.',
   E_ACCOUNT_KIT_INVITATION_NOT_FOUND: 'Invitation not found.',
-  E_ACCOUNT_KIT_FORBIDDEN: 'Access denied.',
+  E_ACCOUNT_KIT_AUTHORIZATION: 'Access denied.',
+  E_ACCOUNT_KIT_REGISTRATION_CLOSED: 'Public registration is unavailable.',
+  E_ACCOUNT_KIT_INVALID_SESSION: 'Invalid session.',
+  E_ACCOUNT_KIT_SOCIAL_TRANSACTION_INVALID: 'Account request rejected.',
   E_ACCOUNT_KIT_INVALID_TOKEN: 'This link is invalid or expired.',
   ...Object.fromEntries(
     Object.values(invalidTokenCodes).map((code) => [code, 'This link is invalid or expired.'])
@@ -42,6 +46,8 @@ const publicMessages: Record<string, string> = {
   E_ACCOUNT_KIT_UNVERIFIED_EMAIL: 'Email verification is required.',
   E_ACCOUNT_KIT_IDENTITY_NOT_CONFIRMED: 'Current identity proof could not be confirmed.',
   E_ACCOUNT_KIT_EMAIL_ALREADY_REGISTERED: 'The account request conflicts with an existing account.',
+  E_ACCOUNT_KIT_REGISTRATION_EMAIL_ALREADY_REGISTERED:
+    'The account request conflicts with an existing account.',
   E_ACCOUNT_KIT_THROTTLED: 'Too many requests.',
   [OPERATION_FAILED]: 'Account operation failed.',
 }
@@ -60,12 +66,21 @@ export function mapPublicErrorIdentity(
   error: InstanceType<typeof E_ACCOUNT_KIT>,
   options: { proof?: ProofKind } = {}
 ): PublicIdentity {
+  // Hide configuration, adapter, database and follow-up diagnostics from clients.
   if (error.status >= 500) {
     const failed = buildPublicErrorIdentity(500, OPERATION_FAILED)
     return error instanceof E_ACCOUNT_KIT_POST_COMMIT ? { ...failed, committed: true } : failed
   }
-  if (error instanceof E_ACCOUNT_KIT_INVALID_SESSION)
+  // Hide account existence, password validity and access restrictions from a credential probe.
+  if (error instanceof E_INVALID_CREDENTIALS)
     return buildPublicErrorIdentity(401, 'E_INVALID_CREDENTIALS')
+  // Hide whether an inspected account is missing, restricted or inactive.
+  if (error instanceof E_ACCOUNT_KIT_ACCOUNT_ACCESS_DENIED)
+    return buildPublicErrorIdentity(403, 'E_ACCOUNT_KIT_ACCOUNT_ACCESS_DENIED')
+  // Hide whether the callback reached the upstream provider after matching a stored state.
+  if (error instanceof E_ACCOUNT_KIT_SOCIAL_PROVIDER_FAILED)
+    return buildPublicErrorIdentity(400, 'E_ACCOUNT_KIT_SOCIAL_TRANSACTION_INVALID')
+  // Hide the existence of invitations the caller is forbidden to manage.
   if (
     error instanceof E_ACCOUNT_KIT_INVITATION_MANAGEMENT_DENIED ||
     error instanceof E_ACCOUNT_KIT_INVITATION_NOT_FOUND
@@ -76,8 +91,6 @@ export function mapPublicErrorIdentity(
       400,
       options.proof ? invalidTokenCodes[options.proof] : 'E_ACCOUNT_KIT_INVALID_TOKEN'
     )
-  if (error instanceof E_ACCOUNT_KIT_AUTHORIZATION)
-    return buildPublicErrorIdentity(403, 'E_ACCOUNT_KIT_FORBIDDEN')
   return buildPublicErrorIdentity(error.status, error.code)
 }
 

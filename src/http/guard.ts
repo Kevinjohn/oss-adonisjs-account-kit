@@ -122,6 +122,9 @@ export function createManagedGuard<User>(options: ManagedTokenGuardOptions<User>
   /**
    * The guard bound to one request's bearer token.
    *
+   * Its `establish` method can reject with `AggregateError` if issuing a token and removing it
+   * both fail. The issuance failure comes first.
+   *
    * @example
    * ```ts
    * const requestGuard = tokenGuard.forRequest(context)

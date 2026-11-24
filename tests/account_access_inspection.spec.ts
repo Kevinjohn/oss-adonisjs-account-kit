@@ -6,6 +6,7 @@ import {
   E_ACCOUNT_KIT_CAPABILITY_DISABLED,
   E_ACCOUNT_KIT_INVALID_INPUT,
 } from '../src/errors.js'
+import { accountErrorResponse } from '../src/error_response.js'
 import { readIsoTimestamp } from '../src/timestamps.js'
 import type { AccountKitConfig, Trx } from '../src/types.js'
 import { useTestApp } from './helpers/app.js'
@@ -116,13 +117,20 @@ test.group('account access inspection', (group) => {
     for (const error of errors) {
       assert.instanceOf(error, E_ACCOUNT_KIT_ACCOUNT_ACCESS_DENIED)
       assert.equal(error.message, 'Account access denied')
-      assert.equal(
-        (error as InstanceType<typeof E_ACCOUNT_KIT_ACCOUNT_ACCESS_DENIED>).code,
-        'E_ACCOUNT_KIT_ACCOUNT_ACCESS_DENIED'
-      )
+      assert.deepEqual(accountErrorResponse(error), accountErrorResponse(errors[0]))
       assert.equal((error as InstanceType<typeof E_ACCOUNT_KIT_ACCOUNT_ACCESS_DENIED>).status, 403)
       assert.isUndefined(error.cause)
     }
+    assert.deepEqual(
+      errors.map(
+        (error) => (error as InstanceType<typeof E_ACCOUNT_KIT_ACCOUNT_ACCESS_DENIED>).code
+      ),
+      [
+        'E_ACCOUNT_KIT_INSPECTION_ACCOUNT_MISSING',
+        'E_ACCOUNT_KIT_INSPECTION_ACCOUNT_RESTRICTED',
+        'E_ACCOUNT_KIT_INSPECTION_ACCOUNT_INACTIVE',
+      ]
+    )
   })
 
   test('6 inactive accounts are allowed when active is not required', async ({ assert }) => {
@@ -298,7 +306,7 @@ test.group('account access inspection', (group) => {
     assert.equal(absent.message, 'Account access denied')
     assert.equal(
       (absent as InstanceType<typeof E_ACCOUNT_KIT_ACCOUNT_ACCESS_DENIED>).code,
-      'E_ACCOUNT_KIT_ACCOUNT_ACCESS_DENIED'
+      'E_ACCOUNT_KIT_INSPECTION_ACCOUNT_MISSING'
     )
     assert.equal((absent as InstanceType<typeof E_ACCOUNT_KIT_ACCOUNT_ACCESS_DENIED>).status, 403)
     const malformed = await failure(() =>

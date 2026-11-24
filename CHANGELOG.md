@@ -6,10 +6,9 @@
 
 - **Breaking:** Catch Account Kit exceptions with the `errors.E_*` constructors from the root
   export or import the constructors from `/errors`. The previous constructor names are removed.
-  Instance codes, HTTP statuses and response mapping remain stable. `E_ACCOUNT_KIT_THROTTLED`
-  accepts retry seconds and optional `{ cause }`. The constructor supplies the message.
-  On committed operator failures, the JSON `fault.name` and Ace `failure` contain the
-  new class name, such as `PostCommitException`.
+  `E_ACCOUNT_KIT_THROTTLED` accepts retry seconds and optional `{ cause }`. The constructor
+  supplies the message.
+  Committed operator faults include `fault.code`, which is also reported as the Ace `failure`.
 - Add type-checked application examples for public functions, classes and methods in their TSDoc.
 
 | Previous constructor                      | Replacement                                           |
@@ -48,9 +47,10 @@
 | `AdmissionDecisionError`                  | `E_ACCOUNT_KIT_ADMISSION_DECISION`                    |
 | `BootstrapApprovalChangedError`           | `E_ACCOUNT_KIT_BOOTSTRAP_APPROVAL_CHANGED`            |
 
-The registration duplicate-email constructor preserves `E_ACCOUNT_KIT_EMAIL_ALREADY_REGISTERED`
-as its instance code, HTTP 422 and the `email` field. The bootstrap approval-change constructor
-preserves `E_ACCOUNT_KIT_INVALID_INPUT` and the operator's recovery diagnostic.
+The registration duplicate-email and interrupted-bootstrap constructors each have their own code.
+Signup returns the registration conflict code with HTTP 422 and the `email` field. Only disclosure
+protections collapse distinct causes in HTTP responses. Committed follow-up batches keep ordered
+failures in `E_ACCOUNT_KIT_COMMITTED_EFFECTS_FAILED`.
 
 ## 0.6.1 - 2026-11-24
 

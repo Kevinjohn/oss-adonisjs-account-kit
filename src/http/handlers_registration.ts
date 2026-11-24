@@ -1,5 +1,4 @@
 /** Managed handler for the registration capability: public signup followed by login. */
-import { E_ACCOUNT_KIT_EMAIL_ALREADY_REGISTERED } from '../errors.js'
 import type { CurrentAccount } from '../types.js'
 import type { ManagedEndpointName } from './routes.js'
 import type { ManagedHandler, ManagedRequest } from './managed_types.js'
@@ -8,7 +7,6 @@ import {
   sendPasswordPolicyErrorResponse,
   logRecoveryDiagnostic,
   reportCommittedFailure,
-  sendRuleViolationResponse,
   signInLabel,
 } from './response_helpers.js'
 import { signupValidator } from './validators.js'
@@ -37,13 +35,6 @@ async function signUp<Credential>({
       registrationData: 'registrationData' in input ? input.registrationData : undefined,
     })
   } catch (error) {
-    if (error instanceof E_ACCOUNT_KIT_EMAIL_ALREADY_REGISTERED)
-      return sendRuleViolationResponse(
-        context,
-        'email',
-        'unique',
-        'The email has already been taken.'
-      )
     if (!reportCommittedFailure(context, route.name, error)) throw error
   }
   let result: { account: CurrentAccount; credential: Credential }

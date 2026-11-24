@@ -14,6 +14,7 @@ import {
   E_ACCOUNT_KIT_SOCIAL_IDENTITY_ALREADY_LINKED,
   E_ACCOUNT_KIT_SOCIAL_PROOF_INVALID,
   E_ACCOUNT_KIT_SOCIAL_TRANSACTION_INVALID,
+  E_ACCOUNT_KIT_SOCIAL_PROVIDER_FAILED,
   E_ACCOUNT_KIT_SOCIAL_USER_NOT_FOUND,
   E_ACCOUNT_KIT_UNVERIFIED_EMAIL,
 } from './errors.js'
@@ -145,7 +146,7 @@ export async function completeSocialCallback(
       })
     }
   } catch (cause) {
-    throw new E_ACCOUNT_KIT_SOCIAL_TRANSACTION_INVALID({ cause })
+    throw new E_ACCOUNT_KIT_SOCIAL_PROVIDER_FAILED({ cause })
   }
   let userCreateFailure: unknown
   let settled: Awaited<ReturnType<typeof settleCommitted<SocialTransactionResult>>>

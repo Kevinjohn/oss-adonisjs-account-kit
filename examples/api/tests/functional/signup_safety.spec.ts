@@ -175,7 +175,13 @@ test.group('Signup safety', (group) => {
     })
     assert.equal(duplicate.status(), 422)
     assert.deepEqual(duplicate.body(), {
-      errors: [{ field: 'email', rule: 'unique', message: 'The email has already been taken' }],
+      errors: [
+        {
+          field: 'email',
+          code: 'E_ACCOUNT_KIT_REGISTRATION_EMAIL_ALREADY_REGISTERED',
+          message: 'The account request conflicts with an existing account.',
+        },
+      ],
     })
   }).skip(isSessionStrategy, ACCESS_TOKENS_ONLY)
 

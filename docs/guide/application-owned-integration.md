@@ -157,9 +157,8 @@ uses this service contract and safe diagnostic.
 
 The signup route follows the same boundary: validate the email, password, confirmation and
 application fields, then call `kit.registration.register({ email, password, registrationData })`.
-The package creates the inactive account and hashed activation proof together. Map
-`E_ACCOUNT_KIT_REGISTRATION_EMAIL_ALREADY_REGISTERED` to the same email-field validation response for every
-existing account state. If link delivery or a post-commit observer fails, the account has already
+The package creates the inactive account and hashed activation proof together. The HTTP mapper returns `E_ACCOUNT_KIT_REGISTRATION_EMAIL_ALREADY_REGISTERED` on the email
+field for every existing account state. If link delivery or a post-commit observer fails, the account has already
 committed; return the documented recovery guidance and do not retry registration as if it rolled
 back. The [registration guide](registration.md) documents the capability and its availability modes.
 
@@ -172,9 +171,9 @@ and `Retry-After` on throttling) as the managed routes. Package errors become
 `{ errors: [{ code, message }] }`, or `{ errors: [{ code, title }] }` when the client accepts
 JSON:API. A plain JSON entry carries `field` when the error names one, and `committed: true` marks
 an `E_ACCOUNT_KIT_POST_COMMIT`. Pass `proof` to get the per-kind invalid-token code. Invalid credentials map to 401; request-schema failures remain Vine 422 responses.
-Successful login returns 200 and throttled login returns 429 with `Retry-After`. Duplicate signup is
-also a Vine 422, deliberately using the same email-field response for every existing account state:
-`{ errors: [{ field: 'email', rule: 'unique', message: 'The email has already been taken' }] }`.
+Successful login returns 200 and throttled login returns 429 with `Retry-After`. Duplicate signup
+returns HTTP 422 with code `E_ACCOUNT_KIT_REGISTRATION_EMAIL_ALREADY_REGISTERED` and the
+`email` field in plain JSON.
 Password-reset requests and completions return 202, including committed delivery failures; signup
 returns 200 after guard establishment or 202 with recovery guidance after account commit. Proof
 inspection succeeds with 200 and invalid, expired, replayed, or mismatched proofs return a generic
