@@ -83,13 +83,17 @@ export default defineConfig({
    * Applications without revocable credentials may deliberately replace this with a no-op.
    */
   onCredentialsChangedTransaction: async () => {
-    throw new RuntimeException('account_kit: implement the application credential-revocation policy')
+    throw new RuntimeException(
+      'account_kit: implement the application credential-revocation policy'
+    )
   },
 
   /**
    * Grants the invited role inside the acceptance transaction.
    */
   onInvitationAccepted: async (_user: AccountUser, _invitation: Invitation, _trx: Trx) => {
-    throw new RuntimeException('account_kit: implement onInvitationAccepted in config/account_kit.ts')
+    throw new RuntimeException(
+      'account_kit: implement onInvitationAccepted in config/account_kit.ts'
+    )
   },
 })

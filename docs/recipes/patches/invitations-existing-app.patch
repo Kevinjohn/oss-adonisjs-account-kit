@@ -110,7 +110,7 @@ index 0000000..5ca1830
 +  sentInvitations.push(url)
 +}
 diff --git a/config/account_kit.ts b/config/account_kit.ts
-index 1d2685d..8257c2d 100644
+index 3326025..6734e52 100644
 --- a/config/account_kit.ts
 +++ b/config/account_kit.ts
 @@ -1,6 +1,9 @@
@@ -212,12 +212,14 @@ index 1d2685d..8257c2d 100644
      emailChangeProvision: createUnconfiguredNotifier('emailChangeProvision'),
      emailChanged: createUnconfiguredNotifier('emailChanged'),
      passwordResetCompleted: createUnconfiguredNotifier('passwordResetCompleted'),
-@@ -88,7 +112,7 @@ export default defineConfig({
+@@ -90,9 +114,7 @@ export default defineConfig({
    /**
     * Grants the invited role inside the acceptance transaction.
     */
 -  onInvitationAccepted: async (_user: AccountUser, _invitation: Invitation, _trx: Trx) => {
--    throw new RuntimeException('account_kit: implement onInvitationAccepted in config/account_kit.ts')
+-    throw new RuntimeException(
+-      'account_kit: implement onInvitationAccepted in config/account_kit.ts'
+-    )
 +  onInvitationAccepted: async (user: AccountUser, invitation: Invitation, trx: Trx) => {
 +    await trx.table('app_user_roles').insert({ user_id: user.id, role: invitation.role })
    },
