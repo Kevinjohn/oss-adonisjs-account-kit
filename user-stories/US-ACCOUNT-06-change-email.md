@@ -16,7 +16,7 @@ As a signed-in account holder, I want to request a new email and confirm ownersh
 - For an active account requesting a different address, keep the confirmed address until completion. Requesting the confirmed address cancels an existing pending change; a repeat for the same pending address within one minute reuses a live matching email-change proof without another delivery.
 - For an inactive account, requesting a different address changes both address fields and issues an activation link; it stays inactive until activation with a policy-valid password. This branch advances credentials immediately.
 - Completion calls the configured `emailChanged(previousEmail, user)` callback; the built-in mail helper sends this completion notice to the previous address. New-address confirmation is a separate request provision. Delivery happens after commit. If the new-address provision fails, the service attempts to reopen the cooldown and the saved address state remains in place.
-- The managed profile handler preserves its current credential on inactive-account correction, refreshing a session from the committed revision. Managed email-change inspection returns `{ valid: true }` or an invalid-proof response. Completion returns 200 with the represented account.
+- The managed profile handler passes its current credential for preservation on inactive-account correction and invokes the session guard's optional `refresh` with the committed revision. A refresh failure propagates after the correction was saved. Managed email-change inspection returns `{ valid: true }` or an invalid-proof response. Completion returns 200 with the represented account.
 - If the managed write recognises a committed follow-up failure, it returns 202 with `{ committed: true }`.
 
 ## User flow
@@ -45,14 +45,23 @@ flowchart TD
   A["requestEmailChange forwards newEmail as email; managed profile handler calls updateProfile with keepCurrent"] --> B["updateProfile validates email, maps fields if supplied and throttles actor"]
   B --> C["Transaction confirms actor for email_change and persists mapped profile fields, if any"]
   C --> I{"Email state?"}
-  I -->|Same current address| J["Clear pending different address and verification proof, if present; return without new delivery"]
+  I -->|Same current address| J["Clear pending different address and verification proof, if present"]
   I -->|Different and already registered| X["Roll back with E_ACCOUNT_KIT_EMAIL_ALREADY_REGISTERED"]
-  I -->|Same pending email change in cooldown| K["Keep existing proof; return without new delivery"]
+  I -->|Same pending email change in cooldown| K["Keep existing proof without new delivery"]
+  J --> J0["Commit without new delivery"]
+  K --> J0
+  J0 -->|Success| Y{"Request caller?"}
+  J0 -->|Committed fault| CF["Propagate committed fault; managed response depends on recognised failure"]
   I -->|Inactive, different and available| L["Replace current and pending email, clear reset proof, upsert activation proof and advance credentials"]
   I -->|Active, different and available| M["Upsert pending address and email-change proof"]
   L --> D["Commit; run observer for correction, corresponding provision and lifecycle event"]
   M --> D
-  D --> Z["Return saved result or committed follow-up failure; managed correction refreshes session revision when available"]
+  D --> Z["Finish updateProfile; managed correction invokes optional session refresh when revision is available"]
+  Z -->|Success| Y
+  Z -->|Committed fault| CF
+  Z -->|Refresh fails| R["Propagate refresh error; correction remains saved"]
+  Y -->|requestEmailChange| VR["Resolve void"]
+  Y -->|updateProfile| VA["Return account; managed handler represents it"]
   Q["Managed inspection or direct inspectEmailChange"] --> T["Check live email_change proof and current/pending email match without consumption"]
   E["Managed completion or direct completeEmailChange"] --> F["Transaction consumes matching proof and checks new email still available"]
   F -->|Refused| X2["Roll back and surface invalid proof or email collision"]

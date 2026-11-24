@@ -69,8 +69,8 @@ empty or artificial field rows. For example, an action without input fields coul
 ```markdown
 ## Acceptance criteria
 
-- **Dry run** reports the number of expired rows eligible for removal without deleting them.
-- **Prune** removes rows that are still expired at deletion time and reports the counts removed.
+- **Dry run** reports eligible expired rows found in this bounded run without deleting them.
+- **Prune** removes rows that are still expired at deletion time and reports this run's counts.
 ```
 
 Use the actual control and behaviour in the product. Include confirmation controls and relevant

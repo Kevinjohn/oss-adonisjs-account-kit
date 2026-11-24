@@ -1,6 +1,6 @@
 # User story catalogue
 
-Source baseline: `becffc90271b79c3ce6d2c1dfe0e0b3e871a9fc8` (Account Kit 0.6.0). The refresh reconciles 66 stories with public package exports, managed HTTP, Ace commands, and the guides, examples and tests supporting those entry points. Story availability is source-reviewed. Application-owned screens, routes and policies depend on the host integration.
+Source baseline: `43d12a2417a3a70f03326c76722d682790213777` (Account Kit 0.6.1). The catalogue reconciles 67 stories with public package exports, managed HTTP, Ace commands, and the guides and source supporting those entry points. Story availability is source-reviewed. Application-owned screens, routes and policies depend on the host integration.
 
 [Find a story by managed HTTP path, public import or Ace command](PATHS.md).
 
@@ -74,6 +74,7 @@ Source baseline: `becffc90271b79c3ce6d2c1dfe0e0b3e871a9fc8` (Account Kit 0.6.0).
 | [US-ACCOUNT-64](US-ACCOUNT-64-use-adonisjs-session-guard.md)          | Use the Account Kit guard with AdonisJS Auth       | Current, opt-in since 0.6.0                                                                             |
 | [US-ACCOUNT-65](US-ACCOUNT-65-register-provider-callbacks.md)         | Register configuration callbacks from a provider   | Current with the provider for the service being configured                                              |
 | [US-ACCOUNT-66](US-ACCOUNT-66-select-account-kit-commands.md)         | Select which Account Kit commands Ace loads        | Operator                                                                                                |
+| [US-ACCOUNT-67](US-ACCOUNT-67-map-account-errors.md)                  | Map an account error to a public response          | Current                                                                                                 |
 
 ## Catalogue references
 

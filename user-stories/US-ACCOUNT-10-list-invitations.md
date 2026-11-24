@@ -30,6 +30,7 @@ flowchart TD
 ```mermaid
 flowchart TD
   M["Managed route resolves actor and validates limit, cursor and scope"] --> A["invitations.list"]
+  H["Host supplies authorised actor and optional paging and scope inputs"] --> A
   A --> B["Check capability; validate limit, decode cursor, normalise scope and load actor"]
   B --> C{"authorize.listInvitations permits request?"}
   C -->|No| D["Throw E_ACCOUNT_KIT_AUTHORIZATION"]

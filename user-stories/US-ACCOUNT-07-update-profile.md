@@ -31,6 +31,7 @@ flowchart TD
 ```mermaid
 flowchart TD
   M["Managed profile update resolves current account and validates default or host fields"] --> A["emailPasswordManagement.updateProfile"]
+  H0["Host supplies authorised actor and profile input"] --> A
   A --> B["Reject empty or invalid email input; map supplied registrationData and throttle actor"]
   B --> C["Transaction confirms actor for email_change"]
   C -->|Refused| E["Abort transaction"]
@@ -43,4 +44,4 @@ flowchart TD
   J -->|Managed success| R
 ```
 
-**Code references:** [implementation](../src/profile_update.ts), [`tests/credentials_profile.spec.ts`](../tests/credentials_profile.spec.ts), [managed profile update](../src/http/handlers_email_password_management.ts), [managed committed-failure response](../src/http/managed.ts)
+**Code references:** [implementation](../src/profile_update.ts), [email branches](US-ACCOUNT-06-change-email.md#code-flow), [`tests/credentials_profile.spec.ts`](../tests/credentials_profile.spec.ts), [managed profile update](../src/http/handlers_email_password_management.ts), [managed committed-failure response](../src/http/managed.ts)

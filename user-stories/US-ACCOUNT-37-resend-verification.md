@@ -42,11 +42,13 @@ flowchart TD
  R -->|Yes| E["Return sent; reuse link state and send no message"]
  R -->|No| F["Transaction locks account and reloads it"]
  F --> F1{"Account missing or pending email now differs from current email?"}
- F1 -->|Yes| D2["Return already_verified; nothing stored"]
+ F1 -->|Yes| D2["Commit without storing; return already_verified if no committed fault"]
  F1 -->|No| F2{"Recent activation issued meanwhile?"}
- F2 -->|Yes| E2["Return sent; store and send nothing"]
+ F2 -->|Yes| E2["Commit without storing or sending; return sent if no committed fault"]
  F2 -->|No| F3["Store hashed activation token"]
  F3 --> G["Commit and send accountActivationProvision; return sent or surface delivery failure after attempting to reopen cooldown"]
+ D2 -->|Commit listener fails| X2["Propagate committed fault without sending"]
+ E2 -->|Commit listener fails| X2
 ```
 
 **Code references:** [`sendVerification`](../src/verification.ts), [`verification tests`](../tests/verification.spec.ts), [managed verification send](../src/http/handlers_email_verification.ts), [resend cooldown](../src/token_reuse.ts), [managed committed-failure response](../src/http/managed.ts)

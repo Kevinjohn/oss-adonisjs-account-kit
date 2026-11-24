@@ -45,7 +45,7 @@ flowchart TD
   C -->|Unexpected verification error| EE["Release both reservations and propagate"]
   C -->|Accepted| R["Release client reservation and clear identity failures"]
   R --> S["establishCredential uses session revision and optional registry handle, or creates token with configured options"]
-  S --> F["Locked transaction rechecks revision, email and canAccess; records session registry row and removes replaced handle when supplied"]
+  S --> F["Locked transaction rechecks revision, email and canAccess; records session when tracking is enabled and removes a replaced handle when supplied"]
   F -->|Accepted| G["Return account and credential; managed handler returns strategy-specific 200"]
   S -->|Issuance fails| I["Propagate failure; attempt termination when possible"]
   F -->|Recheck fails| I

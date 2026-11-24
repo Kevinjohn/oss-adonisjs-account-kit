@@ -37,8 +37,9 @@ flowchart TD
   A --> B["Require authentication configuration"]
   B --> C["Delete account-owned registry row for supplied session handle when enabled"]
   C --> D["Call guard.terminate with credential"]
+  C -->|Registry deletion fails| F["Propagate error before guard termination"]
   D -->|Success| E["Service resolves void; managed handler returns 204"]
-  D -->|Failure| F["Propagate termination error"]
+  D -->|Failure| G["Propagate termination error; any deleted registry row stays deleted"]
 ```
 
 **Code references:** [implementation](../src/authentication.ts), [`tests/authentication.spec.ts`](../tests/authentication.spec.ts), [managed request and stale-session branch](../src/http/managed_execution.ts), [managed logout](../src/http/handlers_authentication.ts), [session guard adapter](../src/auth/session_guard.ts)

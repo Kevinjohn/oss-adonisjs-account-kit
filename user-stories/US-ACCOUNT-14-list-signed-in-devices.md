@@ -28,6 +28,7 @@ flowchart TD
 ```mermaid
 flowchart TD
   M["Managed route resolves current credential"] --> A["authentication.sessions.list"]
+  H["Host supplies current credential evidence"] --> A
   A --> B["Require sessionManagement and authentication"]
   B --> C["Transaction rechecks current credential with canAccess and resolves sign-in storage for strategy"]
   C -->|Refused| X["Propagate current-credential refusal"]

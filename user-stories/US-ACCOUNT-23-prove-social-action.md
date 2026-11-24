@@ -38,6 +38,7 @@ Scope: proof issuance. Matching sensitive operations implement their own consump
 ```mermaid
 flowchart TD
  M["Managed account.socialProof.password checks guard and validates password and purpose"] --> A
+ P0["Host supplies current credential, password and purpose"] --> A
  A["provePassword calls proveSocialPassword"] --> B["Check input shape and spend identity:user throttle budget"]
  B -->|Refusal| E["Return error without a proof"]
  B --> C["Transaction validates current credential and verifies password"]
@@ -45,7 +46,9 @@ flowchart TD
  C --> P["issueProof stores account, purpose, revision and expiry"]
  H["Host or managed auth.oauth.redirect calls begin with intent reauth"] --> I["Validate purpose, fresh-auth hook and current account; store state with account and revision"]
  I -->|Refusal| E
- I --> J["Return provider URL; managed session keeps intent for GET callback"]
+ I --> J0["Commit state and request provider URL"]
+ J0 -->|Failure| J1["Propagate error; committed provider state expires"]
+ J0 -->|Success| J["Return provider URL; managed session keeps intent for GET callback"]
  J --> K["Host code or managed GET or bearer POST calls socialAuthentication.callback with current and state"]
  K --> L["Resolve provider profile and verifyFreshAuthentication evidence before transaction"]
  L --> N["Lock account, consume state and validate actor, matching fresh subject, revision and confirmed passwordless relationship"]

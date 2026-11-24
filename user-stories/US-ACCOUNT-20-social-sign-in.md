@@ -13,7 +13,8 @@ As a person with a configured provider identity, I want to sign in through Googl
 
 - `begin` accepts `google` or `github` when configured, `intent: 'login'`, a 43-character base64url SHA-256 `clientChallenge` and optional adapter `context`. It returns `{ state, url }`. The host sends the callback as `{ state, callback, provider?, intent?, admit? }`. Managed begin defaults to login and returns `{ authorizationUrl }`. The session strategy generates and retains its verifier, and the access-token client supplies a challenge and retains its verifier. Session POST routes require Shield CSRF.
 - A confirmed linked subject yields `linked` and a handoff. A matching address without that relationship yields `link_required`. Missing email, configured field mapping or application signup policy yields a `new` continuation when signup is available. Submit `completeRegistration({ continuation, email?, registrationData?, admit? })` through trusted host code or managed `auth.oauth.registration`. The stored provider email takes precedence. Application signup requires the trusted `admit({ provider, subject, email }, trx)` callback. An existing email found during continuation can consume the continuation without creating an account.
-- An unverified provider email creates an inactive account with a pending identity. A repeat login for that pending identity can resend activation. Start confirmation with `beginConfirmation({ provider, verificationToken, clientChallenge, context? })` or managed `auth.oauth.confirmation`. The fresh callback must match the same pending subject. Managed access-token confirmation forwards `intent: 'confirm'` along with the provider code and state to `auth.oauth.complete`.
+- An unverified provider email creates an inactive account with a pending identity. Creation and a repeat login for that pending identity can send an activation provision; `socialAuthentication` configuration requires `emailVerification`. Start confirmation with `beginConfirmation({ provider, verificationToken, clientChallenge, context? })` or managed `auth.oauth.confirmation`. The fresh callback must match the same pending subject. Managed access-token confirmation forwards `intent: 'confirm'` along with the provider code and state to `auth.oauth.complete`.
+- A matching email found inside continuation completion commits consumption and returns `link_required`. A unique-email collision during creation rolls the transaction back and also returns `link_required`, leaving the continuation unconsumed.
 - `redeemHandoff({ code, verifier, guard })` accepts a two-minute one-use code and a 43–128 character unreserved PKCE verifier. The transaction checks the challenge, access decision, current revision and original confirmed association. After it commits, the service issues and rechecks the selected credential and returns `{ account, credential, provider }`. An issuance failure after consumption requires a fresh flow.
 - Managed session completion redeems with the stored verifier and returns `{ status, account }`. Managed access-token completion returns `{ status, code }`; post `{ code, verifier }` to `auth.oauth.token` for `{ account, token }`. A committed callback, registration or token exchange follow-up failure can return 202 `{ committed: true }`; reconcile before restarting with fresh state.
 
@@ -46,9 +47,12 @@ Scope: host service and managed strategy entry points through sign-in. See [US-A
 
 ```mermaid
 flowchart TD
- A["Host begin or auth.oauth.redirect; managed session generates challenge and verifier"] --> B["begin validates provider and challenge, inserts login state and returns provider URL; managed session retains verifier"]
- B -->|Refusal| X["Return error"]
- B --> C["Host passes state and provider callback context; completeOAuthCallback reads code and state and restores saved session context"]
+ A["Host begin or auth.oauth.redirect; managed session generates challenge and verifier"] --> B["begin validates provider and challenge, stores login state and requests provider URL"]
+ B -->|Validation or persistence refusal| X["Return error"]
+ B -->|Provider URL creation fails after state commit| X0["Return error; stored state expires without a usable URL"]
+ B -->|Managed session URL returned| B0["Retain verifier with the state"]
+ B0 --> C["Host passes state and provider callback context; completeOAuthCallback reads code and state and restores saved session context"]
+ B -->|Host or managed token URL returned| C
  Y["Host beginConfirmation or auth.oauth.confirmation checks activation proof and pending identity, then stores confirm state and returns provider URL"] --> C
  Y -->|Refusal| X
  C -->|Refusal or denial| X
@@ -65,13 +69,17 @@ flowchart TD
  F -->|Closed signup| X
  F -->|Missing email or mapping or application policy| I["Commit continuation; managed session rebinds verifier"]
  I --> J["Host completeRegistration or auth.oauth.registration consumes continuation and checks stored profile and email"]
- J -->|Matching email or duplicate creation| L
+ J -->|Existing email found| LC["Commit continuation consumption; return link_required"]
  J -->|Refusal| X
  F -->|Direct creation| K["createAccount applies policy and mapping; creates account and relationship"]
- J --> K
- K -->|Duplicate creation outcome| L
+ J --> K2["createAccount applies policy and mapping to continuation"]
+ K2 -->|Duplicate creation collision| LR["Roll back continuation consumption; return link_required"]
+ K2 -->|Refusal| X
+ K2 -->|Unverified email| V
+ K2 -->|Verified email| P
+ K -->|Duplicate creation outcome| LD["Roll back callback state consumption; return link_required"]
  K -->|Refusal| X
- K -->|Unverified email| V["Commit pending outcome, send activation and return emailVerificationRequired"]
+ K -->|Unverified email| V["Commit pending outcome; send activation when emailVerification is enabled; return emailVerificationRequired"]
  K -->|Verified email| P["createHandoff stores challenge, association and revision"]
  E --> P
  P --> U["Commit; run applicable invitation follow-ups; return handoff"]
@@ -92,4 +100,4 @@ flowchart TD
  G --> O["Return service account, credential and provider; managed session status and account or managed token account and token"]
 ```
 
-**Code references:** [begin and confirmation](../src/social_identity.ts), [callback](../src/social_callback.ts), [registration continuation](../src/social_registration.ts), [account creation](../src/social_account_creation.ts), [handoff](../src/social_handoff.ts), [credential issuance](../src/credential_issuance.ts), [managed handlers](../src/http/social.ts), [session state](../src/http/social_session_state.ts), [activation](../src/activation_claim.ts), [managed error and committed response](../src/http/managed.ts)
+**Code references:** [social configuration requirements](../src/config_social_authentication.ts), [begin and confirmation](../src/social_identity.ts), [callback](../src/social_callback.ts), [registration continuation](../src/social_registration.ts), [account creation](../src/social_account_creation.ts), [handoff](../src/social_handoff.ts), [credential issuance](../src/credential_issuance.ts), [managed handlers](../src/http/social.ts), [session state](../src/http/social_session_state.ts), [activation](../src/activation_claim.ts), [managed error and committed response](../src/http/managed.ts)

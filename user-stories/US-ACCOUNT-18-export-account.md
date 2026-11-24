@@ -29,6 +29,7 @@ flowchart TD
 ```mermaid
 flowchart TD
   M["Managed export resolves actor and validates proof fields"] --> A["accountData.export"]
+  H0["Host supplies authorised actor and identity proof"] --> A
   A --> B["Check capability, throttle actor and confirm proof for account_export in transaction"]
   B -->|Refused| D["Roll back and return no export data"]
   B -->|Accepted| E["Read package-held metadata after confirmation has consumed any required one-use proof"]

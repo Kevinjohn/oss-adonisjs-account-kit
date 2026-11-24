@@ -17,6 +17,7 @@ As an application operator, I want to configure package integration from reviewe
 - Setup uses the [shared migration destination and ordering rules](../docs/guide/setup.md#reconfigure-saved-choices). Destination errors are blocking diagnostics. The host supplies the generated configuration’s callbacks, either inline or through the [provider callback registry](US-ACCOUNT-65-register-provider-callbacks.md).
 
 - Setup inspects its supplied environment snapshot. A supplied variable takes precedence over files. Dotenv lookup then checks the mode-specific local file, the generic local file outside test/testing, the mode-specific file, and finally the base file. See [selected environment resolution](../src/setup/selected_environment_values.ts).
+- When saved choices are unchanged, a customised generated account config, environment example or existing migration is kept with an action diagnostic. Files reported as conflicts block apply.
 
 ## User flow
 
@@ -42,7 +43,7 @@ Scope: this is the Account Kit service/command path. Host UI, route policy and e
 flowchart TD
  A["account-kit:setup"] --> B["Inspect project files and load interactive or JSON choices"]
  B --> C["With saved choices, run readRetirementInventory for the proposed retirement"]
- C --> R["planSetup validates choices; log JSON report"]
+ C --> R["planSetup validates choices and preserves customised generated files and migrations when saved choices are unchanged; log JSON report"]
  R --> D{"Check, preview or apply?"}
  D -->|--check| E["Exit with configuration-validity result; no writes"]
  D -->|Preview| P["Exit nonzero on error diagnostics; no writes"]
