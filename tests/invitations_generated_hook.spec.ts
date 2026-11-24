@@ -1,4 +1,5 @@
 import { fileURLToPath } from 'node:url'
+import { RuntimeException } from '@adonisjs/core/exceptions'
 import { test } from '@japa/runner'
 import ts from 'typescript'
 import { defineConfig } from '../src/account_kit.js'
@@ -38,8 +39,10 @@ async function generatedInvitationAcceptanceHook(kit: ReturnType<typeof useTestA
   visit(sourceFile)
   if (!initializer) throw new Error('Rendered config is missing onInvitationAccepted')
 
+  const exceptions = import.meta.resolve('@adonisjs/core/exceptions')
   const javascript = ts.transpileModule(
-    `const hook = ${initializer.getText(sourceFile)}; export default hook`,
+    `import { RuntimeException } from ${JSON.stringify(exceptions)}
+    export default ${initializer.getText(sourceFile)}`,
     {
       compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ESNext },
     }
@@ -85,6 +88,7 @@ test.group('generated invitation acceptance setup hook', (group) => {
 
     await assert.rejects(
       () => account.invitations.accept({ token, password: 'new-password123' }),
+      RuntimeException,
       'account_kit: implement onInvitationAccepted in config/account_kit.ts'
     )
     assert.lengthOf(await kit.db.from('users').where('email', invitation.email), 0)
