@@ -142,10 +142,12 @@ export class AccountKit {
    * Login, the current account, restrictions, and signed-in devices. Needs the `authentication`
    * config.
    */
-  get authentication() {
+  get authentication(): ReturnType<typeof createAuthenticationService> & {
+    /** Where the user is signed in; requires `sessionManagement`. */
+    sessions: ReturnType<typeof createSessionManagementService>
+  } {
     return {
       ...createAuthenticationService(this.deps),
-      /** Where the user is signed in; requires `sessionManagement`. */
       sessions: createSessionManagementService(this.deps),
     }
   }
@@ -166,7 +168,7 @@ export class AccountKit {
   }
 
   /** Google and GitHub sign-in, linking and recent proof, for `socialAuthentication`. */
-  get socialAuthentication() {
+  get socialAuthentication(): ReturnType<typeof createSocialIdentityService> {
     if (!this.deps.config.enabled.includes('socialAuthentication'))
       throw new E_ACCOUNT_KIT_CAPABILITY_DISABLED('Social authentication is disabled')
     return createSocialIdentityService(this.deps)

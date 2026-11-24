@@ -110,11 +110,12 @@ index 0000000..5ca1830
 +  sentInvitations.push(url)
 +}
 diff --git a/config/account_kit.ts b/config/account_kit.ts
-index 3613a3f..97d6289 100644
+index 1d2685d..8257c2d 100644
 --- a/config/account_kit.ts
 +++ b/config/account_kit.ts
-@@ -1,5 +1,8 @@
+@@ -1,6 +1,9 @@
  import env from '#start/env'
+ import { RuntimeException } from '@adonisjs/core/exceptions'
  import app from '@adonisjs/core/services/app'
 +import { deliverInvitation } from '#services/invitation_delivery'
 +import { authorizeInvitations } from '#services/invitation_authorization'
@@ -122,7 +123,7 @@ index 3613a3f..97d6289 100644
  import {
    createActionUrls,
    createLucidAdapter,
-@@ -9,10 +12,24 @@ import {
+@@ -10,10 +13,24 @@ import {
    type Trx,
  } from '@kevinjohn/adonisjs-account-kit'
  
@@ -150,8 +151,8 @@ index 3613a3f..97d6289 100644
 +)
  
  const createUnconfiguredNotifier = (method: string) => async () => {
-   throw new Error('account_kit: configure notify.' + method)
-@@ -27,12 +44,20 @@ export default defineConfig({
+   throw new RuntimeException('account_kit: configure notify.' + method)
+@@ -28,12 +45,20 @@ export default defineConfig({
    /**
     * Account flows the application exposes.
     */
@@ -174,7 +175,7 @@ index 3613a3f..97d6289 100644
  
    /**
     * Rate-limit keys are HMACs of this secret, so the limiter store never holds an email or IP.
-@@ -43,22 +68,21 @@ export default defineConfig({
+@@ -44,22 +69,21 @@ export default defineConfig({
     * Who may send, manage and list invitations. Everything is denied until you decide.
     */
    authorize: {
@@ -202,7 +203,7 @@ index 3613a3f..97d6289 100644
        emailChange: 'account/email-change',
      },
    }),
-@@ -69,7 +93,7 @@ export default defineConfig({
+@@ -70,7 +94,7 @@ export default defineConfig({
    notify: {
      passwordResetProvision: createUnconfiguredNotifier('passwordResetProvision'),
      accountActivationProvision: createUnconfiguredNotifier('accountActivationProvision'),
@@ -211,12 +212,12 @@ index 3613a3f..97d6289 100644
      emailChangeProvision: createUnconfiguredNotifier('emailChangeProvision'),
      emailChanged: createUnconfiguredNotifier('emailChanged'),
      passwordResetCompleted: createUnconfiguredNotifier('passwordResetCompleted'),
-@@ -87,7 +111,7 @@ export default defineConfig({
+@@ -88,7 +112,7 @@ export default defineConfig({
    /**
     * Grants the invited role inside the acceptance transaction.
     */
 -  onInvitationAccepted: async (_user: AccountUser, _invitation: Invitation, _trx: Trx) => {
--    throw new Error('account_kit: implement onInvitationAccepted in config/account_kit.ts')
+-    throw new RuntimeException('account_kit: implement onInvitationAccepted in config/account_kit.ts')
 +  onInvitationAccepted: async (user: AccountUser, invitation: Invitation, trx: Trx) => {
 +    await trx.table('app_user_roles').insert({ user_id: user.id, role: invitation.role })
    },

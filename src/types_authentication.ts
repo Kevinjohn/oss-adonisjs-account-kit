@@ -176,6 +176,11 @@ export type AuthenticationGuard<Credential> =
       /**
        * The handle this session holds before `establish` replaces it. Its sign-in row is removed,
        * so signing in again in the same browser leaves no orphaned device in the list.
+       *
+       * @example
+       * ```ts
+       * const handle = sessionGuard.previousHandle?.()
+       * ```
        */
       previousHandle?(): string | undefined
     }

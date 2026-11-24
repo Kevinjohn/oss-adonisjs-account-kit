@@ -1,4 +1,4 @@
-import { RuntimeException } from '@adonisjs/core/exceptions'
+import { InvalidArgumentsException, RuntimeException } from '@adonisjs/core/exceptions'
 // Checks and the shared client budget used by the managed HTTP routes.
 import { DateTime } from 'luxon'
 import { expiresAt } from './ttl.js'
@@ -36,7 +36,9 @@ export function createManagedHttpService(deps: Dependencies) {
     /** Spend one request from the per-client budget of a managed endpoint. */
     consume: (input: { endpoint: string; clientKey: string }): Promise<void> => {
       if (!input.clientKey)
-        return Promise.reject(new Error('Managed request client key is required'))
+        return Promise.reject(
+          new InvalidArgumentsException('Managed request client key is required')
+        )
       return deps.throttler.consume(
         `managed:${input.endpoint}`,
         input.clientKey,

@@ -93,6 +93,9 @@ test('configures the package idempotently without replacing application-owned fi
     const generatedConfig = await readFile(configPath, 'utf8')
     assert.include(generatedConfig, "from '@kevinjohn/adonisjs-account-kit'")
     assert.include(generatedConfig, "import('#models/user')")
+    assert.include(generatedConfig, "import { RuntimeException } from '@adonisjs/core/exceptions'")
+    assert.equal(generatedConfig.match(/throw new RuntimeException\(/g)?.length, 3)
+    assert.notInclude(generatedConfig, 'throw new Error(')
     assert.include(generatedConfig, 'import {\n  createActionUrls,')
     assert.include(generatedConfig, 'urls: createActionUrls({')
     assert.include(generatedConfig, "passwordReset: 'account/recovery'")
@@ -148,6 +151,11 @@ test('configures the package idempotently without replacing application-owned fi
         await readFile(join(migrationsDirectory, filename), 'utf8'),
       ])
     )
+    const accountColumns = generatedFiles.find(([filename]) =>
+      filename.endsWith('_account_kit_add_account_columns_to_users.ts')
+    )?.[1]
+    assert.include(accountColumns!, "import { RuntimeException } from '@adonisjs/core/exceptions'")
+    assert.include(accountColumns!, 'throw new RuntimeException(')
     for (const [filename, contents] of generatedFiles) {
       const tableName = filename.match(/^\d+_account_kit_create_(.+)\.ts$/)?.[1]
       if (!tableName) continue

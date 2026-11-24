@@ -12,7 +12,8 @@ import SessionProvider from '@adonisjs/session/session_provider'
 import { ApiClient, ApiRequest } from '@japa/api-client'
 import { test } from '@japa/runner'
 import { defineConfig } from '../src/account_kit.js'
-import { accountKitSessionGuard } from '../src/auth/session_guard.js'
+import { accountKitSessionGuard, type AccountKitSessionGuard } from '../src/auth/session_guard.js'
+import { protectManagedSessionConfig } from '../src/http/session_store_protection.js'
 import type { AccountUser } from '../src/types.js'
 import { useTestApp } from './helpers/app.js'
 import { insertUser, makeConfig, makeUsersAdapter } from './helpers/fakes.js'
@@ -28,6 +29,8 @@ test.group('accountKitSessionGuard with loginAs', (group) => {
   const kit = useTestApp(group, { accountKitProvider: 'source' })
   let httpServer: Server | undefined
   let baseUrl: string
+  let sessionCookie: { name: string; value: string }
+  let storedSession: () => unknown
 
   group.setup(async () => {
     const { app } = kit
@@ -50,7 +53,15 @@ test.group('accountKitSessionGuard with loginAs', (group) => {
         })
       )
     )
-    app.config.set('session', defineSessionConfig({ store: 'memory', stores: {} }))
+    const memorySession = defineSessionConfig({ store: 'memory', stores: {} })
+    const memoryConfig = (await configProvider.resolve<ResolvedSessionConfig>(app, memorySession))!
+    const memoryStore = memoryConfig.stores.memory(null as never, memoryConfig)
+    app.config.set(
+      'session',
+      protectManagedSessionConfig(memorySession, {
+        verifyStore: (store) => Object.getPrototypeOf(store) === Object.getPrototypeOf(memoryStore),
+      })
+    )
     app.config.set(
       'auth',
       defineAuthConfig({ default: 'web', guards: { web: accountKitSessionGuard({ provider }) } })
@@ -72,6 +83,16 @@ test.group('accountKitSessionGuard with loginAs', (group) => {
       await auth.authenticateUsing(['web'])
       return { id: (auth.user as AccountUser).id }
     })
+    router.post('/logout', async (ctx) => {
+      const { auth } = ctx as typeof ctx & {
+        auth: { use(name: 'web'): AccountKitSessionGuard<typeof provider> }
+      }
+      const guard = auth.use('web')
+      const current = await guard.current()
+      const accountKit = await app.container.make('account_kit')
+      await accountKit.authentication.logout(guard.forRequest(), undefined, current)
+      return ctx.response.noContent()
+    })
     await server.boot()
     const listening = createServer(server.handle.bind(server))
     httpServer = listening
@@ -89,10 +110,12 @@ test.group('accountKitSessionGuard with loginAs', (group) => {
       const sessionId = randomUUID()
       const store = sessionConfig.stores[sessionConfig.store](null as never, sessionConfig)
       store.write(sessionId, data)
-      return this.cookie(
-        sessionConfig.cookieName,
-        cookies.sign(sessionConfig.cookieName, sessionId)!
-      )
+      storedSession = () => store.read(sessionId)
+      sessionCookie = {
+        name: sessionConfig.cookieName,
+        value: cookies.sign(sessionConfig.cookieName, sessionId)!,
+      }
+      return this.cookie(sessionCookie.name, sessionCookie.value)
     })
     await authApiClient(app)({} as never)
   })
@@ -112,5 +135,25 @@ test.group('accountKitSessionGuard with loginAs', (group) => {
     assert.equal(response.status(), 200, response.text())
     assert.deepEqual(response.body(), { id: user.id })
     assert.lengthOf(await kit.db.from('account_sessions').where('user_id', user.id), 1)
+  })
+
+  test('the request adapter logs out the browser session and removes its registry row', async ({
+    assert,
+  }) => {
+    const user = await insertUser(kit)
+    const client = new ApiClient(baseUrl, assert)
+    const request = client.get('/me') as ApiRequest & { loginAs(user: AccountUser): ApiRequest }
+    const signedIn = await request.loginAs(user)
+    assert.equal(signedIn.status(), 200, signedIn.text())
+    assert.property(await storedSession(), 'accountKitSession')
+    assert.lengthOf(await kit.db.from('account_sessions').where('user_id', user.id), 1)
+
+    const signedOut = await client.post('/logout').cookie(sessionCookie.name, sessionCookie.value)
+    assert.equal(signedOut.status(), 204, signedOut.text())
+    assert.isNull(await storedSession())
+    assert.lengthOf(await kit.db.from('account_sessions').where('user_id', user.id), 0)
+
+    const replay = await client.get('/me').cookie(sessionCookie.name, sessionCookie.value)
+    assert.equal(replay.status(), 401, replay.text())
   })
 })

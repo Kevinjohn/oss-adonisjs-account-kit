@@ -90,7 +90,14 @@ export function createManagedGuard<User>(options: ManagedSessionGuardOptions<Use
   'strategy' | 'forRequest'
 > & {
   strategy: 'session'
-  /** The guard bound to one request's session. */
+  /**
+   * The guard bound to one request's session.
+   *
+   * @example
+   * ```ts
+   * const sessionGuard = guard.forRequest(context)
+   * ```
+   */
   forRequest(context: HttpContext): Extract<AuthenticationGuard<undefined>, { strategy: 'session' }>
 }
 /**
@@ -112,11 +119,25 @@ export function createManagedGuard<User>(options: ManagedTokenGuardOptions<User>
   'strategy' | 'forRequest' | 'logoutCredential'
 > & {
   strategy: 'access_tokens'
-  /** The guard bound to one request's bearer token. */
+  /**
+   * The guard bound to one request's bearer token.
+   *
+   * @example
+   * ```ts
+   * const requestGuard = tokenGuard.forRequest(context)
+   * ```
+   */
   forRequest(
     context: HttpContext
   ): Extract<AuthenticationGuard<ManagedTokenCredential>, { strategy: 'access_tokens' }>
-  /** The token that authenticated the request, for `terminate` on logout. */
+  /**
+   * The token that authenticated the request, for `terminate` on logout.
+   *
+   * @example
+   * ```ts
+   * const credential = await tokenGuard.logoutCredential(context)
+   * ```
+   */
   logoutCredential(context: HttpContext): Promise<ManagedTokenCredential>
   /** The plaintext token to return to the client, released once. */
   publicCredential(credential: ManagedTokenCredential): string

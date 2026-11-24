@@ -8,6 +8,7 @@ import {
   E_ACCOUNT_KIT_EMAIL_ALREADY_REGISTERED,
   E_ACCOUNT_KIT_IDENTITY_NOT_CONFIRMED,
   E_INVALID_CREDENTIALS,
+  E_ACCOUNT_KIT_INVALID_CONFIGURATION,
   E_ACCOUNT_KIT_INVALID_INPUT,
   E_ACCOUNT_KIT_INVALID_TOKEN,
   E_ACCOUNT_KIT_INVITATION_PENDING,
@@ -28,6 +29,18 @@ test.group('account kit errors', () => {
     assert.notInstanceOf(error, E_ACCOUNT_KIT_AUTHORIZATION)
     assert.isUndefined(error.cause)
   })
+  test('configuration exceptions keep their code and status when options carry extra fields', ({
+    assert,
+  }) => {
+    const cause = new Error('bad configuration value')
+    const options = { cause, code: 'E_OTHER', status: 200 }
+    const error = new E_ACCOUNT_KIT_INVALID_CONFIGURATION('users', 'Invalid adapter', options)
+
+    assert.equal(error.code, 'E_ACCOUNT_KIT_INVALID_CONFIGURATION')
+    assert.equal(error.status, 500)
+    assert.equal(error.cause, cause)
+  })
+
   test('class statuses are the documented HTTP contract', ({ assert }) => {
     assert.equal(new E_INVALID_CREDENTIALS().status, 401)
     assert.equal(new E_ACCOUNT_KIT_INVALID_TOKEN().status, 400)
