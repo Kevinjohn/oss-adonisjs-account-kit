@@ -321,7 +321,7 @@ test.group('expired-token pruning', (group) => {
   })
 
   test('rejects invalid batch sizes before querying', async ({ assert }) => {
-    // Any use of this database fails with a different error, so a InvalidArgumentsException proves no query ran.
+    // Any use of this database fails with a different error, so an InvalidArgumentsException proves no query ran.
     const untouched = new Proxy({} as typeof kit.db, {
       get() {
         throw new Error('database used')
