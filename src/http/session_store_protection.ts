@@ -44,7 +44,7 @@ export function protectManagedSessionConfig<Config extends ManagedSessionConfigu
     const selected = config.stores[config.store]
     if (typeof selected !== 'function') throw new InvalidArgumentsException(setupError)
 
-    const verifiedFactory: ManagedSessionStoreFactory = (context, sessionConfig) => {
+    const createVerifiedStore: ManagedSessionStoreFactory = (context, sessionConfig) => {
       // Native SessionCollection passes null; it needs the same store check but no request marker.
       const httpContext = context && typeof context === 'object' ? context : null
       if (httpContext) verifiedRequests.delete(httpContext)
@@ -60,10 +60,10 @@ export function protectManagedSessionConfig<Config extends ManagedSessionConfigu
           'Managed session authentication requires a revocable server-side store'
         )
       if (httpContext)
-        verifiedRequests.set(httpContext, { config: sessionConfig, factory: verifiedFactory })
+        verifiedRequests.set(httpContext, { config: sessionConfig, factory: createVerifiedStore })
       return store
     }
-    config.stores[config.store] = verifiedFactory
+    config.stores[config.store] = createVerifiedStore
     return config
   })
 }

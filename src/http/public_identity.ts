@@ -1,6 +1,6 @@
 export {
-  publicHeaders,
-  publicIdentity,
+  buildPublicErrorHeaders,
+  mapPublicErrorIdentity,
   type ProofKind,
   type PublicIdentity,
 } from '../error_identity.js'

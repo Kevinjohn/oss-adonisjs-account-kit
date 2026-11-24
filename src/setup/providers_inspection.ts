@@ -1,5 +1,5 @@
 import type * as TypeScript from 'typescript'
-import { lazyImportPath, type SetupSource } from './ts_source.js'
+import { extractLazyImportPath, type SetupSource } from './ts_source.js'
 
 /**
  * Reads one named property of an object literal, or returns null when the caller cannot read it
@@ -43,7 +43,7 @@ export function inspectProviders(
       const file = read.entry(node, 'file')
       loader = file && ts.isPropertyAssignment(file) ? file.initializer : undefined
     }
-    return { node, isObject, path: loader ? lazyImportPath(source, loader) : null }
+    return { node, isObject, path: loader ? extractLazyImportPath(source, loader) : null }
   })
   return { status: 'array', array, entries }
 }

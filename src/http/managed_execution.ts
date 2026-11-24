@@ -2,12 +2,12 @@ import type { HttpContext } from '@adonisjs/core/http'
 import type { CurrentAccount } from '../types.js'
 import { InvalidSessionError } from '../errors.js'
 import { applyProofHeaders } from './proof_headers.js'
-import { recoveryDiagnostic, buildPublicAccountBody } from './response_helpers.js'
+import { logRecoveryDiagnostic, buildPublicAccountBody } from './response_helpers.js'
 import type { ManagedHandler, ManagedRoutesOptions } from './managed_types.js'
 import type { ManagedEndpointName, ManagedRoute } from './routes.js'
 import { InvalidArgumentsException } from '@adonisjs/core/exceptions'
 
-function responseHeaders(context: HttpContext, route: ManagedRoute): void {
+function applyRouteResponseHeaders(context: HttpContext, route: ManagedRoute): void {
   if (!route.proof) return
   applyProofHeaders(context.response)
 }
@@ -28,7 +28,7 @@ export async function executeManagedRequest<Credential>({
   methodsEnabled,
   handlers,
 }: ManagedRequestExecution<Credential>): Promise<unknown> {
-  responseHeaders(context, route)
+  applyRouteResponseHeaders(context, route)
   const { request } = context
   const csrfToken = (request as typeof request & { csrfToken?: string }).csrfToken
   if (
@@ -66,7 +66,7 @@ export async function executeManagedRequest<Credential>({
     try {
       return await represent(value)
     } catch {
-      recoveryDiagnostic(context, route.name, 'representation_failed')
+      logRecoveryDiagnostic(context, route.name, 'representation_failed')
       return buildPublicAccountBody(value)
     }
   }

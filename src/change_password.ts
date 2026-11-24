@@ -1,8 +1,8 @@
 // Password change: confirms the actor, sets the new password and ends older credentials.
 import { randomUUID } from 'node:crypto'
-import { credentialsChanged, revision } from './credential_revision.js'
+import { invalidateChangedCredentials, revision } from './credential_revision.js'
 import { transaction } from './db.js'
-import { finishCommitted, lifecycle, postCommit, settleCommitted } from './effects.js'
+import { finishCommitted, createLifecycleEffect, postCommit, settleCommitted } from './effects.js'
 import { InvalidInputError } from './errors.js'
 import { isPasswordAllowed } from './password.js'
 import { rememberPasswordChangeRevision } from './password_change_revision.js'
@@ -38,7 +38,7 @@ export async function changePassword(
         'email_verification_tokens',
       ])
       const reloaded = await requireUser(deps.config, actor.id, trx)
-      await credentialsChanged(
+      await invalidateChangedCredentials(
         trx,
         deps.config,
         reloaded,
@@ -57,7 +57,11 @@ export async function changePassword(
       postCommit('Credentials changed but a follow-up failed', [
         { kind: 'observer', run: () => deps.config.onCredentialsChanged?.(user, context) },
         { kind: 'delivery', run: () => deps.config.notify.passwordChanged(user, context) },
-        lifecycle(deps.config, { type: 'password.changed', userId: user.id, operationId }),
+        createLifecycleEffect(deps.config, {
+          type: 'password.changed',
+          userId: user.id,
+          operationId,
+        }),
       ])
     )
   } catch (error) {

@@ -18,6 +18,6 @@ export async function recordRevocation(
 }
 
 /** The outcome of a revocation that committed before `error` was thrown, if any. */
-export function revocationOutcome(error: unknown): { current: boolean } | undefined {
+export function getRevocationOutcome(error: unknown): { current: boolean } | undefined {
   return error instanceof Error ? revocationOutcomesByError.get(error) : undefined
 }

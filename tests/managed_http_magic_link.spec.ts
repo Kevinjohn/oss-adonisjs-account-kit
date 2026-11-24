@@ -1,6 +1,6 @@
 import { test } from '@japa/runner'
 import { registerManagedRoutes } from '../src/http/managed.js'
-import { clientChallengeFor } from '../src/magic_link.js'
+import { deriveClientChallenge } from '../src/magic_link.js'
 import { hashToken } from '../src/tokens.js'
 import type { AccountKitConfig, UserId } from '../src/types.js'
 import { useTestApp } from './helpers/app.js'
@@ -78,7 +78,7 @@ test.group('managed magic-link routes', (group) => {
       .verifier
     assert.match(verifier, /^[\w-]{43}$/)
     const row = await kit.db.from('login_link_tokens').first()
-    assert.equal(row.client_challenge, clientChallengeFor(verifier))
+    assert.equal(row.client_challenge, deriveClientChallenge(verifier))
     assert.equal(row.hash, hashToken(linkToken()))
 
     const done = await call('POST /api/v1/auth/magic-link/:token', {}, { token: linkToken() })
@@ -272,12 +272,12 @@ test.group('managed magic-link routes', (group) => {
     const { call, store } = mount('session')
     await call('POST /api/v1/auth/magic-link', {
       email: user.email,
-      clientChallenge: clientChallengeFor('c'.repeat(64)),
+      clientChallenge: deriveClientChallenge('c'.repeat(64)),
     })
     const row = await kit.db.from('login_link_tokens').first()
     assert.equal(
       row.client_challenge,
-      clientChallengeFor(
+      deriveClientChallenge(
         (store.values.get('accountKit.magicLink.verifier') as { verifier: string }).verifier
       )
     )
@@ -329,7 +329,7 @@ test.group('managed magic-link routes', (group) => {
     assert.equal(missing.body.errors[0].code, 'E_ACCOUNT_KIT_INVALID_INPUT')
     const requested = await call('POST /api/v1/auth/magic-link', {
       email: user.email,
-      clientChallenge: clientChallengeFor(verifier),
+      clientChallenge: deriveClientChallenge(verifier),
     })
     assert.deepEqual(requested, { status: 202, body: generic, headers: {} })
 
@@ -350,7 +350,7 @@ test.group('managed magic-link routes', (group) => {
     const { call, linkToken, service } = mount('access_tokens')
     await call('POST /api/v1/auth/magic-link', {
       email: user.email,
-      clientChallenge: clientChallengeFor('c'.repeat(64)),
+      clientChallenge: deriveClientChallenge('c'.repeat(64)),
     })
     const token = linkToken()
     const wrong = await call(
@@ -367,7 +367,7 @@ test.group('managed magic-link routes', (group) => {
     const { call, linkToken, service } = mount('access_tokens')
     await call('POST /api/v1/auth/magic-link', {
       email: user.email,
-      clientChallenge: clientChallengeFor('c'.repeat(64)),
+      clientChallenge: deriveClientChallenge('c'.repeat(64)),
     })
     const token = linkToken()
     for (let index = 0; index < 2; index++) {

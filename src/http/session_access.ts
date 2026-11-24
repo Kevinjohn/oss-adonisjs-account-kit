@@ -9,7 +9,7 @@ export interface SessionStore {
 }
 
 /** The request's session store, or `undefined` when session middleware is not installed. */
-export function optionalSession(context: HttpContext): SessionStore | undefined {
+export function getOptionalSession(context: HttpContext): SessionStore | undefined {
   const value = (context as HttpContext & { session?: SessionStore }).session
   return value &&
     typeof value.get === 'function' &&

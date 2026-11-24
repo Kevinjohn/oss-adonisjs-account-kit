@@ -1,14 +1,17 @@
 import type { SetupInspection } from './types.js'
 import {
-  defaultImportName,
-  directObject,
-  directProperty,
+  getDefaultImportName,
+  matchDirectObject,
+  getDirectProperty,
   hasUnsafeObjectEntries,
-  importedName,
+  getImportedBindingName,
   parseSetupSource,
-  topLevelConfig,
+  inspectTopLevelConfig,
 } from './ts_source.js'
-import { SelectedEnvironmentValueError, selectedEnvName } from './selected_environment.js'
+import {
+  SelectedEnvironmentValueError,
+  resolveEnvironmentNameFromGetter,
+} from './selected_environment.js'
 
 /**
  * Finds the connection a Lucid database config selects, reading `DB_CONNECTION` from the selected
@@ -22,13 +25,13 @@ export async function inspectDatabaseConnection(
 ) {
   if (!sourceText) return null
   const source = await parseSetupSource(sourceText)
-  const configName = importedName(source, '@adonisjs/lucid', 'defineConfig')
-  const config = configName && topLevelConfig(source, configName)?.object
+  const configName = getImportedBindingName(source, '@adonisjs/lucid', 'defineConfig')
+  const config = configName && inspectTopLevelConfig(source, configName)?.object
   if (!config || hasUnsafeObjectEntries(source, config)) return null
-  const connection = directProperty(source, config, 'connection')?.initializer
-  const connections = directObject(
+  const connection = getDirectProperty(source, config, 'connection')?.initializer
+  const connections = matchDirectObject(
     source,
-    directProperty(source, config, 'connections')?.initializer ?? config
+    getDirectProperty(source, config, 'connections')?.initializer ?? config
   )
   if (
     !connection ||
@@ -44,10 +47,10 @@ export async function inspectDatabaseConnection(
     // An empty, repeated or indirect DB_CONNECTION is unresolved, not a setup crash.
     try {
       selected =
-        (await selectedEnvName(
+        (await resolveEnvironmentNameFromGetter(
           source,
           root,
-          defaultImportName(source, '#start/env'),
+          getDefaultImportName(source, '#start/env'),
           connection,
           'DB_CONNECTION',
           env
@@ -58,9 +61,9 @@ export async function inspectDatabaseConnection(
     }
   }
   if (!selected) return null
-  const selectedConnection = directObject(
+  const selectedConnection = matchDirectObject(
     source,
-    directProperty(source, connections, selected)?.initializer ?? connections
+    getDirectProperty(source, connections, selected)?.initializer ?? connections
   )
   if (
     !selectedConnection ||
@@ -80,7 +83,7 @@ export async function inspectDatabaseKind(
   if (!inspected) return 'unknown'
   const { source, connection } = inspected
   const { ts } = source
-  const client = directProperty(source, connection, 'client')?.initializer
+  const client = getDirectProperty(source, connection, 'client')?.initializer
   if (!client || !ts.isStringLiteral(client)) return 'unknown'
   if (['better-sqlite3', 'sqlite3'].includes(client.text)) return 'sqlite'
   if (['pg', 'postgres', 'postgresql'].includes(client.text)) return 'postgres'

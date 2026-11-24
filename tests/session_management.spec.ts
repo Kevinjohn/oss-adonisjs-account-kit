@@ -6,7 +6,7 @@ import {
   PostCommitError,
   SessionNotFoundError,
 } from '../src/errors.js'
-import { revocationOutcome } from '../src/session_revocation.js'
+import { getRevocationOutcome } from '../src/session_revocation.js'
 import type {
   AccountKitConfig,
   CredentialChangeContext,
@@ -371,9 +371,9 @@ test.group('sign-in management with sessions', (group) => {
       .revoke({ current: mine, id: row.id })
       .catch((caught: unknown) => caught)
     assert.instanceOf(error, PostCommitError)
-    assert.deepEqual(revocationOutcome(error), { current: true })
+    assert.deepEqual(getRevocationOutcome(error), { current: true })
     assert.lengthOf(await kit.db.from('account_sessions'), 0)
-    assert.isUndefined(revocationOutcome(new PostCommitError('unrelated')))
+    assert.isUndefined(getRevocationOutcome(new PostCommitError('unrelated')))
   })
 
   test('every operation needs the capability', async ({ assert }) => {

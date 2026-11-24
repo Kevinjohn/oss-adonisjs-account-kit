@@ -2,7 +2,7 @@ import { DateTime } from 'luxon'
 import { isEmailShaped, normalizeEmail } from './email.js'
 import { matchInvitation } from './invitation_match.js'
 import { mapRegistrationFields } from './registration_fields.js'
-import { identity } from './social_links.js'
+import { mapSocialIdentityRow } from './social_links.js'
 import { SocialEmailMissingError, SocialTransactionError } from './errors.js'
 import { readSqlTimestamp, type Dependencies } from './social_shared.js'
 import type { AccountUser, SocialIdentity, SocialProviderName, Trx, UserId } from './types.js'
@@ -16,7 +16,7 @@ export interface ProviderProfile {
   avatarUrl?: string | null
 }
 
-export function checkedProfile(value: ProviderProfile): ProviderProfile {
+export function requireProviderProfile(value: ProviderProfile): ProviderProfile {
   if (
     !value ||
     typeof value.subject !== 'string' ||
@@ -66,7 +66,7 @@ export async function createAssociation(
     .where('provider_user_id', profile.subject)
     .first()
   if (!created) throw new SocialTransactionError()
-  return identity(created)
+  return mapSocialIdentityRow(created)
 }
 
 export async function createAccount(

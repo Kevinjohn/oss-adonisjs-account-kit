@@ -4,10 +4,10 @@ import { test } from '@japa/runner'
 import { inspectSetup } from '../src/setup/inspect.js'
 import { planSetup } from '../src/setup/plan.js'
 import { applySetup } from '../src/setup/apply.js'
-import { migrationContent, migrationTemplate } from '../src/setup/migration_source.js'
-import { migrationNames, migrationSchema } from '../src/setup/migration_definitions.js'
-import { parseSetupChoices } from '../src/setup/parse.js'
-import { orderedMigrations } from '../src/setup/migration_order.js'
+import { migrationContent, requireMigrationTemplatePath } from '../src/setup/migration_source.js'
+import { migrationNames, buildMigrationSchema } from '../src/setup/migration_definitions.js'
+import { requireSetupChoices } from '../src/setup/parse.js'
+import { orderMigrations } from '../src/setup/migration_order.js'
 import { fixture, registerSetupTeardown } from './helpers/setup_project_fixture.js'
 
 test.group('guided migration destinations', (group) => {
@@ -301,7 +301,10 @@ export default defineConfig({ connection: 'sqlite', connections: { sqlite: { cli
     await mkdir(join(root, directory), { recursive: true })
     const operation = 'create_account_invitations'
     const path = `${directory}/1999999999999_account_kit_${operation}.ts`
-    const contents = await migrationContent(await migrationTemplate(operation), migrationSchema())
+    const contents = await migrationContent(
+      await requireMigrationTemplatePath(operation),
+      buildMigrationSchema()
+    )
     await writeFile(join(root, path), contents)
     const hidden = join(root, 'database/migrations/.archive')
     const linked = join(root, 'linked-migrations')
@@ -336,7 +339,7 @@ export default defineConfig({ connection: 'sqlite', connections: { sqlite: { cli
 
   test('plans the documented API migration inventory on a fresh app', async ({ assert }) => {
     const { root } = await fixture()
-    const choices = parseSetupChoices(
+    const choices = requireSetupChoices(
       JSON.parse(
         await readFile(
           new URL('../docs/reference/setup_choices.api.example.json', import.meta.url),
@@ -434,7 +437,7 @@ export default defineConfig({ connection: 'sqlite', connections: { sqlite: { cli
   test('refuses two existing copies of one Account Kit migration', ({ assert }) => {
     assert.throws(
       () =>
-        orderedMigrations(
+        orderMigrations(
           [
             '1790000000000_account_kit_create_password_reset_tokens.ts',
             'prior/1780000000000_account_kit_create_password_reset_tokens.ts',
@@ -449,22 +452,22 @@ export default defineConfig({ connection: 'sqlite', connections: { sqlite: { cli
     assert,
   }) => {
     assert.throws(
-      () => orderedMigrations(['prior/create_users.ts'], 1790000000000),
+      () => orderMigrations(['prior/create_users.ts'], 1790000000000),
       /Cannot establish migration order/
     )
   })
 
   test('refuses new migrations that cross a timestamp width boundary mid-plan', ({ assert }) => {
     assert.throws(
-      () => orderedMigrations(['9999999999998_create_users.ts'], 1790000000000),
+      () => orderMigrations(['9999999999998_create_users.ts'], 1790000000000),
       /mixed-width/
     )
   })
 
   test('refuses timestamp prefixes for which numeric and lexical orders disagree', ({ assert }) => {
-    assert.throws(() => orderedMigrations(['9999_create_users.ts'], 1790000000000), /mixed-width/)
+    assert.throws(() => orderMigrations(['9999_create_users.ts'], 1790000000000), /mixed-width/)
     assert.throws(
-      () => orderedMigrations(['999999999999999999999999_create_users.ts'], 1790000000000),
+      () => orderMigrations(['999999999999999999999999_create_users.ts'], 1790000000000),
       /safe integer/
     )
   })

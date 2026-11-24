@@ -7,18 +7,18 @@ import { requireAuthentication } from './authentication_config.js'
 import { buildAccountProjection } from './account_projection.js'
 import { lockUser, transaction } from './db.js'
 import { normalizeEmail } from './email.js'
-import { credentialsChanged, revision } from './credential_revision.js'
+import { invalidateChangedCredentials, revision } from './credential_revision.js'
 import { establishCredential } from './credential_issuance.js'
 import {
   requireLiveSession,
-  sessionRegistryEnabled,
+  isSessionRegistryEnabled,
   sessionTable,
   touchSession,
   type LiveSession,
 } from './session_registry.js'
 import { waitForFloor } from './timing.js'
 import { hashToken } from './tokens.js'
-import { retirementImpact } from './login_method_retirement.js'
+import { assessRetirementImpact } from './login_method_retirement.js'
 import { finishCommitted, postCommit, settleCommitted } from './effects.js'
 import {
   InvalidCredentialsError,
@@ -41,17 +41,17 @@ import type {
 } from './types.js'
 import type { ServiceDependencies } from './service_dependencies.js'
 
-export async function currentInTransaction(
+export async function requireCurrentAccountInTransaction(
   deps: Pick<ServiceDependencies, 'config'>,
   input: CurrentAccountInput,
   trx: Trx
 ): Promise<CurrentAccount> {
-  const { account } = await currentWithSessionInTransaction(deps, input, trx)
+  const { account } = await requireCurrentAccountAndSession(deps, input, trx)
   return account
 }
 
-/** `currentInTransaction`, also returning the registry session it accepted, if any. */
-async function currentWithSessionInTransaction(
+/** Requires the current account and returns the accepted registry session, when present. */
+async function requireCurrentAccountAndSession(
   deps: Pick<ServiceDependencies, 'config'>,
   input: CurrentAccountInput,
   trx: Trx
@@ -68,7 +68,7 @@ async function currentWithSessionInTransaction(
       input.revision !== (await revision(trx, deps.config, input.userId))
     )
       throw new InvalidSessionError()
-    if (sessionRegistryEnabled(deps.config))
+    if (isSessionRegistryEnabled(deps.config))
       session = await requireLiveSession(trx, input.userId, input.sessionHandle)
   } else {
     if (
@@ -127,7 +127,7 @@ async function reserveAttempt(
   }
 }
 
-export function authenticationService(deps: ServiceDependencies) {
+export function createAuthenticationService(deps: ServiceDependencies) {
   return {
     /** Read-only impact of the login methods that remain after a proposed change. */
     async retirementImpact(input: {
@@ -149,9 +149,9 @@ export function authenticationService(deps: ServiceDependencies) {
       const hasSocialLogin =
         deps.config.enabled.includes('socialAuthentication') &&
         Object.keys(deps.config.socialAuthentication?.providers ?? {}).length > 0
-      if (!deps.config.authentication && !hasSocialLogin) return retirementImpact(deps, input)
+      if (!deps.config.authentication && !hasSocialLogin) return assessRetirementImpact(deps, input)
       requireAuthentication(deps.config)
-      return retirementImpact(deps, input)
+      return assessRetirementImpact(deps, input)
     },
 
     /**
@@ -178,7 +178,7 @@ export function authenticationService(deps: ServiceDependencies) {
         throw new InvalidCredentialsError()
 
       const email = normalizeEmail(input.email)
-      const key = deps.throttler.key
+      const key = deps.throttler.deriveKey
       const clientKey = key('login:client', input.clientKey)
       const identityKey = key('login:identity', `${input.clientKey}\0${email}`)
       // The limiter normalises the options it receives in place; give it copies of the frozen budgets.
@@ -246,12 +246,14 @@ export function authenticationService(deps: ServiceDependencies) {
      * revoked or is older than the latest credential change.
      */
     current(input: CurrentAccountInput): Promise<CurrentAccount> {
-      return transaction(deps.db, (trx) => currentInTransaction(deps, input, trx))
+      return transaction(deps.db, (trx) => requireCurrentAccountInTransaction(deps, input, trx))
     },
 
     /** Like `current`, and also throws `UnverifiedEmailError` until the address is confirmed. */
     async requireActive(input: CurrentAccountInput): Promise<CurrentAccount> {
-      const account = await transaction(deps.db, (trx) => currentInTransaction(deps, input, trx))
+      const account = await transaction(deps.db, (trx) =>
+        requireCurrentAccountInTransaction(deps, input, trx)
+      )
       if (!account.active) throw new UnverifiedEmailError()
       return account
     },
@@ -271,7 +273,7 @@ export function authenticationService(deps: ServiceDependencies) {
       run: (context: CurrentAccountContext) => Promise<T>
     ): Promise<T> {
       return transaction(deps.db, async (trx) => {
-        const { account, session } = await currentWithSessionInTransaction(deps, input, trx)
+        const { account, session } = await requireCurrentAccountAndSession(deps, input, trx)
         await lockSignIn(deps, trx, input, session)
         const userId = account.id
         return run({
@@ -303,7 +305,7 @@ export function authenticationService(deps: ServiceDependencies) {
       current?: CurrentAccountInput
     ): Promise<void> {
       requireAuthentication(deps.config)
-      if (current?.sessionHandle && sessionRegistryEnabled(deps.config))
+      if (current?.sessionHandle && isSessionRegistryEnabled(deps.config))
         await deps.db
           .from(sessionTable)
           .where('handle_hash', hashToken(current.sessionHandle))
@@ -333,7 +335,7 @@ export function authenticationService(deps: ServiceDependencies) {
             userId: current.id,
           }
           await input.change(current, trx)
-          await credentialsChanged(trx, deps.config, current, context)
+          await invalidateChangedCredentials(trx, deps.config, current, context)
           return { user: current, context }
         })
       )

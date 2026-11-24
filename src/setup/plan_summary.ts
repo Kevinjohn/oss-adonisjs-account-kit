@@ -80,7 +80,7 @@ export function planSummary({
     preview: options.apply !== true,
     changes,
     diagnostics,
-    differences: state.existingChoices ? changedFields(state.existingChoices, choices) : [],
+    differences: state.existingChoices ? listChangedFields(state.existingChoices, choices) : [],
     retirementImpact: options.retirementImpact ?? null,
     prerequisites,
     endpoints: [...new Set(endpoints)],
@@ -125,7 +125,7 @@ export function planSummary({
   }
 }
 
-export function changedFields(before: unknown, after: unknown, path = ''): string[] {
+export function listChangedFields(before: unknown, after: unknown, path = ''): string[] {
   if (JSON.stringify(before) === JSON.stringify(after)) return []
   if (
     !before ||
@@ -139,6 +139,6 @@ export function changedFields(before: unknown, after: unknown, path = ''): strin
   const oldRecord = before as Record<string, unknown>
   const newRecord = after as Record<string, unknown>
   return [...new Set([...Object.keys(oldRecord), ...Object.keys(newRecord)])].flatMap((key) =>
-    changedFields(oldRecord[key], newRecord[key], path ? `${path}.${key}` : key)
+    listChangedFields(oldRecord[key], newRecord[key], path ? `${path}.${key}` : key)
   )
 }

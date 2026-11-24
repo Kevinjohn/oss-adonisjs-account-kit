@@ -6,7 +6,7 @@ import { planSetup } from '../src/setup/plan.js'
 import { applySetup } from '../src/setup/apply.js'
 import type { SetupChoices, SetupInspection } from '../src/setup/types.js'
 import { collectSetupChoices } from '../src/setup/prompts.js'
-import { parseSetupChoices } from '../src/setup/parse.js'
+import { requireSetupChoices } from '../src/setup/parse.js'
 import type RetirementImpact from './retirement_impact.js'
 import { writeWarning } from './operator_output.js'
 
@@ -39,7 +39,7 @@ export default class SetupAccountKit extends BaseCommand {
   })
   declare retirementMaintenanceWindow: boolean
 
-  async interactiveChoices(
+  async collectInteractiveChoices(
     askOverride?: (question: string) => Promise<string>,
     initialChoices?: SetupChoices
   ): Promise<SetupChoices> {
@@ -58,13 +58,13 @@ export default class SetupAccountKit extends BaseCommand {
     }
     if (this.input) {
       const content = await readFile(resolve(root, this.input), 'utf8')
-      return parseSetupChoices(JSON.parse(content))
+      return requireSetupChoices(JSON.parse(content))
     }
-    return this.interactiveChoices(undefined, state.existingChoices ?? undefined)
+    return this.collectInteractiveChoices(undefined, state.existingChoices ?? undefined)
   }
 
   /** Count accounts the choices would retire, through the booted read-only inventory command. */
-  private async runtimeInventory(choices: SetupChoices): Promise<{
+  private async readRetirementInventory(choices: SetupChoices): Promise<{
     retirementImpact: RetirementImpact['impact'] | null
     runtimeInventoryUnavailable: boolean
   }> {
@@ -126,7 +126,7 @@ export default class SetupAccountKit extends BaseCommand {
     }
     const choices = await this.loadChoices(root, state)
     const { retirementImpact, runtimeInventoryUnavailable } = state.existingChoices
-      ? await this.runtimeInventory(choices)
+      ? await this.readRetirementInventory(choices)
       : { retirementImpact: null, runtimeInventoryUnavailable: false }
     const plan = await planSetup(choices, state, {
       apply: this.apply && !this.check,

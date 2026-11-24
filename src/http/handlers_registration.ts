@@ -6,14 +6,14 @@ import type { ManagedHandler, ManagedRequest } from './managed_types.js'
 import {
   renderIssuedAccountBody,
   sendPasswordPolicyErrorResponse,
-  recoveryDiagnostic,
+  logRecoveryDiagnostic,
   reportCommittedFailure,
   sendRuleViolationResponse,
   signInLabel,
 } from './response_helpers.js'
 import { signupValidator } from './validators.js'
 
-async function signup<Credential>({
+async function signUp<Credential>({
   route,
   context,
   kit,
@@ -58,12 +58,12 @@ async function signup<Credential>({
       options.guard.forRequest(context)
     )
   } catch {
-    recoveryDiagnostic(context, route.name, 'authentication_failed')
+    logRecoveryDiagnostic(context, route.name, 'authentication_failed')
     return response.created({ registered: true, authenticated: false })
   }
   return response.created(await renderIssuedAccountBody({ options, representIssued }, result))
 }
 
 export const registrationHandlers = {
-  'auth.signup': signup,
+  'auth.signup': signUp,
 } satisfies Partial<Record<ManagedEndpointName, ManagedHandler>>

@@ -1,5 +1,5 @@
 /** Confirm the runtime package alias resolves to the exact contained source we inspect. */
-export function conventionalSetupImport(
+export function hasConventionalSetupImport(
   manifestText: string | undefined,
   specifier: string,
   wildcard: string,

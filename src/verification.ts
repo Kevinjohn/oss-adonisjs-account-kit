@@ -1,10 +1,16 @@
 import { randomUUID } from 'node:crypto'
 import { sqlTimestamp } from './timestamps.js'
-import { credentialsChanged } from './credential_revision.js'
+import { invalidateChangedCredentials } from './credential_revision.js'
 import { isActiveAccount } from './account_projection.js'
 import { DateTime } from 'luxon'
 import { consumeUserToken, lockUser, transaction } from './db.js'
-import { deliver, finishCommitted, lifecycle, postCommit, settleCommitted } from './effects.js'
+import {
+  deliver,
+  finishCommitted,
+  createLifecycleEffect,
+  postCommit,
+  settleCommitted,
+} from './effects.js'
 import { InvalidInputError, InvalidTokenError } from './errors.js'
 import { emitInvitationAccepted } from './invitation_match.js'
 import { isPasswordAllowed } from './password.js'
@@ -138,7 +144,7 @@ export async function completeVerification(
       const invitationIds = await activateClaim(trx, deps.config, user)
       const reloaded = await deps.config.users.findById(user.id, trx)
       if (!reloaded) throw new InvalidTokenError()
-      await credentialsChanged(trx, deps.config, reloaded, {
+      await invalidateChangedCredentials(trx, deps.config, reloaded, {
         operation: 'registration_claim',
         operationId,
         userId: user.id,
@@ -158,7 +164,7 @@ export async function completeVerification(
             userId: claimedUser.id,
           }),
       },
-      lifecycle(deps.config, {
+      createLifecycleEffect(deps.config, {
         type: 'verification.completed',
         userId: claimedUser.id,
         operationId,

@@ -11,7 +11,7 @@ const resolutions = new WeakMap<
   { config: ResolvedConfig; resolved: Promise<ResolvedConfig> }
 >()
 
-function bothPlaces(field: string): never {
+function rejectDuplicateSetting(field: string): never {
   throw new InvalidConfigurationError(
     field,
     `account_kit: ${field} is set in both config/account_kit.ts and the registered callbacks`
@@ -30,11 +30,12 @@ function mergeCallbacks(input: AccountKitConfig, callbacks: AccountKitCallbacks)
     'onAccountDeletingTransaction',
   ] as const) {
     if (callbacks[field] === undefined) continue
-    if (input[field] !== undefined) bothPlaces(field)
+    if (input[field] !== undefined) rejectDuplicateSetting(field)
     merged[field] = callbacks[field]
   }
   if (callbacks.mapRegistrationFields !== undefined) {
-    if (input.registration?.mapFields !== undefined) bothPlaces('registration.mapFields')
+    if (input.registration?.mapFields !== undefined)
+      rejectDuplicateSetting('registration.mapFields')
     merged.registration = Object.assign(Object.create(input.registration ?? null), {
       mapFields: callbacks.mapRegistrationFields,
     })

@@ -1,10 +1,10 @@
 import { test } from '@japa/runner'
-import { defaultSetupChoices } from '../src/setup/defaults.js'
-import { parseSetupChoices } from '../src/setup/parse.js'
+import { buildDefaultSetupChoices } from '../src/setup/defaults.js'
+import { requireSetupChoices } from '../src/setup/parse.js'
 
 test.group('setup choice parsing', () => {
   test('standard defaults require explicit invitation and social opt-in', ({ assert }) => {
-    const choices = defaultSetupChoices()
+    const choices = buildDefaultSetupChoices()
     assert.notInclude(choices.features, 'invitations')
     assert.notInclude(choices.managed, 'invitations')
     assert.equal(choices.social.status, 'not-applicable')
@@ -14,9 +14,9 @@ test.group('setup choice parsing', () => {
   test('semantic setup choices reject invalid registration, duration and abilities', ({
     assert,
   }) => {
-    const choices = defaultSetupChoices()
+    const choices = buildDefaultSetupChoices()
     choices.policy.registration = 'typo' as never
-    assert.throws(() => parseSetupChoices(choices), /policy.registration/)
+    assert.throws(() => requireSetupChoices(choices), /policy.registration/)
     choices.policy.registration = 'open'
     choices.authentication = {
       strategy: 'access_tokens',
@@ -24,38 +24,38 @@ test.group('setup choice parsing', () => {
       token: { revocation: true, lifetime: 'nonsense', abilities: ['*'] },
       applicationRouteRevocation: true,
     }
-    assert.throws(() => parseSetupChoices(choices), /authentication.token.lifetime/)
+    assert.throws(() => requireSetupChoices(choices), /authentication.token.lifetime/)
     choices.authentication.token!.lifetime = '7d'
     choices.authentication.token!.abilities = ['']
-    assert.throws(() => parseSetupChoices(choices), /authentication.token.abilities/)
+    assert.throws(() => requireSetupChoices(choices), /authentication.token.abilities/)
   })
 
   test('rejects an invalid mode and an unsupported version', ({ assert }) => {
-    const choices = defaultSetupChoices()
+    const choices = buildDefaultSetupChoices()
     assert.throws(
-      () => parseSetupChoices({ ...choices, mode: 'typo' }),
+      () => requireSetupChoices({ ...choices, mode: 'typo' }),
       'mode: choose services or managed'
     )
-    assert.throws(() => parseSetupChoices({ ...choices, version: 2 }), 'version: expected 1')
+    assert.throws(() => requireSetupChoices({ ...choices, version: 2 }), 'version: expected 1')
   })
 
   test('rejects an unknown authentication strategy and non-boolean password rules', ({
     assert,
   }) => {
-    const choices = defaultSetupChoices()
+    const choices = buildDefaultSetupChoices()
     choices.authentication = {
       strategy: 'jwt' as never,
       guard: 'web',
       applicationRouteRevocation: true,
     }
     assert.throws(
-      () => parseSetupChoices(choices),
+      () => requireSetupChoices(choices),
       'authentication.strategy: choose session or access_tokens'
     )
     for (const key of ['letters', 'mixedCase', 'numbers', 'symbols'] as const) {
-      const policy = defaultSetupChoices()
+      const policy = buildDefaultSetupChoices()
       policy.policy.password[key] = 'yes' as never
-      assert.throws(() => parseSetupChoices(policy), `policy.password.${key}: expected a boolean`)
+      assert.throws(() => requireSetupChoices(policy), `policy.password.${key}: expected a boolean`)
     }
   })
 })

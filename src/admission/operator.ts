@@ -33,7 +33,7 @@ async function lockSubject(
 }
 
 /** Approve or revoke by email, with the same transitions as an approver and no actor. */
-export async function operatorDecision(
+export async function applyOperatorDecision(
   deps: AdmissionContext,
   input: { email: string },
   transition: Extract<AdmissionTransition, 'approve' | 'revoke'>
@@ -60,7 +60,7 @@ export async function operatorDecision(
  * Record operator invitation evidence for an existing account. `role` is stored on the record
  * only; it grants nothing. Refuses an account that already has evidence.
  */
-export async function operatorGrantInvitation(
+export async function grantOperatorInvitation(
   deps: AdmissionContext,
   input: { email: string; role?: string }
 ): Promise<AdmissionRecord> {

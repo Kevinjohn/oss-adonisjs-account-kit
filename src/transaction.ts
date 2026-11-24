@@ -120,12 +120,12 @@ async function runAndCommit<T>(
 const committedResults = new WeakMap<PostCommitError, unknown>()
 
 /** Internal operation data is retained privately, never placed on a public committed error. */
-export function committedResult<T>(error: unknown): { value: T } | null {
+export function getCommittedResult<T>(error: unknown): { value: T } | null {
   if (!(error instanceof PostCommitError) || !committedResults.has(error)) return null
   return { value: committedResults.get(error) as T }
 }
 
-function committedFailure<T>(cause: unknown, result: T): PostCommitError {
+function createCommittedFailure<T>(cause: unknown, result: T): PostCommitError {
   const error = new PostCommitError('Account change committed but a follow-up failed', { cause })
   committedResults.set(error, result)
   return error
@@ -186,8 +186,8 @@ function trackCommit<T>() {
       result = value
     },
     /** A failure after the commit becomes a `PostCommitError`; any other is returned unchanged. */
-    failure: (error: unknown): unknown =>
-      committed ? committedFailure(error, result as T) : error,
+    mapTransactionFailure: (error: unknown): unknown =>
+      committed ? createCommittedFailure(error, result as T) : error,
   }
 }
 
@@ -212,7 +212,7 @@ async function beginSQLiteTransaction(
 }
 
 /** One SQLite attempt on a dedicated connection, with busy_timeout off and cleanup afterwards. */
-async function sqliteAttempt<T>(
+async function runSqliteTransactionAttempt<T>(
   connection: Connection,
   callback: (trx: Trx) => Promise<T>,
   commit: ReturnType<typeof trackCommit<T>>
@@ -266,7 +266,7 @@ async function sqliteAttempt<T>(
 }
 
 /** Retry SQLite attempts on SQLITE_BUSY until the deadline; never retry after a commit. */
-async function sqliteTransaction<T>(
+async function runSqliteTransaction<T>(
   connection: Connection,
   callback: (trx: Trx) => Promise<T>
 ): Promise<T> {
@@ -274,9 +274,9 @@ async function sqliteTransaction<T>(
   for (;;) {
     const commit = trackCommit<T>()
     try {
-      return await sqliteAttempt(connection, callback, commit)
+      return await runSqliteTransactionAttempt(connection, callback, commit)
     } catch (error) {
-      if (commit.committed) throw commit.failure(error)
+      if (commit.committed) throw commit.mapTransactionFailure(error)
       if (!isBusy(error) || performance.now() >= deadline) throw error
       await new Promise((resolve) =>
         setTimeout(resolve, Math.min(SQLITE_RETRY_MS, Math.max(0, deadline - performance.now())))
@@ -303,7 +303,8 @@ async function openTransaction<T>(
   connection: Connection,
   callback: (trx: Trx) => Promise<T>
 ): Promise<T> {
-  if (connection.dialect.name === 'better-sqlite3') return sqliteTransaction(connection, callback)
+  if (connection.dialect.name === 'better-sqlite3')
+    return runSqliteTransaction(connection, callback)
 
   const commit = trackCommit<T>()
   try {
@@ -314,6 +315,6 @@ async function openTransaction<T>(
       commit.onResult
     )
   } catch (error) {
-    throw commit.failure(error)
+    throw commit.mapTransactionFailure(error)
   }
 }

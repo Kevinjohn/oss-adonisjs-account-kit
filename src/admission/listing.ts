@@ -22,7 +22,7 @@ export interface AdmissionPage {
  * Admission records ordered by creation, after `authorize.list` allows the actor. `pending` lists
  * people who asked and have no decision; omit `status` for every record.
  */
-export async function listAdmissions(
+export async function paginateAdmissions(
   deps: AdmissionContext,
   input: { actorId: UserId; status?: AdmissionApprovalStatus; cursor?: string; limit?: number }
 ): Promise<AdmissionPage> {

@@ -4,17 +4,21 @@ import { InvalidInputError, InvalidTokenError } from '../errors.js'
 import type { ManagedEndpointName } from './routes.js'
 import type { ManagedHandler } from './managed_types.js'
 import {
-  invalidProof,
+  sendInvalidProofResponse,
   renderIssuedAccountBody,
   reportCommittedFailure,
   translate,
 } from './response_helpers.js'
 import { magicLinkCompleteValidator, magicLinkRequestValidator } from './validators.js'
-import { clientChallengeFor } from '../client_challenge.js'
-import { magicLinkVerifier, acknowledgeMagicLink, consumeMagicLink } from './magic_link_session.js'
+import { deriveClientChallenge } from '../client_challenge.js'
+import {
+  resolveMagicLinkVerifier,
+  acknowledgeMagicLink,
+  consumeMagicLink,
+} from './magic_link_session.js'
 import { requireSession } from './session_access.js'
 
-function session(context: HttpContext) {
+function requireMagicLinkSession(context: HttpContext) {
   return requireSession(
     context,
     'Managed magic links require persistent AdonisJS session middleware'
@@ -30,8 +34,8 @@ export const magicLinkHandlers = {
     let verifier: string | undefined
     if (options.guard.strategy === 'session') {
       // Checked before the request so a missing session refuses the call without issuing a link.
-      verifier = magicLinkVerifier(session(context))
-      clientChallenge = clientChallengeFor(verifier)
+      verifier = resolveMagicLinkVerifier(requireMagicLinkSession(context))
+      clientChallenge = deriveClientChallenge(verifier)
     }
     if (!clientChallenge) throw new InvalidInputError('Client challenge is required')
     try {
@@ -42,7 +46,11 @@ export const magicLinkHandlers = {
     }
     // Stored only once the link is issued: a refused request must not orphan the live link.
     if (verifier)
-      acknowledgeMagicLink(session(context), verifier, kit.managedHttp.magicLinkExpiresAt())
+      acknowledgeMagicLink(
+        requireMagicLinkSession(context),
+        verifier,
+        kit.managedHttp.magicLinkExpiresAt()
+      )
     return response.accepted({
       message: translate(
         context,
@@ -54,13 +62,13 @@ export const magicLinkHandlers = {
   'auth.magicLink.inspect': async ({ context, kit, options }) =>
     (await kit.magicLink.inspect({ token: context.params.token }))
       ? context.response.ok({ valid: true })
-      : invalidProof(context, 'magicLink', options.extensions?.message),
+      : sendInvalidProofResponse(context, 'magicLink', options.extensions?.message),
   'auth.magicLink.complete': async ({ context, kit, options, representIssued }) => {
     const { request, response, params } = context
     const input = await request.validateUsing(magicLinkCompleteValidator)
     let verifier = input.verifier
     if (options.guard.strategy === 'session') {
-      verifier = magicLinkVerifier(session(context), false)
+      verifier = resolveMagicLinkVerifier(requireMagicLinkSession(context), false)
     }
     if (!verifier) throw new InvalidTokenError()
     const result = await kit.magicLink.complete(
@@ -68,7 +76,7 @@ export const magicLinkHandlers = {
       options.guard.forRequest(context)
     )
     // Failed or replayed completions leave other outstanding links usable.
-    if (options.guard.strategy === 'session') consumeMagicLink(session(context))
+    if (options.guard.strategy === 'session') consumeMagicLink(requireMagicLinkSession(context))
     return response.ok(await renderIssuedAccountBody({ options, representIssued }, result))
   },
 } satisfies Partial<Record<ManagedEndpointName, ManagedHandler>>

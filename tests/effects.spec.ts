@@ -1,6 +1,6 @@
 import { test } from '@japa/runner'
 import { DeliveryError, PostCommitError } from '../src/errors.js'
-import { lifecycle, postCommit } from '../src/effects.js'
+import { createLifecycleEffect, postCommit } from '../src/effects.js'
 import type { LifecycleEvent } from '../src/types.js'
 
 test.group('post-commit effects', () => {
@@ -77,17 +77,20 @@ test.group('post-commit effects', () => {
   }) => {
     const seen: LifecycleEvent[] = []
     const event: LifecycleEvent = { type: 'password.changed', userId: 1, operationId: 'op' }
-    const effect = lifecycle({ onLifecycleEvent: async (value) => void seen.push(value) }, event)
+    const effect = createLifecycleEffect(
+      { onLifecycleEvent: async (value) => void seen.push(value) },
+      event
+    )
     assert.equal(effect.kind, 'observer')
     assert.deepEqual(seen, [])
     await effect.run()
     assert.deepEqual(seen, [event])
-    assert.isUndefined(await lifecycle({}, event).run())
+    assert.isUndefined(await createLifecycleEffect({}, event).run())
     const listener = new Error('listener')
     let failure: unknown
     try {
       await postCommit('follow-up failed', [
-        lifecycle(
+        createLifecycleEffect(
           {
             onLifecycleEvent: async () => {
               throw listener

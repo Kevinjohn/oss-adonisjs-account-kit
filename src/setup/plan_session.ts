@@ -1,13 +1,13 @@
 // Setup planning phase: Shield CSRF and session store diagnostics for managed session guards.
 import type { SetupChoices, SetupInspection, SetupDiagnostic } from './types.js'
 import { addSetupDiagnostic } from './shared.js'
-import { shieldCsrfState } from './config_inspection.js'
+import { classifyShieldCsrfSetting } from './config_inspection.js'
 import {
   type NativeSessionConfiguration,
-  nativeSessionConfiguration,
+  inspectNativeSessionConfiguration,
   unwrapManagedSessionConfig,
 } from './session_config.js'
-import { selectedSessionDiagnostic } from './session_diagnostics.js'
+import { inspectSelectedSessionStore } from './session_diagnostics.js'
 
 export async function planSession(
   choices: SetupChoices,
@@ -17,7 +17,7 @@ export async function planSession(
 ): Promise<void> {
   if (choices.authentication?.strategy === 'session') {
     const shieldConfig = state.files['config/shield.ts']
-    const csrf = shieldConfig ? await shieldCsrfState(shieldConfig) : 'missing'
+    const csrf = shieldConfig ? await classifyShieldCsrfSetting(shieldConfig) : 'missing'
     if (csrf === 'missing' || csrf === 'false')
       addSetupDiagnostic(
         diagnostics,
@@ -46,10 +46,10 @@ export async function planSession(
           ? await unwrapManagedSessionConfig(current, state.root, options.env)
           : current
         if (baseline) {
-          inspected = await nativeSessionConfiguration(baseline, state.root, options.env)
+          inspected = await inspectNativeSessionConfiguration(baseline, state.root, options.env)
           diagnosticSelection = inspected
             ? { name: inspected.selectedName, kind: inspected.selectedKind }
-            : await selectedSessionDiagnostic(baseline, state.root, options.env)
+            : await inspectSelectedSessionStore(baseline, state.root, options.env)
         }
       } catch {
         // The integration diagnostic above already blocks an uninspectable selection.

@@ -1,4 +1,4 @@
-import { collisionMessage, overlappingPaths, type ExistingRoute } from './route_collisions.js'
+import { formatCollisionMessage, doPathsOverlap, type ExistingRoute } from './route_collisions.js'
 
 export {
   assertManagedRouteCollisions,
@@ -456,9 +456,9 @@ export function planManagedRoutes(
   for (const route of result) {
     const collision = existing.find(
       (candidate) =>
-        candidate.method.toUpperCase() === route.method && overlappingPaths(candidate, route.path)
+        candidate.method.toUpperCase() === route.method && doPathsOverlap(candidate, route.path)
     )
-    if (collision) throw new InvalidArgumentsException(collisionMessage(route, collision))
+    if (collision) throw new InvalidArgumentsException(formatCollisionMessage(route, collision))
   }
   return result
 }

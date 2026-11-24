@@ -4,7 +4,7 @@ import { sqlTimestamp } from './timestamps.js'
 import { DateTime } from 'luxon'
 import { isActiveAccount } from './account_projection.js'
 import { isUserEmailUniqueViolation, transaction } from './db.js'
-import { finishCommitted, lifecycle, postCommit, settleCommitted } from './effects.js'
+import { finishCommitted, createLifecycleEffect, postCommit, settleCommitted } from './effects.js'
 import { isEmailShaped, normalizeEmail } from './email.js'
 import { EmailAlreadyRegisteredError, InvalidInputError, type PostCommitError } from './errors.js'
 import { mapRegistrationFields } from './registration_fields.js'
@@ -13,7 +13,7 @@ import { confirmActor, requireUser } from './actor_confirmation.js'
 import { generateToken, hashToken } from './tokens.js'
 import { isRecentIssue, reopenResendOnFailure } from './token_reuse.js'
 import { expiresAt } from './ttl.js'
-import { credentialsChanged, revision } from './credential_revision.js'
+import { invalidateChangedCredentials, revision } from './credential_revision.js'
 import { rememberCorrectionRevision } from './profile_correction_revision.js'
 import type { AccountUser, RequestEmailChangeInput, UpdateProfileInput } from './types.js'
 import type { ServiceDependencies } from './service_dependencies.js'
@@ -122,7 +122,7 @@ export async function updateProfile(
           .merge(['email', 'current_email', 'purpose', 'hash', 'expires_at', 'created_at'])
         if (inactive) {
           const reloaded = await requireUser(deps.config, current.id, trx)
-          await credentialsChanged(
+          await invalidateChangedCredentials(
             trx,
             deps.config,
             reloaded,
@@ -180,7 +180,7 @@ export async function updateProfile(
                   )
             ),
         },
-        lifecycle(deps.config, {
+        createLifecycleEffect(deps.config, {
           type: 'email_change.requested',
           userId: actor.id,
           operationId,

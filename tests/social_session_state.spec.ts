@@ -5,7 +5,7 @@ import { SocialTransactionError } from '../src/errors.js'
 import {
   forgetSessionState,
   rememberSessionState,
-  sessionState,
+  requireSessionState,
 } from '../src/http/social_session_state.js'
 
 function sessionContext() {
@@ -28,26 +28,26 @@ test.group('social session state', () => {
   test('returns a remembered state until it is forgotten', ({ assert }) => {
     const { context, store } = sessionContext()
     rememberSessionState(context, 'state-1', saved)
-    assert.include(sessionState(context, 'state-1'), saved)
+    assert.include(requireSessionState(context, 'state-1'), saved)
     forgetSessionState(context, 'state-1')
     assert.isFalse(store.has(stateKey('state-1')))
-    assert.throws(() => sessionState(context, 'state-1'), SocialTransactionError)
+    assert.throws(() => requireSessionState(context, 'state-1'), SocialTransactionError)
   })
 
   test('refuses unknown, unlisted, malformed and expired states', ({ assert }) => {
     const { context, store } = sessionContext()
-    assert.throws(() => sessionState(context, 'never-issued'), SocialTransactionError)
+    assert.throws(() => requireSessionState(context, 'never-issued'), SocialTransactionError)
 
     // Stored, but missing from the pending list.
     rememberSessionState(context, 'unlisted', saved)
     store.set('accountKit.social.pendingStates', [])
-    assert.throws(() => sessionState(context, 'unlisted'), SocialTransactionError)
+    assert.throws(() => requireSessionState(context, 'unlisted'), SocialTransactionError)
 
     // Each value differs from a valid record in one field only.
     const valid = { ...saved, expiresAt: Date.now() + 60_000 }
     rememberSessionState(context, 'control', saved)
     store.set(stateKey('control'), valid)
-    assert.deepEqual(sessionState(context, 'control'), valid)
+    assert.deepEqual(requireSessionState(context, 'control'), valid)
     for (const [index, value] of [
       'not-an-object',
       { ...valid, verifier: 7 },
@@ -58,17 +58,17 @@ test.group('social session state', () => {
       const state = `malformed-${index}`
       rememberSessionState(context, state, saved)
       store.set(stateKey(state), value)
-      assert.throws(() => sessionState(context, state), SocialTransactionError)
+      assert.throws(() => requireSessionState(context, state), SocialTransactionError)
     }
 
     // Listed as live, but the stored value has expired.
     rememberSessionState(context, 'expired', { ...saved, expiresAt: Date.now() + 60_000 })
     store.set(stateKey('expired'), { ...saved, expiresAt: Date.now() - 1 })
-    assert.throws(() => sessionState(context, 'expired'), SocialTransactionError)
+    assert.throws(() => requireSessionState(context, 'expired'), SocialTransactionError)
 
     // Expired in the pending list: the stored value is dropped too.
     rememberSessionState(context, 'lapsed', { ...saved, expiresAt: Date.now() - 1 })
-    assert.throws(() => sessionState(context, 'lapsed'), SocialTransactionError)
+    assert.throws(() => requireSessionState(context, 'lapsed'), SocialTransactionError)
     assert.isFalse(store.has(stateKey('lapsed')))
   })
 })

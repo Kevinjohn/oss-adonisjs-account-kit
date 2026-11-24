@@ -1,5 +1,5 @@
 // Notification readiness: checks that account email will reach people in an environment.
-import { createActionUrls, trustedOrigin, type ActionUrlOptions } from './action_urls.js'
+import { createActionUrls, requireTrustedOrigin, type ActionUrlOptions } from './action_urls.js'
 import type { Capability, UrlCallbacks } from './types.js'
 
 /**
@@ -48,7 +48,7 @@ export function notificationReadiness(input: NotificationReadinessInput) {
     ['action', input.actionOrigin],
   ]) {
     try {
-      trustedOrigin(origin, input.environment)
+      requireTrustedOrigin(origin, input.environment)
     } catch (error) {
       problems.push(`${label}: ${(error as Error).message}`)
     }

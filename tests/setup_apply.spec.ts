@@ -16,8 +16,8 @@ import { test } from '@japa/runner'
 import { inspectSetup } from '../src/setup/inspect.js'
 import { planSetup } from '../src/setup/plan.js'
 import { applySetup } from '../src/setup/apply.js'
-import { parseSetupChoices } from '../src/setup/parse.js'
-import { disabledManagedRoutesSource } from '../src/setup/generated_routes.js'
+import { requireSetupChoices } from '../src/setup/parse.js'
+import { generateDisabledRoutesSource } from '../src/setup/generated_routes.js'
 import { cleanupRoots, fixture, registerSetupTeardown } from './helpers/setup_project_fixture.js'
 import type { SetupPlan } from '../src/setup/types.js'
 import { stock } from './helpers/native_starter_fixture.js'
@@ -276,7 +276,7 @@ test.group('setup apply', (group) => {
     assert.include(await readFile(config, 'utf8'), '// owner edit')
 
     // A changed choice still refuses to overwrite the edited config.
-    const changed = parseSetupChoices({ ...choices, routePrefix: '/api/v2' })
+    const changed = requireSetupChoices({ ...choices, routePrefix: '/api/v2' })
     const reconfigured = await planSetup(changed, await inspectSetup(root), { apply: true })
     assert.equal(
       reconfigured.changes.find(({ path }) => path === 'config/account_kit.ts')?.action,
@@ -297,7 +297,7 @@ test.group('setup apply', (group) => {
     assert.notEqual(legacy, current)
     await writeFile(config, legacy)
 
-    const changed = parseSetupChoices({ ...choices, routePrefix: '/api/v2' })
+    const changed = requireSetupChoices({ ...choices, routePrefix: '/api/v2' })
     const plan = await planSetup(changed, await inspectSetup(root), { apply: true })
     const change = plan.changes.find(({ path }) => path === 'config/account_kit.ts')
     assert.equal(change?.action, 'update')
@@ -309,7 +309,7 @@ test.group('setup apply', (group) => {
     assert,
   }) => {
     const { root } = await fixture()
-    const choices = parseSetupChoices(
+    const choices = requireSetupChoices(
       JSON.parse(
         await readFile(
           new URL('./fixtures/native_starter/setup-choices.json', import.meta.url),
@@ -721,7 +721,7 @@ test.group('setup apply', (group) => {
       passwordColumn: 'password',
       verifiedColumn: 'email_verified_at',
     }
-    await writeFile(marker, disabledManagedRoutesSource(previous))
+    await writeFile(marker, generateDisabledRoutesSource(previous))
     choices.authentication = authentication
     choices.managed = ['passwordReset']
     const reenabling = await planSetup(choices, await inspectSetup(root), {

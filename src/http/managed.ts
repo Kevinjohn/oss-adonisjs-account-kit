@@ -1,8 +1,8 @@
 import type { Router } from '@adonisjs/core/http'
 import type {} from '@adonisjs/core/providers/vinejs_provider'
-import { applyMappedHeaders, managedErrorResponse } from './responses.js'
+import { applyMappedHeaders, mapManagedErrorResponse } from './responses.js'
 import { managedSocialHandlers } from './social.js'
-import { reportCommittedFailure, requestTranslator } from './response_helpers.js'
+import { reportCommittedFailure, getRequestTranslator } from './response_helpers.js'
 import { authenticationHandlers } from './handlers_authentication.js'
 import { emailPasswordManagementHandlers } from './handlers_email_password_management.js'
 import { emailVerificationHandlers } from './handlers_email_verification.js'
@@ -98,10 +98,10 @@ export function registerManagedRoutes<Credential>(
             reportCommittedFailure(context, route.name, error)
           )
             return context.response.accepted({ committed: true })
-          const mapped = managedErrorResponse(error, {
+          const mapped = mapManagedErrorResponse(error, {
             request: context.request,
             message: options.extensions?.message,
-            i18n: requestTranslator(context),
+            i18n: getRequestTranslator(context),
             proof: route.proofKind,
           })
           if (!mapped) throw error

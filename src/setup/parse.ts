@@ -22,15 +22,15 @@ function record(
   return value
 }
 
-function string(value: unknown, path: string): void {
+function assertString(value: unknown, path: string): void {
   if (typeof value !== 'string') throw new Error(`${path}: expected a string`)
 }
 
-function bool(value: unknown, path: string): void {
+function assertBoolean(value: unknown, path: string): void {
   if (typeof value !== 'boolean') throw new Error(`${path}: expected a boolean`)
 }
 
-function strings(value: unknown, path: string): void {
+function assertStringArray(value: unknown, path: string): void {
   if (!Array.isArray(value) || value.some((item) => typeof item !== 'string'))
     throw new Error(`${path}: expected a string array`)
 }
@@ -52,7 +52,7 @@ function parseUser(input: unknown): Record<string, unknown> {
     ['model', 'table', 'idType', 'adapter'],
     Object.keys(fixedUserFields)
   )
-  for (const [key, value] of Object.entries(user)) string(value, `user.${key}`)
+  for (const [key, value] of Object.entries(user)) assertString(value, `user.${key}`)
   return Object.fromEntries(
     Object.entries(user).filter(
       ([key, value]) => fixedUserFields[key as keyof typeof fixedUserFields] !== value
@@ -60,7 +60,7 @@ function parseUser(input: unknown): Record<string, unknown> {
   )
 }
 
-function parseAuthentication(input: unknown): void {
+function assertAuthenticationChoices(input: unknown): void {
   if (input === null) return
   const auth = record(
     input,
@@ -68,11 +68,11 @@ function parseAuthentication(input: unknown): void {
     ['strategy', 'guard', 'applicationRouteRevocation'],
     ['session', 'token']
   )
-  string(auth.strategy, 'authentication.strategy')
+  assertString(auth.strategy, 'authentication.strategy')
   if (!(guardStrategies as readonly string[]).includes(auth.strategy as string))
     throw new Error('authentication.strategy: choose session or access_tokens')
-  string(auth.guard, 'authentication.guard')
-  bool(auth.applicationRouteRevocation, 'authentication.applicationRouteRevocation')
+  assertString(auth.guard, 'authentication.guard')
+  assertBoolean(auth.applicationRouteRevocation, 'authentication.applicationRouteRevocation')
   const optional = input as Record<string, unknown>
   if ('session' in optional) {
     const session = record(optional.session, 'authentication.session', [
@@ -81,7 +81,8 @@ function parseAuthentication(input: unknown): void {
       'originChecked',
       'persistentStore',
     ])
-    for (const [key, value] of Object.entries(session)) bool(value, `authentication.session.${key}`)
+    for (const [key, value] of Object.entries(session))
+      assertBoolean(value, `authentication.session.${key}`)
   }
   if ('token' in optional) {
     const token = record(optional.token, 'authentication.token', [
@@ -89,9 +90,9 @@ function parseAuthentication(input: unknown): void {
       'lifetime',
       'abilities',
     ])
-    bool(token.revocation, 'authentication.token.revocation')
-    string(token.lifetime, 'authentication.token.lifetime')
-    strings(token.abilities, 'authentication.token.abilities')
+    assertBoolean(token.revocation, 'authentication.token.revocation')
+    assertString(token.lifetime, 'authentication.token.lifetime')
+    assertStringArray(token.abilities, 'authentication.token.abilities')
     if (
       !(token.abilities as string[]).length ||
       (token.abilities as string[]).some((value) => !value.trim())
@@ -105,7 +106,7 @@ function parseAuthentication(input: unknown): void {
   }
 }
 
-function parseMail(input: unknown): void {
+function assertMailChoices(input: unknown): void {
   const mail = record(input, 'mail', [
     'integration',
     'delivery',
@@ -118,11 +119,11 @@ function parseMail(input: unknown): void {
     'durableWorkerVerified',
   ])
   for (const key of ['integration', 'delivery', 'appName', 'backendOriginEnv', 'frontendOriginEnv'])
-    string(mail[key], `mail.${key}`)
+    assertString(mail[key], `mail.${key}`)
   for (const key of ['senderEnv', 'transportEnv']) {
-    if (mail[key] !== null) string(mail[key], `mail.${key}`)
+    if (mail[key] !== null) assertString(mail[key], `mail.${key}`)
   }
-  bool(mail.durableWorkerVerified, 'mail.durableWorkerVerified')
+  assertBoolean(mail.durableWorkerVerified, 'mail.durableWorkerVerified')
   const destinations = mail.destinations
   if (!destinations || typeof destinations !== 'object' || Array.isArray(destinations))
     throw new Error('mail.destinations: expected an object')
@@ -133,11 +134,11 @@ function parseMail(input: unknown): void {
       )
     )
       throw new Error(`mail.destinations.${key}: unsupported field`)
-    string(value, `mail.destinations.${key}`)
+    assertString(value, `mail.destinations.${key}`)
   }
 }
 
-function parsePolicy(input: unknown): void {
+function assertPolicyChoices(input: unknown): void {
   const policy = record(input, 'policy', [
     'registration',
     'registrationFields',
@@ -147,7 +148,7 @@ function parsePolicy(input: unknown): void {
     'invitationPermissionHook',
     'accessRestrictionHook',
   ])
-  string(policy.registration, 'policy.registration')
+  assertString(policy.registration, 'policy.registration')
   if (!(registrationPolicies as readonly string[]).includes(policy.registration as string))
     throw new Error('policy.registration: choose open, closed or application')
   if (!Array.isArray(policy.registrationFields))
@@ -159,15 +160,15 @@ function parsePolicy(input: unknown): void {
       ['name', 'type', 'required'],
       ['maxLength']
     )
-    string(field.name, `policy.registrationFields.${index}.name`)
-    string(field.type, `policy.registrationFields.${index}.type`)
-    bool(field.required, `policy.registrationFields.${index}.required`)
+    assertString(field.name, `policy.registrationFields.${index}.name`)
+    assertString(field.type, `policy.registrationFields.${index}.type`)
+    assertBoolean(field.required, `policy.registrationFields.${index}.required`)
     if ('maxLength' in field && typeof field.maxLength !== 'number')
       throw new Error(`policy.registrationFields.${index}.maxLength: expected a number`)
   }
-  strings(policy.unverifiedActions, 'policy.unverifiedActions')
+  assertStringArray(policy.unverifiedActions, 'policy.unverifiedActions')
   for (const key of ['verificationRequired', 'invitationPermissionHook', 'accessRestrictionHook'])
-    bool(policy[key], `policy.${key}`)
+    assertBoolean(policy[key], `policy.${key}`)
   const password = record(policy.password, 'policy.password', [
     'minLength',
     'maxLength',
@@ -184,10 +185,10 @@ function parsePolicy(input: unknown): void {
   if (password.maxLength !== null && typeof password.maxLength !== 'number')
     throw new Error('policy.password.maxLength: expected a number or null')
   for (const key of ['letters', 'mixedCase', 'numbers', 'symbols'])
-    bool(password[key], `policy.password.${key}`)
+    assertBoolean(password[key], `policy.password.${key}`)
 }
 
-function parseSocial(input: unknown): void {
+function assertSocialChoices(input: unknown): void {
   if (!input || typeof input !== 'object' || Array.isArray(input))
     throw new Error('social: expected an object')
   const status = (input as Record<string, unknown>).status
@@ -199,26 +200,26 @@ function parseSocial(input: unknown): void {
       'callbackPath',
       'credentials',
     ])
-    strings(selected.providers, 'social.providers')
-    string(selected.callbackOriginEnv, 'social.callbackOriginEnv')
-    string(selected.callbackPath, 'social.callbackPath')
+    assertStringArray(selected.providers, 'social.providers')
+    assertString(selected.callbackOriginEnv, 'social.callbackOriginEnv')
+    assertString(selected.callbackPath, 'social.callbackPath')
     const credentials = record(selected.credentials, 'social.credentials', [], socialProviderNames)
     for (const [provider, value] of Object.entries(credentials)) {
       const entry = record(value, `social.credentials.${provider}`, [
         'clientIdEnv',
         'clientSecretEnv',
       ])
-      string(entry.clientIdEnv, `social.credentials.${provider}.clientIdEnv`)
-      string(entry.clientSecretEnv, `social.credentials.${provider}.clientSecretEnv`)
+      assertString(entry.clientIdEnv, `social.credentials.${provider}.clientIdEnv`)
+      assertString(entry.clientSecretEnv, `social.credentials.${provider}.clientSecretEnv`)
     }
   } else if (status === 'not-applicable') {
     const skipped = record(input, 'social', ['status', 'reason'])
-    string(skipped.reason, 'social.reason')
+    assertString(skipped.reason, 'social.reason')
   } else throw new Error('social.status: expected enabled or not-applicable')
 }
 
 /** Reject unknown fields so a deployment secret cannot be silently written to the setup file. */
-export function parseSetupChoices(input: unknown): SetupChoices {
+export function requireSetupChoices(input: unknown): SetupChoices {
   const root = record(
     input,
     'setup',
@@ -236,18 +237,18 @@ export function parseSetupChoices(input: unknown): SetupChoices {
     ],
     ['managedExcept']
   )
-  strings(root.features, 'features')
-  strings(root.managed, 'managed')
-  if (root.managedExcept !== undefined) strings(root.managedExcept, 'managedExcept')
-  string(root.mode, 'mode')
+  assertStringArray(root.features, 'features')
+  assertStringArray(root.managed, 'managed')
+  if (root.managedExcept !== undefined) assertStringArray(root.managedExcept, 'managedExcept')
+  assertString(root.mode, 'mode')
   if (!(setupModes as readonly string[]).includes(root.mode as string))
     throw new Error('mode: choose services or managed')
   if (root.version !== 1) throw new Error('version: expected 1')
-  string(root.routePrefix, 'routePrefix')
+  assertString(root.routePrefix, 'routePrefix')
   const user = parseUser(root.user)
-  parseAuthentication(root.authentication)
-  parseMail(root.mail)
-  parsePolicy(root.policy)
-  parseSocial(root.social)
+  assertAuthenticationChoices(root.authentication)
+  assertMailChoices(root.mail)
+  assertPolicyChoices(root.policy)
+  assertSocialChoices(root.social)
   return { ...root, user } as unknown as SetupChoices
 }

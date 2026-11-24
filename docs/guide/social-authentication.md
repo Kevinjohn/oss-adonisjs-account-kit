@@ -169,7 +169,9 @@ socialAuthentication: {
 
 **Listing and unlinking**
 
-- `list` and `get` expose confirmed associations only.
+- `list({ current })` returns the caller's confirmed associations. `get({ current, identityId })`
+  returns one confirmed association and throws `SocialUserNotFoundError` when the caller has no
+  confirmed link with that ID.
 - `unlink({ current, identityId, proof })` consumes a `social_unlink` proof and atomically keeps a
   usable password or another confirmed, currently enabled provider.
 - Unlinking is a credential change with operation `social_unlink`. It advances the credential

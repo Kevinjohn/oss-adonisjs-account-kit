@@ -8,7 +8,7 @@ import { requireAuthentication } from './authentication_config.js'
 import { revision } from './credential_revision.js'
 import { establishCredential } from './credential_issuance.js'
 import { consumeUserToken, lockUser, transaction } from './db.js'
-import { finishCommitted, lifecycle, postCommit, settleCommitted } from './effects.js'
+import { finishCommitted, createLifecycleEffect, postCommit, settleCommitted } from './effects.js'
 import { isEmailShaped, normalizeEmail } from './email.js'
 import { InvalidCredentialsError, InvalidInputError, InvalidTokenError } from './errors.js'
 import { waitForFloor } from './timing.js'
@@ -26,7 +26,7 @@ import type { ServiceDependencies } from './service_dependencies.js'
 import { sqlTimestamp } from './timestamps.js'
 import { isClientChallenge, isClientVerifier, verifierMatches } from './client_challenge.js'
 
-export { clientChallengeFor } from './client_challenge.js'
+export { deriveClientChallenge } from './client_challenge.js'
 
 interface LinkRow {
   tokenable_id: UserId
@@ -89,7 +89,7 @@ export async function requestMagicLink(
           run: () =>
             deps.config.notify.magicLinkProvision(issuedUser, deps.config.urls.magicLink(token)),
         },
-        lifecycle(deps.config, {
+        createLifecycleEffect(deps.config, {
           type: 'magic_link.requested',
           userId: issuedUser.id,
           operationId,

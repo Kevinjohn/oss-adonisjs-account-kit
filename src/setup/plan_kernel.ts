@@ -1,18 +1,18 @@
 import type { SetupDiagnostic, SetupFileChange, SetupInspection } from './types.js'
 import { stripSourceComments } from './strip_source_comments.js'
 import {
-  defaultImportName,
+  getDefaultImportName,
   hasUnsafeObjectEntries,
   hasUnsafeBindingReferences,
   parseSetupSource,
-  lazyImportPath,
+  extractLazyImportPath,
   callArray,
   type SetupSource,
 } from './ts_source.js'
 import type * as TypeScript from 'typescript'
 import { addSetupDiagnostic } from './shared.js'
 
-export function safeKernelService(
+export function isSafeKernelService(
   source: SetupSource,
   module: string,
   binding: string,
@@ -20,7 +20,7 @@ export function safeKernelService(
 ): boolean {
   const { ts } = source
   return (
-    defaultImportName(source, module) === binding &&
+    getDefaultImportName(source, module) === binding &&
     !hasUnsafeBindingReferences(source, binding, (call) => {
       const method =
         ts.isPropertyAccessExpression(call.expression) &&
@@ -38,7 +38,7 @@ export function safeKernelService(
       if (binding === 'server' && method === 'errorHandler')
         return (
           call.arguments.length === 1 &&
-          Boolean(lazyImportPath(source, call.arguments[0])) &&
+          Boolean(extractLazyImportPath(source, call.arguments[0])) &&
           ts.isExpressionStatement(call.parent) &&
           call.parent.parent === source.file
         )
@@ -50,7 +50,7 @@ export function safeKernelService(
           call.arguments[0].properties.every(
             (property) =>
               ts.isPropertyAssignment(property) &&
-              Boolean(lazyImportPath(source, property.initializer))
+              Boolean(extractLazyImportPath(source, property.initializer))
           ) &&
           ts.isVariableDeclaration(call.parent) &&
           ts.isIdentifier(call.parent.name) &&
@@ -126,8 +126,8 @@ export async function planRouterMiddleware(
   if (
     !array ||
     !server ||
-    !safeKernelService(source, '@adonisjs/core/services/router', 'router', array) ||
-    !safeKernelService(source, '@adonisjs/core/services/server', 'server', server)
+    !isSafeKernelService(source, '@adonisjs/core/services/router', 'router', array) ||
+    !isSafeKernelService(source, '@adonisjs/core/services/server', 'server', server)
   ) {
     addSetupDiagnostic(
       diagnostics,
@@ -145,7 +145,9 @@ export async function planRouterMiddleware(
     '@adonisjs/auth/initialize_auth_middleware',
   ]
   if (
-    server.elements.some((entry) => ordered.slice(1).includes(lazyImportPath(source, entry) ?? ''))
+    server.elements.some((entry) =>
+      ordered.slice(1).includes(extractLazyImportPath(source, entry) ?? '')
+    )
   ) {
     addSetupDiagnostic(
       diagnostics,
@@ -154,7 +156,7 @@ export async function planRouterMiddleware(
     )
     return
   }
-  const paths = array.elements.map((entry) => lazyImportPath(source, entry))
+  const paths = array.elements.map((entry) => extractLazyImportPath(source, entry))
   if (
     paths.some((name) => name === null) ||
     paths.filter((name) => name === body).length !== 1 ||
@@ -177,7 +179,7 @@ export async function planRouterMiddleware(
     return
   }
   for (let position = 1; position < ordered.length; position++) {
-    const currentPaths = array.elements.map((entry) => lazyImportPath(source, entry))
+    const currentPaths = array.elements.map((entry) => extractLazyImportPath(source, entry))
     if (currentPaths.includes(ordered[position])) continue
     const preceding = currentPaths.indexOf(ordered[position - 1])
     if (preceding < 0) throw new Error('Missing previously planned router middleware')
@@ -230,7 +232,7 @@ export async function planServerProofMiddleware(
     !previous ||
     !source ||
     !array ||
-    !safeKernelService(source, '@adonisjs/core/services/server', 'server', array)
+    !isSafeKernelService(source, '@adonisjs/core/services/server', 'server', array)
   ) {
     addSetupDiagnostic(
       diagnostics,
@@ -240,7 +242,9 @@ export async function planServerProofMiddleware(
     return
   }
   const name = '#middleware/account_kit_proof_headers_middleware'
-  const proofPosition = array.elements.findIndex((entry) => lazyImportPath(source, entry) === name)
+  const proofPosition = array.elements.findIndex(
+    (entry) => extractLazyImportPath(source, entry) === name
+  )
   if (proofPosition === 0) return
   if (proofPosition > 0) {
     addSetupDiagnostic(

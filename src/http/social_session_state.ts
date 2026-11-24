@@ -21,18 +21,18 @@ const pendingKey = 'accountKit.social.pendingStates'
 const maxPendingStates = 8
 const stateLifetimeMs = 10 * 60 * 1000
 
-function session(context: HttpContext): SessionStore {
+function requireSocialSession(context: HttpContext): SessionStore {
   return requireSession(
     context,
     'Managed social session flow requires persistent AdonisJS session middleware'
   )
 }
 
-function stateKey(state: string): string {
+function deriveSocialStateKey(state: string): string {
   return `accountKit.social.${createHash('sha256').update(state).digest('hex')}`
 }
 
-function pendingStates(store: SessionStore): PendingSessionState[] {
+function pruneAndListPendingStates(store: SessionStore): PendingSessionState[] {
   const raw = store.get(pendingKey)
   const now = Date.now()
   const states = Array.isArray(raw)
@@ -55,10 +55,10 @@ export function rememberSessionState(
   state: string,
   value: Omit<SessionSocialState, 'expiresAt'> & { expiresAt?: number }
 ): void {
-  const store = session(context)
-  const key = stateKey(state)
+  const store = requireSocialSession(context)
+  const key = deriveSocialStateKey(state)
   const expiresAt = value.expiresAt ?? Date.now() + stateLifetimeMs
-  const pending = pendingStates(store).filter((item) => item.key !== key)
+  const pending = pruneAndListPendingStates(store).filter((item) => item.key !== key)
   while (pending.length >= maxPendingStates) {
     const oldest = pending.shift()!
     store.forget(oldest.key)
@@ -68,19 +68,19 @@ export function rememberSessionState(
 }
 
 export function forgetSessionState(context: HttpContext, state: string): void {
-  const store = session(context)
-  const key = stateKey(state)
+  const store = requireSocialSession(context)
+  const key = deriveSocialStateKey(state)
   store.forget(key)
   store.put(
     pendingKey,
-    pendingStates(store).filter((item) => item.key !== key)
+    pruneAndListPendingStates(store).filter((item) => item.key !== key)
   )
 }
 
-export function sessionState(context: HttpContext, state: string): SessionSocialState {
-  const store = session(context)
-  const pending = pendingStates(store)
-  const key = stateKey(state)
+export function requireSessionState(context: HttpContext, state: string): SessionSocialState {
+  const store = requireSocialSession(context)
+  const pending = pruneAndListPendingStates(store)
+  const key = deriveSocialStateKey(state)
   const stored = pending.some((item) => item.key === key) ? store.get(key) : undefined
   if (
     !stored ||

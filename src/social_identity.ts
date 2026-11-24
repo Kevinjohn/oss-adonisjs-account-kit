@@ -12,7 +12,7 @@ import {
   UnverifiedEmailError,
 } from './errors.js'
 import { generateToken, hashToken, isTokenShaped } from './tokens.js'
-import { provider, socialCallback } from './social_callback.js'
+import { requireSocialProvider, completeSocialCallback } from './social_callback.js'
 import { listSocialIdentities, unlinkSocialIdentity } from './social_links.js'
 import {
   requireAuthenticatedUser,
@@ -36,11 +36,11 @@ import type {
 
 export { consumeSocialSensitiveProof }
 
-export function socialIdentityService(deps: Dependencies) {
+export function createSocialIdentityService(deps: Dependencies) {
   return {
     /** Starts a provider flow and returns the one-use state and the provider URL to redirect to. */
     async begin(input: SocialBeginInput): Promise<{ state: string; url: string }> {
-      const adapter = provider(deps, input.provider)
+      const adapter = requireSocialProvider(deps, input.provider)
       if (!isClientChallenge(input.clientChallenge)) throw new SocialTransactionError()
       if (!isSocialBeginIntent(input.intent)) throw new SocialTransactionError()
       if (input.proof !== undefined && (input.intent !== 'link' || !isTokenShaped(input.proof)))
@@ -83,7 +83,7 @@ export function socialIdentityService(deps: Dependencies) {
       clientChallenge: string
       context?: unknown
     }): Promise<{ state: string; url: string }> {
-      const adapter = provider(deps, input.provider)
+      const adapter = requireSocialProvider(deps, input.provider)
       if (!isClientChallenge(input.clientChallenge) || !isTokenShaped(input.verificationToken))
         throw new SocialTransactionError()
       const state = generateToken()
@@ -122,7 +122,7 @@ export function socialIdentityService(deps: Dependencies) {
 
     /** Consumes the state once, resolves the provider profile and returns the outcome. */
     async callback(input: SocialCallbackInput): Promise<SocialCallbackResult> {
-      return socialCallback(deps, input)
+      return completeSocialCallback(deps, input)
     },
 
     /**
@@ -164,7 +164,7 @@ export function socialIdentityService(deps: Dependencies) {
       return listSocialIdentities(deps, input)
     },
 
-    /** One of the caller's confirmed linked providers. */
+    /** Returns a confirmed link owned by the caller, or throws `SocialUserNotFoundError`. */
     async get(input: {
       current: CurrentAccountInput
       identityId: number

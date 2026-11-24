@@ -2,7 +2,7 @@ import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import type { Group } from '@japa/runner/core'
-import { defaultSetupChoices } from '../../src/setup/defaults.js'
+import { buildDefaultSetupChoices } from '../../src/setup/defaults.js'
 import { setupVersions } from './setup_versions.js'
 import { clearSelectorEnv } from './selector_env.js'
 
@@ -74,7 +74,7 @@ export async function fixture() {
     join(root, 'start/kernel.ts'),
     "import router from '@adonisjs/core/services/router'\nimport server from '@adonisjs/core/services/server'\nserver.use([\n  () => import('@adonisjs/cors/cors_middleware'),\n])\nrouter.use([\n  () => import('@adonisjs/core/bodyparser_middleware'),\n])\n"
   )
-  const choices = defaultSetupChoices()
+  const choices = buildDefaultSetupChoices()
   choices.features = ['passwordReset']
   choices.managed = ['passwordReset']
   choices.authentication!.applicationRouteRevocation = true

@@ -17,13 +17,13 @@ export function isDomainName(value: unknown): value is string {
  * The part after the `@` of a well-formed address, or null. No IDN conversion: a Unicode domain is
  * returned as stored and never matches an allowed entry.
  */
-export function domainOf(email: string): string | null {
+export function extractEmailDomain(email: string): string | null {
   if (!isEmailShaped(email)) return null
   return email.slice(email.indexOf('@') + 1)
 }
 
 /** Whether `domain` equals an allowed entry or, with `includeSubdomains`, is under one. */
-export function domainAllowed(
+export function isDomainAllowed(
   domain: string,
   rule: { allowed: readonly string[]; includeSubdomains: boolean }
 ): boolean {

@@ -1,7 +1,7 @@
 import { readdir, rm, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { test } from '@japa/runner'
-import { selectedSessionDiagnostic } from '../src/setup/session_diagnostics.js'
+import { inspectSelectedSessionStore } from '../src/setup/session_diagnostics.js'
 import {
   resolveSelectedEnvironment,
   resolveSelectedEnvironmentValue,
@@ -179,7 +179,7 @@ test.group('setup config diagnostics', (group) => {
       '',
     ]) {
       const text = `import env from '#start/env'\nexport default { store: env.get(${JSON.stringify(variable)}, unknownFallback), stores: { cookie: stores.cookie(), database: stores.database() } }\n`
-      assert.deepEqual(await selectedSessionDiagnostic(text, root), { name: null, kind: null })
+      assert.deepEqual(await inspectSelectedSessionStore(text, root), { name: null, kind: null })
       for (const resolve of [resolveSelectedEnvironment, resolveSelectedEnvironmentValue]) {
         assert.isNull(await resolve(root, variable, {}))
         assert.isNull(await resolve(root, variable, { [variable]: 'cookie' }))
@@ -209,7 +209,7 @@ test.group('setup config diagnostics', (group) => {
     )
     const text =
       "import env from '#start/env'\nexport default { store: env.get('B02_SELECTED_STORE', unknownFallback), stores: { cookie: stores.cookie(), database: stores.database() } }\n"
-    assert.deepEqual(await selectedSessionDiagnostic(text, root), {
+    assert.deepEqual(await inspectSelectedSessionStore(text, root), {
       name: 'cookie',
       kind: 'cookie',
     })

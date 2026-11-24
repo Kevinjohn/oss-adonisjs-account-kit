@@ -3,7 +3,7 @@
 import { randomUUID } from 'node:crypto'
 import { confirmActor } from './actor_confirmation.js'
 import { transaction } from './db.js'
-import { finishCommitted, lifecycle, postCommit, settleCommitted } from './effects.js'
+import { finishCommitted, createLifecycleEffect, postCommit, settleCommitted } from './effects.js'
 import { deleteUserRows } from './user_rows.js'
 import type { AccountDataInput, DeletedAccount } from './types.js'
 import type { ServiceDependencies } from './service_dependencies.js'
@@ -34,7 +34,7 @@ export async function deleteAccount(
   await finishCommitted(fault, 'Account deleted but follow-ups failed', () =>
     postCommit('Account deleted but a follow-up failed', [
       { kind: 'delivery', run: () => config.notify.accountDeleted(deleted) },
-      lifecycle(config, { type: 'account.deleted', userId: deleted.id, operationId }),
+      createLifecycleEffect(config, { type: 'account.deleted', userId: deleted.id, operationId }),
     ])
   )
 }

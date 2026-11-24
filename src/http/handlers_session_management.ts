@@ -1,6 +1,6 @@
 /** Managed handlers for session management: list sign-ins, revoke one, others, or all. */
 import { isCommittedFailure } from '../errors.js'
-import { revocationOutcome } from '../session_revocation.js'
+import { getRevocationOutcome } from '../session_revocation.js'
 import type { ManagedEndpointName } from './routes.js'
 import type { ManagedHandler } from './managed_types.js'
 import { endSessionAfterCommit } from './session_end.js'
@@ -19,7 +19,7 @@ export const sessionManagementHandlers = {
       })
     } catch (error) {
       // The revocation committed; end this session before reporting the follow-up failure.
-      if (revocationOutcome(error)?.current)
+      if (getRevocationOutcome(error)?.current)
         await endSessionAfterCommit(options.guard, context, route.name)
       throw error
     }

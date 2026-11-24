@@ -1,11 +1,11 @@
 // Consumes the pending invitations for an address core has just confirmed, as the emailed link would.
 import type { DateTime } from 'luxon'
 import { consumeRows } from './consume_rows.js'
-import { lifecycle, type PostCommitEffect } from './effects.js'
+import { createLifecycleEffect, type PostCommitEffect } from './effects.js'
 import { normalizeEmail } from './email.js'
 import { InvalidTokenError } from './errors.js'
 import { toInvitation, type InvitationDatabaseRow } from './invitation_rows.js'
-import { byScope } from './invitation_scope.js'
+import { compareScopes } from './invitation_scope.js'
 import { sqlTimestamp } from './timestamps.js'
 import type { AccountUser, ResolvedConfig, Trx, UserId } from './types.js'
 
@@ -20,7 +20,7 @@ export async function applyInvitations(
   user: AccountUser,
   rows: InvitationDatabaseRow[]
 ): Promise<number[]> {
-  const ordered = [...rows].sort(byScope)
+  const ordered = [...rows].sort(compareScopes)
   for (const row of ordered) await config.onInvitationAccepted(user, toInvitation(row), trx)
   return ordered.map((row) => row.id)
 }
@@ -59,6 +59,11 @@ export function emitInvitationAccepted(
   operationId: string
 ): PostCommitEffect[] {
   return invitationIds.map((invitationId) =>
-    lifecycle(config, { type: 'invitation.accepted', invitationId, userId, operationId })
+    createLifecycleEffect(config, {
+      type: 'invitation.accepted',
+      invitationId,
+      userId,
+      operationId,
+    })
   )
 }

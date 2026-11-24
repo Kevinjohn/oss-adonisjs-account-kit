@@ -1,18 +1,18 @@
 import type { HttpContext } from '@adonisjs/core/http'
 import { planManagedRoutes, type ManagedRouteSelection } from './routes.js'
 
-export function proofHeaders(): Record<string, string> {
+export function buildProofHeaders(): Record<string, string> {
   return { 'Cache-Control': 'no-store', 'Referrer-Policy': 'no-referrer' }
 }
 
 export function applyProofHeaders(response: HttpContext['response']): void {
-  for (const [name, value] of Object.entries(proofHeaders())) response.header(name, value)
+  for (const [name, value] of Object.entries(buildProofHeaders())) response.header(name, value)
 }
 
 function matchesPath(pattern: string, path: string): boolean {
-  const parts = (value: string) => value.replace(/\/+$/, '').split('/').filter(Boolean)
-  const expected = parts(pattern)
-  const actual = parts(path)
+  const splitPathSegments = (value: string) => value.replace(/\/+$/, '').split('/').filter(Boolean)
+  const expected = splitPathSegments(pattern)
+  const actual = splitPathSegments(path)
   return (
     expected.length === actual.length &&
     expected.every((part, index) =>

@@ -22,7 +22,10 @@ export interface ActionUrlOptions {
 
 export const actionUrlBackendOrigins = new WeakMap<object, { value: string; setting?: string }>()
 
-export function trustedOrigin(value: string, environment: ActionUrlOptions['environment']): URL {
+export function requireTrustedOrigin(
+  value: string,
+  environment: ActionUrlOptions['environment']
+): URL {
   let url: URL
   try {
     url = new URL(value)
@@ -49,7 +52,7 @@ export function trustedOrigin(value: string, environment: ActionUrlOptions['envi
 export function createActionUrls(options: ActionUrlOptions): UrlCallbacks {
   const { backendOrigin, backendOriginSetting } = options
   try {
-    trustedOrigin(backendOrigin, options.environment)
+    requireTrustedOrigin(backendOrigin, options.environment)
   } catch (error) {
     if (!(error instanceof Error) || !options.backendOriginSetting) throw error
     throw new Error(
@@ -59,7 +62,7 @@ export function createActionUrls(options: ActionUrlOptions): UrlCallbacks {
       }
     )
   }
-  const frontend = trustedOrigin(options.appFrontendUrl, options.environment)
+  const frontend = requireTrustedOrigin(options.appFrontendUrl, options.environment)
   const base = new URL(frontend.toString().replace(/\/?$/, '/'))
   function link(name: keyof UrlCallbacks, token: string): string {
     const destination = options.destinations[name]

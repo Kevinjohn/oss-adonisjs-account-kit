@@ -9,7 +9,10 @@ type SupportedRange = {
   message: (version: string | undefined) => string
 }
 
-function caretRange(name: string, minimum: readonly [number, number, number]): SupportedRange {
+function createSupportedCaretRange(
+  name: string,
+  minimum: readonly [number, number, number]
+): SupportedRange {
   return {
     supports: (version) => {
       const parts = version
@@ -44,14 +47,14 @@ const supportedRanges: Record<string, SupportedRange> = {
     message: (version) =>
       `Installed TypeScript version ${version ?? 'unknown'} is outside supported ^5.9.3 || ^6.0.3 range`,
   },
-  '@adonisjs/core': caretRange('@adonisjs/core', [7, 0, 0]),
-  '@adonisjs/lucid': caretRange('@adonisjs/lucid', [22, 4, 2]),
-  '@adonisjs/limiter': caretRange('@adonisjs/limiter', [3, 0, 0]),
-  '@adonisjs/auth': caretRange('@adonisjs/auth', [10, 1, 0]),
-  '@adonisjs/session': caretRange('@adonisjs/session', [8, 1, 0]),
-  '@adonisjs/shield': caretRange('@adonisjs/shield', [9, 0, 0]),
-  '@vinejs/vine': caretRange('@vinejs/vine', [4, 4, 0]),
-  '@adonisjs/mail': caretRange('@adonisjs/mail', [10, 0, 0]),
+  '@adonisjs/core': createSupportedCaretRange('@adonisjs/core', [7, 0, 0]),
+  '@adonisjs/lucid': createSupportedCaretRange('@adonisjs/lucid', [22, 4, 2]),
+  '@adonisjs/limiter': createSupportedCaretRange('@adonisjs/limiter', [3, 0, 0]),
+  '@adonisjs/auth': createSupportedCaretRange('@adonisjs/auth', [10, 1, 0]),
+  '@adonisjs/session': createSupportedCaretRange('@adonisjs/session', [8, 1, 0]),
+  '@adonisjs/shield': createSupportedCaretRange('@adonisjs/shield', [9, 0, 0]),
+  '@vinejs/vine': createSupportedCaretRange('@vinejs/vine', [4, 4, 0]),
+  '@adonisjs/mail': createSupportedCaretRange('@adonisjs/mail', [10, 0, 0]),
   '@adonisjs/ally': {
     unknownVersion: 'reportIfInstalled',
     supports: (version) => {

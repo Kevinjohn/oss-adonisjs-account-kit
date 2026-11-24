@@ -1,5 +1,5 @@
 // Operator bootstrap: an operator invitation plus an approval waiting for the account it creates.
-import { deletedCount } from '../consume_rows.js'
+import { countDeletedRowsFromResult } from '../consume_rows.js'
 import { issueOperatorInvitation } from '../operator.js'
 import { isInvitationRole } from '../invitation_input.js'
 import { isEmailShaped, normalizeEmail } from '../email.js'
@@ -20,7 +20,7 @@ function requireEmail(value: unknown): string {
  * Atomically replace the invitation and its waiting approval, then expose the committed link.
  * A later bootstrap replaces the pair; cancellation removes only the waiting approval.
  */
-export async function operatorBootstrap(
+export async function bootstrapOperatorInvitation(
   deps: AdmissionContext,
   input: { email: string; role: string }
 ): Promise<OperatorInviteResult> {
@@ -64,5 +64,5 @@ export async function cancelBootstrap(deps: AdmissionContext, email: unknown): P
     .where('bootstrap_email', requireEmail(email))
     .whereNull('user_id')
     .delete()
-  return deletedCount(deleted) > 0
+  return countDeletedRowsFromResult(deleted) > 0
 }

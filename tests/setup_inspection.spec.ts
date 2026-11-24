@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { test } from '@japa/runner'
 import { inspectSetup } from '../src/setup/inspect.js'
-import { defaultSetupChoices } from '../src/setup/defaults.js'
+import { buildDefaultSetupChoices } from '../src/setup/defaults.js'
 import { planSetup } from '../src/setup/plan.js'
 import {
   resolveSelectedEnvironment,
@@ -93,7 +93,7 @@ test('mutated environment getter cannot certify database fallback', async ({ ass
     )
     const state = await inspectSetup(root)
     assert.equal(state.database, 'unknown')
-    const plan = await planSetup(defaultSetupChoices(), state)
+    const plan = await planSetup(buildDefaultSetupChoices(), state)
     assert.isTrue(
       plan.diagnostics.some(
         ({ field, severity }) => field === 'database.client' && severity === 'error'
@@ -292,7 +292,7 @@ test('database selection uses process, dotenv, then literal default without gues
       await writeFile(join(root, '.env'), `DB_CONNECTION=${selected}\n`)
       const unsupported = await inspectSetup(root)
       assert.equal(unsupported.database, selected === 'mssql' ? 'unsupported' : 'unknown')
-      const plan = await planSetup(defaultSetupChoices(), unsupported)
+      const plan = await planSetup(buildDefaultSetupChoices(), unsupported)
       assert.isTrue(
         plan.diagnostics.some(
           ({ field, severity }) => field === 'database.client' && severity === 'error'

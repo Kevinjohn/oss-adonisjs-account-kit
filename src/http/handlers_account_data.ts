@@ -3,7 +3,7 @@ import { exportFault } from '../account_export.js'
 import { isCommittedFailure } from '../errors.js'
 import type { ManagedEndpointName } from './routes.js'
 import type { ManagedHandler } from './managed_types.js'
-import { recoveryDiagnostic } from './response_helpers.js'
+import { logRecoveryDiagnostic } from './response_helpers.js'
 import { endSessionAfterCommit } from './session_end.js'
 import { accountProofValidator } from './validators.js'
 
@@ -17,7 +17,7 @@ export const accountDataHandlers = {
       recentProof,
     })
     // Only the proof was consumed before the fault; the document is complete, so send it.
-    if (exportFault(document)) recoveryDiagnostic(context, route.name, 'followup_failed')
+    if (exportFault(document)) logRecoveryDiagnostic(context, route.name, 'followup_failed')
     context.response.header('Cache-Control', 'no-store')
     context.response.header('Content-Disposition', 'attachment; filename="account-export.json"')
     return context.response.ok(document)

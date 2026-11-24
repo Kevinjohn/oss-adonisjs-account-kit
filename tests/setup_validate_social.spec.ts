@@ -1,7 +1,7 @@
 import { test } from '@japa/runner'
 import ts from 'typescript'
-import { allyConfigSource } from '../src/setup/generated_ally_config.js'
-import { defaultSetupChoices } from '../src/setup/defaults.js'
+import { generateAllyConfigSource } from '../src/setup/generated_ally_config.js'
+import { buildDefaultSetupChoices } from '../src/setup/defaults.js'
 import { addSocialDiagnostics } from '../src/setup/validate_social.js'
 import type { SetupChoices, SetupDiagnostic, SetupInspection } from '../src/setup/types.js'
 
@@ -18,7 +18,7 @@ const state = {
 
 /** Choices that validate cleanly with GitHub enabled; each test breaks exactly one thing. */
 function socialChoices(): SetupChoices {
-  const choices = defaultSetupChoices()
+  const choices = buildDefaultSetupChoices()
   choices.features = [
     'authentication',
     'registration',
@@ -124,7 +124,7 @@ test.group('setup social validation', () => {
       choices.authentication!.strategy = 'access_tokens'
       social(choices).callbackPath = path
       assert.deepEqual(run(choices), [], path)
-      const executable = allyConfigSource(choices)
+      const executable = generateAllyConfigSource(choices)
         .replace(/^import .*\n/gm, '')
         .replace('export default allyConfig', 'return allyConfig')
       const compiled = ts.transpileModule(executable, {

@@ -1,24 +1,27 @@
 import { envName } from './diagnostics.js'
 import { resolveSelectedEnvironment } from './selected_environment_values.js'
 import {
-  defaultImportName,
-  directProperty,
-  exactCall,
-  exportedObject,
-  importedName,
+  getDefaultImportName,
+  getDirectProperty,
+  isExactCall,
+  getExportedObject,
+  getImportedBindingName,
   parseSetupSource,
-  safeEnvGetter,
+  hasSafeEnvironmentGetter,
   type SetupSource,
 } from './ts_source.js'
 import type * as TypeScript from 'typescript'
 
 /** The variable name in `env.get('NAME', ...)`, whatever the remaining arguments are. */
-function envVariable(source: SetupSource, expression: TypeScript.Expression): string | null {
-  const envBinding = defaultImportName(source, '#start/env')
+function extractEnvironmentVariableName(
+  source: SetupSource,
+  expression: TypeScript.Expression
+): string | null {
+  const envBinding = getDefaultImportName(source, '#start/env')
   if (
     !envBinding ||
-    !exactCall(source, expression, envBinding, 'get') ||
-    !safeEnvGetter(source, envBinding) ||
+    !isExactCall(source, expression, envBinding, 'get') ||
+    !hasSafeEnvironmentGetter(source, envBinding) ||
     expression.arguments.length < 1 ||
     !source.ts.isStringLiteral(expression.arguments[0])
   )
@@ -28,7 +31,7 @@ function envVariable(source: SetupSource, expression: TypeScript.Expression): st
 }
 
 /** A diagnostic-only classifier; it never authorizes automatic attestation. */
-export async function selectedSessionDiagnostic(
+export async function inspectSelectedSessionStore(
   text: string,
   root: string,
   env?: NodeJS.ProcessEnv
@@ -37,22 +40,22 @@ export async function selectedSessionDiagnostic(
   kind: string | null
 } | null> {
   const source = await parseSetupSource(text)
-  const object = exportedObject(
+  const object = getExportedObject(
     source,
-    importedName(source, '@adonisjs/session', 'defineConfig') ?? undefined
+    getImportedBindingName(source, '@adonisjs/session', 'defineConfig') ?? undefined
   )
-  const store = object && directProperty(source, object, 'store')
-  const stores = object && directProperty(source, object, 'stores')
+  const store = object && getDirectProperty(source, object, 'store')
+  const stores = object && getDirectProperty(source, object, 'stores')
   if (!store || !stores || !source.ts.isObjectLiteralExpression(stores.initializer)) return null
   let name: string | null = null
   if (source.ts.isStringLiteral(store.initializer)) name = store.initializer.text
   else {
-    const variable = envVariable(source, store.initializer)
+    const variable = extractEnvironmentVariableName(source, store.initializer)
     if (variable) name = await resolveSelectedEnvironment(root, variable, env)
   }
   if (!name) return { name: null, kind: null }
-  const storesName = importedName(source, '@adonisjs/session', 'stores') ?? 'stores'
-  const selected = directProperty(source, stores.initializer, name)
+  const storesName = getImportedBindingName(source, '@adonisjs/session', 'stores') ?? 'stores'
+  const selected = getDirectProperty(source, stores.initializer, name)
   const initializer = selected?.initializer
   const kind =
     initializer &&

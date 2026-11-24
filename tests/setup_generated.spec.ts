@@ -17,11 +17,11 @@ import { pruneExpired } from '../src/maintenance.js'
 import { migrationNames } from '../configure.js'
 import { socialRegistrationValidator } from '../src/http/validators.js'
 import { InvalidInputError } from '../src/errors.js'
-import { managedErrorResponse } from '../src/http/responses.js'
+import { mapManagedErrorResponse } from '../src/http/responses.js'
 import { fixture, registerSetupTeardown } from './helpers/setup_project_fixture.js'
 import { withFixture } from './helpers/setup_prerequisites.js'
 import { interactive } from './helpers/interactive_choices.js'
-import { parseSetupChoices } from '../src/setup/parse.js'
+import { requireSetupChoices } from '../src/setup/parse.js'
 
 test.group('setup generated sources', (group) => {
   registerSetupTeardown(group)
@@ -462,7 +462,7 @@ test.group('setup generated sources', (group) => {
       }
       assert.instanceOf(caught, InvalidInputError)
       assert.include((caught as InvalidInputError).message, field)
-      assert.deepEqual(managedErrorResponse(caught), {
+      assert.deepEqual(mapManagedErrorResponse(caught), {
         status: 422,
         contentType: 'application/json',
         headers: { 'Vary': 'Accept', 'Cache-Control': 'no-store' },
@@ -489,7 +489,7 @@ test.group('setup generated sources', (group) => {
     }
     const asked = await interactive(answers)
     assert.equal(asked.mail.destinations.magicLink, 'login/link')
-    assert.deepEqual(parseSetupChoices(asked), asked)
+    assert.deepEqual(requireSetupChoices(asked), asked)
 
     const { root, choices } = await fixture()
     choices.features.push('magicLinkLogin')

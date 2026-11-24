@@ -1,9 +1,9 @@
 import {
-  directProperty,
-  exactCall,
+  getDirectProperty,
+  isExactCall,
   hasUnsafeObjectEntries,
   hasUnsafeBindingReferences,
-  importedName,
+  getImportedBindingName,
   type SetupSource,
 } from './ts_source.js'
 import type * as TypeScript from 'typescript'
@@ -36,7 +36,7 @@ function isNonColumnDecorator(
 }
 
 /** Inspect only the Lucid column decorators that determine the runtime primary mapping. */
-export function classColumns(
+export function inspectClassColumns(
   source: SetupSource,
   selected: TypeScript.ClassDeclaration
 ): {
@@ -44,7 +44,7 @@ export function classColumns(
   unsafe: boolean
 } {
   const { ts } = source
-  const binding = importedName(source, '@adonisjs/lucid/orm', 'column')
+  const binding = getImportedBindingName(source, '@adonisjs/lucid/orm', 'column')
   const columns = new Map<string, InspectedColumn>()
   let unsafe = Boolean(
     binding &&
@@ -54,13 +54,13 @@ export function classColumns(
       (call) =>
         ts.isDecorator(call.parent) &&
         ((ts.isIdentifier(call.expression) && call.expression.text === binding) ||
-          exactCall(source, call, binding, 'dateTime') ||
-          exactCall(source, call, binding, 'date'))
+          isExactCall(source, call, binding, 'dateTime') ||
+          isExactCall(source, call, binding, 'date'))
     )
   )
   const nonColumnBindings = new Set(
     nonColumnDecorators
-      .map((name) => importedName(source, '@adonisjs/lucid/orm', name))
+      .map((name) => getImportedBindingName(source, '@adonisjs/lucid/orm', name))
       .filter((name): name is string => name !== null)
   )
   for (const member of selected.members) {
@@ -79,8 +79,8 @@ export function classColumns(
       !ts.isCallExpression(call) ||
       !(
         (ts.isIdentifier(call.expression) && call.expression.text === binding) ||
-        exactCall(source, call, binding, 'dateTime') ||
-        exactCall(source, call, binding, 'date')
+        isExactCall(source, call, binding, 'dateTime') ||
+        isExactCall(source, call, binding, 'date')
       ) ||
       call.arguments.length > 1
     ) {
@@ -97,11 +97,11 @@ export function classColumns(
     }
     const primary =
       options && ts.isObjectLiteralExpression(options)
-        ? directProperty(source, options, 'isPrimary')?.initializer
+        ? getDirectProperty(source, options, 'isPrimary')?.initializer
         : undefined
     const columnName =
       options && ts.isObjectLiteralExpression(options)
-        ? directProperty(source, options, 'columnName')?.initializer
+        ? getDirectProperty(source, options, 'columnName')?.initializer
         : undefined
     if (
       (primary &&

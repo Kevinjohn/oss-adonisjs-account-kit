@@ -1,11 +1,11 @@
 import { test } from '@japa/runner'
-import { domainAllowed, domainOf } from '../src/admission/domain.js'
+import { isDomainAllowed, extractEmailDomain } from '../src/admission/domain.js'
 
 const exact = { allowed: ['example.com'], includeSubdomains: false }
 const nested = { allowed: ['example.com'], includeSubdomains: true }
 const matches = (email: string, rule = exact) => {
-  const domain = domainOf(email)
-  return domain !== null && domainAllowed(domain, rule)
+  const domain = extractEmailDomain(email)
+  return domain !== null && isDomainAllowed(domain, rule)
 }
 
 test.group('admission domain', () => {
@@ -41,15 +41,15 @@ test.group('admission domain', () => {
       assert.isFalse(matches(email), email)
       assert.isFalse(matches(email, nested), email)
     }
-    assert.isNull(domainOf('a@b@example.com'))
-    assert.isNull(domainOf('@example.com'))
+    assert.isNull(extractEmailDomain('a@b@example.com'))
+    assert.isNull(extractEmailDomain('@example.com'))
   })
 
   test('never matches a Unicode domain, with or without subdomains', ({ assert }) => {
     assert.isFalse(matches('person@exämple.com'))
     assert.isFalse(matches('person@bücher.example.com', nested))
     assert.isFalse(
-      domainAllowed('exämple.com', { allowed: ['xn--exmple-cua.com'], includeSubdomains: false })
+      isDomainAllowed('exämple.com', { allowed: ['xn--exmple-cua.com'], includeSubdomains: false })
     )
   })
 })

@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto'
 import { sqlTimestamp } from './timestamps.js'
 import { DateTime } from 'luxon'
 import { transaction, isUserEmailUniqueViolation } from './db.js'
-import { finishCommitted, lifecycle, postCommit, settleCommitted } from './effects.js'
+import { finishCommitted, createLifecycleEffect, postCommit, settleCommitted } from './effects.js'
 import { normalizeEmail, isEmailShaped } from './email.js'
 import {
   AuthorizationError,
@@ -80,7 +80,7 @@ export async function register(
             deps.config.urls.emailVerification(token)
           ),
       },
-      lifecycle(deps.config, {
+      createLifecycleEffect(deps.config, {
         type: 'registration.created',
         userId: created.id,
         operationId,

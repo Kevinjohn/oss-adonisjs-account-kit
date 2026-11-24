@@ -3,7 +3,7 @@
 import { test } from '@japa/runner'
 import { AdmissionDecisionError } from '../src/admission/errors.js'
 import type { AdmissionEvent } from '../src/admission/types.js'
-import { clientChallengeFor } from '../src/magic_link.js'
+import { deriveClientChallenge } from '../src/magic_link.js'
 import {
   AuthorizationError,
   CapabilityDisabledError,
@@ -366,7 +366,7 @@ test.group('admission decisions', (group) => {
     await account.magicLink.request({
       email: person.email,
       clientKey: 'client',
-      clientChallenge: clientChallengeFor(verifier),
+      clientChallenge: deriveClientChallenge(verifier),
     })
     await account.magicLink.complete({ token: lastToken(), verifier }, guard)
     const changed = await issueEmailChange(account, person, recorder, 'person2@example.test')

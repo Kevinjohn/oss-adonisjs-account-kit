@@ -6,7 +6,7 @@ import { test } from '@japa/runner'
 import { inspectSetup } from '../src/setup/inspect.js'
 import { planSetup } from '../src/setup/plan.js'
 import { applySetup } from '../src/setup/apply.js'
-import { parseSetupChoices } from '../src/setup/parse.js'
+import { requireSetupChoices } from '../src/setup/parse.js'
 import { fixture, registerSetupTeardown } from './helpers/setup_project_fixture.js'
 import { withFixture } from './helpers/setup_prerequisites.js'
 
@@ -346,7 +346,7 @@ test.group('setup choice validation', (group) => {
     )
     await assert.rejects(() => applySetup(root, plan), /blocking diagnostics/)
     assert.throws(
-      () => parseSetupChoices({ ...choices, privateApiKey: 'must-never-persist' }),
+      () => requireSetupChoices({ ...choices, privateApiKey: 'must-never-persist' }),
       /privateApiKey: unsupported field/
     )
     assert.notInclude(await readdir(join(root, 'config')), 'account_kit_setup.json')
@@ -416,7 +416,7 @@ test.group('setup choice validation', (group) => {
           verifiedColumn: 'email_verified_at',
         },
       }
-      assert.deepEqual(parseSetupChoices(saved), choices)
+      assert.deepEqual(requireSetupChoices(saved), choices)
       const plan = await planSetup(saved, state)
       assert.notIncludeMembers(
         plan.diagnostics.map(({ field }) => field),

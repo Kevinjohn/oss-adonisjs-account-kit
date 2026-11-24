@@ -7,6 +7,15 @@ import { dbTime } from './helpers/db_time.js'
 test.group('invitation management contracts', (group) => {
   const kit = useTestApp(group)
 
+  test('returns an empty page when the actor has no invitations to list', async ({ assert }) => {
+    const actor = await insertUser(kit)
+    const { account } = makeService(kit)
+    assert.deepEqual(await account.invitations.list({ actorId: actor.id }), {
+      items: [],
+      nextCursor: null,
+    })
+  })
+
   test('pages equal timestamps in id order without repeats', async ({ assert }) => {
     const actor = await insertUser(kit, { email: 'actor@example.test' })
     const { account } = makeService(kit)

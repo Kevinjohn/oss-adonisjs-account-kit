@@ -2,7 +2,7 @@
 import { randomUUID } from 'node:crypto'
 import {
   finishCommitted,
-  lifecycle,
+  createLifecycleEffect,
   postCommit,
   settleCommitted,
   type PostCommitEffect,
@@ -59,7 +59,7 @@ async function followUps(
  * Issue an invitation without actor authorization or throttles. Any existing invitation for the
  * address and scope is replaced, so a rerun after a lost link is never blocked by the pending one.
  */
-export async function operatorInvite(
+export async function issueStandaloneOperatorInvitation(
   deps: Pick<ServiceDependencies, 'config' | 'db'>,
   input: OperatorInviteInput
 ): Promise<OperatorInviteResult> {
@@ -100,7 +100,7 @@ export async function issueOperatorInvitation(
         replacePending: true,
       })
   const effects: PostCommitEffect[] = [
-    lifecycle(deps.config, {
+    createLifecycleEffect(deps.config, {
       type: 'invitation.sent',
       invitationId: invitation.id,
       operationId: randomUUID(),
@@ -128,7 +128,7 @@ export async function issueOperatorInvitation(
  * Issue a password-reset link without throttles or the timing floor. Unknown addresses are
  * reported, because the operator already has database-level access.
  */
-export async function operatorResetLink(
+export async function issueOperatorResetLink(
   deps: Pick<ServiceDependencies, 'config' | 'db'>,
   input: OperatorResetLinkInput
 ): Promise<OperatorResetLinkResult> {
@@ -147,7 +147,7 @@ export async function operatorResetLink(
     throw new UserNotFoundError()
   }
   const effects: PostCommitEffect[] = [
-    lifecycle(deps.config, {
+    createLifecycleEffect(deps.config, {
       type: 'password_reset.requested',
       userId: issued.id,
       operationId: randomUUID(),

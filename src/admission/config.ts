@@ -46,9 +46,9 @@ export function resolveAdmissionConfig(
     fail('callbacks', 'callbacks must be an object')
   const { approvalAuthorize, onAdmissionEvent } = callbacks
   if (approvalAuthorize !== undefined && input.approval?.authorize !== undefined)
-    bothPlaces('approval.authorize')
+    rejectDuplicateAdmissionSetting('approval.authorize')
   if (onAdmissionEvent !== undefined && input.onAdmissionEvent !== undefined)
-    bothPlaces('onAdmissionEvent')
+    rejectDuplicateAdmissionSetting('onAdmissionEvent')
   return checkAdmission(
     {
       ...input,
@@ -61,7 +61,7 @@ export function resolveAdmissionConfig(
   )
 }
 
-function bothPlaces(field: string): never {
+function rejectDuplicateAdmissionSetting(field: string): never {
   fail(
     `admission.${field}`,
     `${field} is set in both config/admission.ts and the registered callbacks`

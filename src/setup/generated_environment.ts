@@ -1,7 +1,7 @@
 import type { SetupChoices } from './types.js'
 import { hasEmailFlow } from './shared.js'
 
-export function generatedEnv(choices: SetupChoices): string {
+export function generateEnvironmentTemplate(choices: SetupChoices): string {
   const names = new Set<string>()
   if (hasEmailFlow(choices)) {
     names.add(choices.mail.backendOriginEnv)

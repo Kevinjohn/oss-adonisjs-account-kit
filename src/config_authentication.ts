@@ -1,10 +1,10 @@
 // Validates and defaults the authentication option.
 import { DateTime } from 'luxon'
-import { budget } from './config_budget.js'
+import { resolveThrottleBudget } from './config_budget.js'
 import { assertObject } from './config_assert.js'
 import { InvalidConfigurationError } from './errors.js'
 import { isSqlIdentifier } from './sql_identifier.js'
-import { configuredExpiresAt } from './config_ttl.js'
+import { computeConfiguredExpiry } from './config_ttl.js'
 import type { AccountKitConfig, ResolvedAuthenticationConfig } from './types.js'
 import { freezeResolved } from './config_freeze.js'
 
@@ -41,25 +41,25 @@ export function resolveAuthentication(
         'account_kit: authentication.tokenAbilities must be non-empty strings'
       )
     if (auth.tokenExpiresIn !== undefined)
-      configuredExpiresAt('authentication.tokenExpiresIn', DateTime.utc(), auth.tokenExpiresIn)
+      computeConfiguredExpiry('authentication.tokenExpiresIn', DateTime.utc(), auth.tokenExpiresIn)
     const tokenTable = auth.tokenTable ?? 'auth_access_tokens'
     if (typeof tokenTable !== 'string' || !isSqlIdentifier(tokenTable))
       throw new InvalidConfigurationError(
         'authentication.tokenTable',
         'account_kit: authentication.tokenTable must be a plain SQL identifier'
       )
-    const clientLimit = budget(
+    const clientLimit = resolveThrottleBudget(
       auth.clientLimit,
       { requests: 10, duration: '1m' },
       'authentication.clientLimit'
     )
-    const identityLimit = budget(
+    const identityLimit = resolveThrottleBudget(
       auth.identityLimit,
       { requests: 5, duration: '1m' },
       'authentication.identityLimit'
     )
     const blockDuration = auth.identityLimit?.blockDuration ?? '20m'
-    budget(
+    resolveThrottleBudget(
       { requests: 1, duration: blockDuration },
       { requests: 1, duration: '20m' },
       'authentication.identityLimit',

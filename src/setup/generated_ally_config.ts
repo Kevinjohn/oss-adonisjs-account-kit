@@ -1,7 +1,7 @@
 import type { SetupChoices } from './types.js'
 import { requiredEnvHelperLines } from './generated_env_helpers.js'
 
-export function allyConfigSource(choices: SetupChoices): string {
+export function generateAllyConfigSource(choices: SetupChoices): string {
   if (choices.social.status !== 'enabled') throw new Error('Social providers are not selected')
   const social = choices.social
   const origin = social.callbackOriginEnv

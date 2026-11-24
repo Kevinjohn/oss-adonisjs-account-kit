@@ -1,6 +1,6 @@
 import type { SetupChoices, SetupDiagnostic, SetupInspection } from './types.js'
 import { planManagedRoutes, type ManagedRoute } from '../http/routes.js'
-import { routePrefix, selectedManagedRoutes, addSetupDiagnostic } from './shared.js'
+import { routePrefix, planSelectedManagedRoutes, addSetupDiagnostic } from './shared.js'
 
 /** Route prefix, managed endpoint exclusions and collisions with application routes. */
 export function addRoutesDiagnostics(
@@ -21,7 +21,7 @@ export function addRoutesDiagnostics(
     )
   let managedRoutes: ManagedRoute[] = []
   try {
-    managedRoutes = selectedManagedRoutes(choices)
+    managedRoutes = planSelectedManagedRoutes(choices)
     const allowedExcept = planManagedRoutes({
       prefix: choices.routePrefix,
       strategy: choices.authentication?.strategy ?? 'session',
@@ -50,7 +50,7 @@ export function addRoutesDiagnostics(
         : [route]
     )
     try {
-      selectedManagedRoutes(choices, existing)
+      planSelectedManagedRoutes(choices, existing)
     } catch (error) {
       addSetupDiagnostic(
         diagnostics,

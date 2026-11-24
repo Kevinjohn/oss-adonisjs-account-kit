@@ -12,13 +12,13 @@ export const sessionTable = 'account_sessions'
 export const sessionTouchIntervalMs = 5 * 60 * 1000
 
 /** Session guards record each sign-in only while `sessionManagement` is enabled. */
-export function sessionRegistryEnabled(config: ResolvedConfig): boolean {
+export function isSessionRegistryEnabled(config: ResolvedConfig): boolean {
   return (
     config.enabled.includes('sessionManagement') && config.authentication?.strategy === 'session'
   )
 }
 
-export function newSessionHandle(): string {
+export function generateSessionHandle(): string {
   return generateToken(32)
 }
 

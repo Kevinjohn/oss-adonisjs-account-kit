@@ -1,6 +1,6 @@
 import type { SqlUsersAdapter, SqlUsersAdapterOptions } from './sql.js'
 import { InvalidConfigurationError } from '../src/errors.js'
-import { deferredSqlUsersAdapter } from '../src/deferred_sql_adapter.js'
+import { createDeferredSqlUsersAdapter } from '../src/deferred_sql_adapter.js'
 import { canonicalUserColumns } from '../src/user_columns.js'
 
 export type { SqlUsersAdapter, SqlUsersAdapterOptions } from './sql.js'
@@ -14,7 +14,7 @@ const schemaKey = Symbol.for('drizzle:Schema')
 const columnsKey = Symbol.for('drizzle:Columns')
 
 /** Read the physical table name from a Drizzle table and check its user columns. */
-function drizzleUsersTable(usersTable: object): string {
+function requireDrizzleUsersTable(usersTable: object): string {
   const table = usersTable as Record<symbol, unknown>
   const name = table[nameKey]
   const columns = table[columnsKey] as Record<string, DrizzleColumn> | undefined
@@ -52,5 +52,5 @@ export function createDrizzleAdapter(
   usersTable: object,
   options: DrizzleAdapterOptions = {}
 ): SqlUsersAdapter {
-  return deferredSqlUsersAdapter(() => drizzleUsersTable(usersTable), options)
+  return createDeferredSqlUsersAdapter(() => requireDrizzleUsersTable(usersTable), options)
 }

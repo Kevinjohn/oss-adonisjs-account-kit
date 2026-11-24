@@ -8,9 +8,9 @@ import type { PostCommitError } from './errors.js'
 import type { AccountDataInput, AccountExport, ResolvedConfig, Trx, UserId } from './types.js'
 import type { ServiceDependencies } from './service_dependencies.js'
 import { readIsoTimestamp, sqlTimestamp } from './timestamps.js'
-import { scopeFromColumn } from './invitation_scope.js'
+import { decodeScopeColumn } from './invitation_scope.js'
 import { packageTables } from './package_tables.js'
-import { sessionRegistryEnabled } from './session_registry.js'
+import { isSessionRegistryEnabled } from './session_registry.js'
 
 const faults = new WeakMap<AccountExport, PostCommitError>()
 
@@ -20,7 +20,7 @@ export function exportFault(document: AccountExport): PostCommitError | undefine
 }
 
 /** Round-trip through JSON so the document holds exactly what a download would contain. */
-function applicationSection(value: unknown): unknown {
+function copyApplicationExportSection(value: unknown): unknown {
   let text: string | undefined
   try {
     text = JSON.stringify(value)
@@ -32,7 +32,10 @@ function applicationSection(value: unknown): unknown {
   return JSON.parse(text)
 }
 
-async function pending(trx: Trx, userId: UserId): Promise<AccountExport['pending']> {
+async function readPendingAccountOperations(
+  trx: Trx,
+  userId: UserId
+): Promise<AccountExport['pending']> {
   const now = sqlTimestamp(trx)
   const reset = await trx
     .from(packageTables.passwordResetTokens)
@@ -52,7 +55,7 @@ async function pending(trx: Trx, userId: UserId): Promise<AccountExport['pending
   }
 }
 
-async function accessTokens(trx: Trx, config: ResolvedConfig, userId: UserId) {
+async function listExportedAccessTokens(trx: Trx, config: ResolvedConfig, userId: UserId) {
   const rows = await trx
     .from(config.authentication!.tokenTable)
     .select('id', 'name', 'created_at', 'last_used_at', 'expires_at')
@@ -67,7 +70,7 @@ async function accessTokens(trx: Trx, config: ResolvedConfig, userId: UserId) {
   }))
 }
 
-async function signedInSessions(trx: Trx, userId: UserId) {
+async function listExportedSessions(trx: Trx, userId: UserId) {
   const rows = await trx
     .from(packageTables.accountSessions)
     .select('id', 'label', 'created_at', 'last_seen_at', 'expires_at')
@@ -132,19 +135,19 @@ export async function exportAccountData(
         invitationsSent: invitations.map((row) => ({
           email: row.email,
           role: row.role,
-          scope: scopeFromColumn(row.scope),
+          scope: decodeScopeColumn(row.scope),
           createdAt: readIsoTimestamp(row.created_at)!,
           expiresAt: readIsoTimestamp(row.expires_at)!,
         })),
         ...(config.authentication?.strategy === 'access_tokens'
-          ? { accessTokens: await accessTokens(trx, config, user.id) }
+          ? { accessTokens: await listExportedAccessTokens(trx, config, user.id) }
           : {}),
-        ...(sessionRegistryEnabled(config)
-          ? { sessions: await signedInSessions(trx, user.id) }
+        ...(isSessionRegistryEnabled(config)
+          ? { sessions: await listExportedSessions(trx, user.id) }
           : {}),
-        pending: await pending(trx, user.id),
+        pending: await readPendingAccountOperations(trx, user.id),
         application: config.exportAccountData
-          ? applicationSection(await config.exportAccountData(user, trx))
+          ? copyApplicationExportSection(await config.exportAccountData(user, trx))
           : null,
       }
     })

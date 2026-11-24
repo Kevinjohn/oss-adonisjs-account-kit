@@ -1,18 +1,27 @@
-import { exactCall, importedName, unwrapStaticExpression, type SetupSource } from './ts_source.js'
+import {
+  isExactCall,
+  getImportedBindingName,
+  unwrapStaticExpression,
+  type SetupSource,
+} from './ts_source.js'
 import type * as TypeScript from 'typescript'
 
-export { classColumns } from './model_column_inspection.js'
+export { inspectClassColumns } from './model_column_inspection.js'
 export type { InspectedColumn } from './model_column_inspection.js'
 
 /** Keep automatic model inspection within declarations whose class evaluation is understood. */
-export function unsupportedClassRuntime(
+export function hasUnsupportedClassRuntime(
   source: SetupSource,
   selected: TypeScript.ClassDeclaration,
   schema: boolean
 ): boolean {
   const { ts } = source
   if (ts.canHaveDecorators(selected) && ts.getDecorators(selected)?.length) return true
-  const provider = importedName(source, '@adonisjs/auth/access_tokens', 'DbAccessTokensProvider')
+  const provider = getImportedBindingName(
+    source,
+    '@adonisjs/auth/access_tokens',
+    'DbAccessTokensProvider'
+  )
   for (const member of selected.members) {
     if (ts.isConstructorDeclaration(member) || ts.isClassStaticBlockDeclaration(member)) return true
     const modifiers = ts.canHaveModifiers(member) ? ts.getModifiers(member) : undefined
@@ -68,7 +77,7 @@ export function unsupportedClassRuntime(
       if (
         initializer &&
         provider &&
-        exactCall(source, initializer, provider, 'forModel') &&
+        isExactCall(source, initializer, provider, 'forModel') &&
         initializer.arguments.length === 1 &&
         ts.isIdentifier(initializer.arguments[0]) &&
         initializer.arguments[0].text === selected.name?.text
@@ -81,7 +90,7 @@ export function unsupportedClassRuntime(
 }
 
 /** Static property declarations of a class with the given name. */
-export function staticMembers(
+export function listStaticMembers(
   source: SetupSource,
   selected: TypeScript.ClassDeclaration | null | undefined,
   name: string
@@ -123,6 +132,6 @@ export function hasUnsafeStaticMetadata(
         (ts.isIdentifier(name) || ts.isStringLiteral(name)) &&
         metadataNames.includes(name.text)
       )
-    }) || metadataNames.some((name) => staticMembers(source, selected, name).length > 1)
+    }) || metadataNames.some((name) => listStaticMembers(source, selected, name).length > 1)
   )
 }
