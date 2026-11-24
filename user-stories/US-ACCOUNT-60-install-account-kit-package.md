@@ -3,7 +3,7 @@
 As an application operator, I want to run the package's configure step so that a new AdonisJS application gets the Account Kit config, migrations, provider and commands without hand-writing them.
 
 **Status:** Operator
-**Access:** Requires shell access to the application. The step never overwrites existing files; the operator still runs the migrations and reviews the generated config.
+**Access:** Requires shell access to the application. Existing generated config and migration files are kept; codemods update application registration and environment declarations. The operator still runs the migrations and reviews the generated config.
 **Entry:** Run `node ace configure @kevinjohn/adonisjs-account-kit [--users-table] [--user-id-type] [--provider-registered] [--migration-directory=path]` after installing the GitHub release archive ([root install section](../README.md#install)). `node ace add` is not a substitute: it installs the package from the npm registry first, and the package ships as a release archive. [US-ACCOUNT-31](US-ACCOUNT-31-configure-account-kit.md) covers the later `account-kit:setup` action.
 **Documentation:** [getting-started.md](../docs/guide/getting-started.md), [root install section](../README.md#install), [custom-schema.md](../docs/guide/custom-schema.md)
 **Source:** [`configure.ts`](../configure.ts), exported as `configure` from [`index.ts`](../index.ts)
@@ -23,6 +23,7 @@ As an application operator, I want to run the package's configure step so that a
 - An `adonisrc.ts` whose `defineConfig` call, config properties or syntax cannot be inspected (not a static object literal, computed properties, spreads that do not expose `providers` and `commands`, TypeScript syntax errors) stops with exit code 1 before any write, whatever the flags. A shape it cannot inspect logs restructuring guidance; a syntax error or an unloadable `adonisrc.ts` logs only `Unable to inspect adonisrc.ts: <reason>.` A `providers` list that cannot be inspected stops with exit code 1 and guidance unless `--provider-registered` is given.
 
 - Configure uses the [shared migration destination and ordering rules](../docs/guide/setup.md#reconfigure-saved-choices). It reports an unsafe destination or migration order before writing any files.
+- Later codemod failures can leave earlier files or registrations written. Inspect the application and correct the cause before rerunning.
 
 ## User flow
 
@@ -36,7 +37,8 @@ flowchart TD
     P -->|No| E
     P -->|Yes| M{"Migration path and prerequisites reconciled?"}
     M -->|No| E2["Report migration path/order error before writes"]
-    M -->|Yes| F["Config, migrations, provider, commands and env checks are added without overwriting existing files"]
+    M -->|Yes| F["Keep generated config and migrations if present; update provider, commands and env declarations"]
+    F -->|Later codemod failure| X["Inspect earlier writes and correct the cause before rerunning"]
     F --> G["Operator runs the migrations and edits the generated config"]
 ```
 
@@ -55,8 +57,11 @@ flowchart TD
     F -->|Yes| M{"inspectMigrationDirectory and orderMigrations succeed?"}
     M -->|No| D
     M -->|Yes| H["makeUsingStub writes config and migrations; existing files are kept"]
-    H --> I["updateRcFile adds provider when absent, and the commands entry"]
+    H --> I["updateRcFile adds provider if absent and commands entry unless detected"]
     I --> J["defineEnvValidations declares APP_URL and FRONTEND_URL"]
+    H -->|Later failure| X["Propagate error; earlier writes may remain"]
+    I -->|Failure| X
+    J -->|Failure| X
 ```
 
 **Code references:** [`configure`](../configure.ts), [`buildMigrationSchema`](../src/setup/migration_definitions.ts), [`providers inspection`](../src/setup/providers_inspection.ts), [command registration inspection](../src/setup/commands_inspection.ts), [migration directory](../src/setup/migration_paths.ts), [migration ordering](../src/setup/migration_order.ts), [`config stub`](../stubs/config/account_kit.stub), [`tests/configure.spec.ts`](../tests/configure.spec.ts)

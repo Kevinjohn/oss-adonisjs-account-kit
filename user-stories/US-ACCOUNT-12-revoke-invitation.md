@@ -13,7 +13,7 @@ As an authorised inviter, I want to cancel an outstanding invitation so that I c
 
 - **Inputs and result:** `invitations.revoke({ actorId, invitationId })` returns `void`. `authorize.manageInvitation` must allow the actor; the invitation row with that id is locked and deleted, whether it is still pending or already expired, and its token can no longer be accepted. A missing row throws `E_ACCOUNT_KIT_INVITATION_NOT_FOUND`; a refusal from `manageInvitation` throws `E_ACCOUNT_KIT_INVITATION_MANAGEMENT_DENIED`.
 
-- The transaction calls `manageInvitation(actor, invitation, { trx })`. Managed success returns 204. A lifecycle failure can surface after deletion commits.
+- The transaction calls `manageInvitation(actor, invitation, { trx })`. The managed error mapper presents both a denied action and a missing invitation as `E_ACCOUNT_KIT_INVITATION_NOT_FOUND` with status 404. Managed success returns 204. A lifecycle failure can surface after deletion commits.
 - If the managed write recognises a committed follow-up failure, it returns 202 with `{ committed: true }`.
 
 ## User flow
@@ -31,6 +31,7 @@ flowchart TD
 ```mermaid
 flowchart TD
   M["Managed route resolves actor and parses positive invitation ID"] --> A["invitations.revoke"]
+  H["Host supplies authorised actor and invitation ID"] --> A
   A --> B["Check capability and ID; load actor; transaction locks actor and invitation row"]
   B --> C{"Row found?"}
   C -->|No| D["Throw E_ACCOUNT_KIT_INVITATION_NOT_FOUND"]
@@ -40,4 +41,4 @@ flowchart TD
   E --> F["Emit lifecycle event; return void or managed 204 on success; surface committed failure otherwise"]
 ```
 
-**Code references:** [implementation](../src/invitation_management.ts), [`tests/invitations_revoke.spec.ts`](../tests/invitations_revoke.spec.ts), [managed revoke](../src/http/handlers_invitations.ts), [managed committed-failure response](../src/http/managed.ts)
+**Code references:** [implementation](../src/invitation_management.ts), [`tests/invitations_revoke.spec.ts`](../tests/invitations_revoke.spec.ts), [managed revoke](../src/http/handlers_invitations.ts), [public error mapping](../src/error_identity.ts), [managed committed-failure response](../src/http/managed.ts)

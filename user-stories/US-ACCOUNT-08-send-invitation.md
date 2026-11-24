@@ -34,6 +34,7 @@ flowchart TD
 ```mermaid
 flowchart TD
   M["Managed route resolves account and validates email, role and scope"] --> A["invitations.send"]
+  H0["Host supplies authorised actor, recipient, role and optional scope"] --> A
   A --> B["Check capability and inputs; require actor and authorize.invite with scope"]
   B --> C["Spend actor budget"]
   C -->|Address already registered| R["Refuse before recipient budget"]

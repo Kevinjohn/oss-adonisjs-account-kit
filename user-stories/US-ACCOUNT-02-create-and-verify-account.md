@@ -11,7 +11,7 @@ As a prospective account holder, I want to register so that the application crea
 
 ## Acceptance criteria
 
-- **Inputs and result:** `registration.register({ email, password, registrationData? })` returns the created account when `registration` is enabled; a disabled capability throws `E_ACCOUNT_KIT_CAPABILITY_DISABLED`, and a taken address throws `E_ACCOUNT_KIT_REGISTRATION_EMAIL_ALREADY_REGISTERED`. `registrationData` is untrusted and is passed through configured `registration.mapFields`; availability and password rules come from config.
+- **Inputs and result:** `registration.register({ email, password, registrationData? })` returns the created account when `registration` is enabled; a disabled capability throws `E_ACCOUNT_KIT_CAPABILITY_DISABLED`. A taken address throws the `E_ACCOUNT_KIT_REGISTRATION_EMAIL_ALREADY_REGISTERED` exception, whose code is `E_ACCOUNT_KIT_EMAIL_ALREADY_REGISTERED`. `registrationData` is untrusted and is passed through configured `registration.mapFields`; availability and password rules come from config.
 - **Managed `auth.signup`:** after a successful `register`, or a reported committed registration follow-up failure, the handler attempts a login. When it succeeds the 201 response carries the represented account and, for an access-token guard, a bearer token; when the login fails the response is `registered: true, authenticated: false` and the account still exists. A direct service call may surface a delivery or observer error after creation commits.
 - Managed signup rate-limits by request IP before running the default email, [password fields](REFERENCE.md#managed-password-fields) and optional `registrationData` validator or the host replacement. The managed duplicate-email response is a 422 field error.
 
@@ -34,11 +34,11 @@ flowchart TD
   B --> C["Capability gate; check availability, email, password and mapped fields"]
   C --> D["Transaction checks email uniqueness, creates inactive account and stores activation proof"]
   D --> E["Commit and run activation delivery and lifecycle event"]
-  D -->|Duplicate email| DUP["Throw E_ACCOUNT_KIT_REGISTRATION_EMAIL_ALREADY_REGISTERED; managed handler sends email field error"]
+  D -->|Duplicate email| DUP["Throw registration duplicate-email exception with E_ACCOUNT_KIT_EMAIL_ALREADY_REGISTERED code; managed handler sends email field error"]
   E -->|Direct call| F["Return created account or propagate committed follow-up failure"]
   E -->|Managed; success or reported committed failure| G["Call authentication.login with same credentials"]
   G -->|Failure| NO["Return 201 with registered true and authenticated false"]
   G -->|Success| OK["Return 201 with represented account; access-token guard also supplies bearer token"]
 ```
 
-**Code references:** [implementation](../src/registration.ts), [`managed signup handler`](../src/http/handlers_registration.ts), [`assertPublicRegistration`](../src/managed_http_service.ts), [`tests/registration.spec.ts`](../tests/registration.spec.ts), [`tests/registration_claim.spec.ts`](../tests/registration_claim.spec.ts)
+**Code references:** [implementation](../src/registration.ts), [exception and code](../src/errors.ts), [`managed signup handler`](../src/http/handlers_registration.ts), [login handoff](US-ACCOUNT-03-sign-in.md#code-flow), [`assertPublicRegistration`](../src/managed_http_service.ts), [`tests/registration.spec.ts`](../tests/registration.spec.ts), [`tests/registration_claim.spec.ts`](../tests/registration_claim.spec.ts)

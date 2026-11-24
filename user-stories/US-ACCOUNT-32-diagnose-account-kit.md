@@ -11,7 +11,7 @@ As an application operator, I want to check configuration and integration readin
 
 ## Acceptance criteria
 
-- **Inputs and result:** `account-kit:doctor` starts the app and reports configuration, limiter, APP_URL and database-table checks with a failing exit status when checks fail. It resolves the same config and [registered callbacks](US-ACCOUNT-65-register-provider-callbacks.md) as the service. A resolution error stops the command before the checks. After passing checks, the final notice identifies unexercised delivery, credential revocation, application policy and routes.
+- **Inputs and result:** `account-kit:doctor` starts the app and reports configuration, limiter, backend-origin and database-table checks with a failing exit status when checks fail. The origin can come from configured action URLs or `APP_URL`. It resolves the same config and [registered callbacks](US-ACCOUNT-65-register-provider-callbacks.md) as the service. A resolution error stops the command before the checks. After passing checks, the final notice identifies unexercised delivery, credential revocation, application policy and routes.
 
 ## User flow
 
@@ -31,7 +31,7 @@ Scope: this is the Account Kit service/command path. Host UI, route policy and e
 flowchart TD
  A["AccountKitDoctor.run"] --> R["resolveAccountKitConfig merges registered callbacks and checks config"]
  R -->|Resolution fails| F["Propagate configuration error"]
- R -->|Resolves| B["runDoctor checks config, limiter binding, APP_URL and tables"]
+ R -->|Resolves| B["runDoctor checks config, limiter binding, backend origin and tables"]
  B --> C{"Any failed check?"}
  C -->|Yes| D["Print check failures and exit nonzero"]
  C -->|No| E["Print passed checks and unverified delivery/revocation/policy/routes notice"]

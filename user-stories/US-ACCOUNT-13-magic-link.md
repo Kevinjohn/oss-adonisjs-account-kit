@@ -19,7 +19,11 @@ As an existing account holder, I want to request and complete an opt-in password
 
 ```mermaid
 flowchart TD
- A["Client creates verifier and submits email plus its challenge"] --> B["Receive generic request acknowledgement"]
+ A["Request a sign-in link with an email"] --> Q{"How is the verifier held?"}
+ Q -->|Managed session| S0["Server creates or reuses the browser session verifier"]
+ Q -->|Client or host| S1["Client or host retains a verifier and supplies its challenge"]
+ S0 --> B["Receive generic request acknowledgement"]
+ S1 --> B
  B --> C["If a link is delivered, open it in the same browser or app"]
  C --> D{"Does inspection find a live link?"}
  D -->|No| E["Request another link"]
@@ -37,6 +41,7 @@ flowchart TD
 ```mermaid
 flowchart TD
   M["Managed request validates email; session handler derives challenge from stored or new verifier; token client supplies challenge"] --> A["magicLink.request"]
+  H0["Host supplies email, client key and client challenge"] --> A
   A --> B["Check capability, authentication and inputs; consume client/email budgets and look up account"]
   B --> C{"Existing account still matches email, active and allowed under lock?"}
   C -->|No| K["Skip issuance"]
@@ -44,7 +49,9 @@ flowchart TD
   K --> Z["Wait for timing floor"]
   T --> Z
   Z -->|Service| O["Resolve void or propagate failure"]
-  Z -->|Managed success or reported committed failure| N["Session strategy acknowledges verifier binding; return generic 202"]
+  Z -->|Managed success or reported committed failure| Q0{"Guard strategy?"}
+  Q0 -->|Session| N["Acknowledge verifier binding; return generic 202"]
+  Q0 -->|Access token| N2["Return generic 202"]
   I["Managed GET or direct magicLink.inspect"] --> J["Check live token, email and active state without consuming; return boolean or managed proof response"]
   W["Managed POST validates payload and gets verifier from session or access-token client; host may call directly"] --> R["magicLink.complete checks capability, guard and proof shape"]
   R -->|Malformed proof| X["Refuse before consumption"]
@@ -52,6 +59,7 @@ flowchart TD
   S -->|Invalid token or changed email| Y["Throw and roll back"]
   S -->|Matching account| V["Check verifier, active state and canAccess"]
   V -->|Refused| U["Commit consumption and throw invalid token"]
+  V -->|Invalid decision or unexpected error| Y
   V -->|Accepted| C2["Commit consumption, then establishCredential and recheck account before returning"]
   C2 -->|Issuance fails| CF["Refuse; committed link remains consumed"]
   C2 -->|Success| CF2["Return account and credential; managed session decrements browser binding, then managed handler returns strategy-specific 200"]

@@ -40,8 +40,10 @@ flowchart TD
  A["Host calls begin with intent link, current, clientChallenge and optional proof"] --> C
  M["auth.oauth.redirect validates link input, reads guard.current and prepares a challenge"] --> C
  C["begin validates current and active state; stores provider state and optional proof hash"] -->|Refusal| E["Reject before storing state"]
- C --> U["Return provider URL; managed begin saves intent and verifier for session clients"]
- U --> S{"Callback caller?"}
+ C --> U["Commit state and request provider URL"]
+ U -->|Provider URL creation fails| U0["Propagate error; committed provider state expires"]
+ U -->|Success| U1["Return URL; managed begin saves intent and verifier for session clients"]
+ U1 --> S{"Callback caller?"}
  S -->|Host| H["Call callback with current and optional proof"]
  S -->|Managed session GET| MG["Read saved link intent and selected guard current input"]
  S -->|Managed token POST| MT["Read forwarded link intent and selected bearer current input"]

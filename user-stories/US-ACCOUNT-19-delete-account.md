@@ -30,6 +30,7 @@ flowchart TD
 ```mermaid
 flowchart TD
   M["Managed deletion resolves actor and validates proof fields"] --> A["accountData.delete"]
+  H0["Host supplies authorised actor and identity proof"] --> A
   A --> B{"Capability enabled and users.delete available?"}
   B -->|No| D0["Refuse before spending throttle"]
   B -->|Yes| T["Consume identity:user budget"]

@@ -14,6 +14,7 @@ As an application integrator, I want to register callbacks from an application p
 - Register one factory per registry. It can return the callback object directly or through a promise. The factory is resolved lazily and the registry caches the result. Resolving Account Kit or running `account-kit:doctor` can trigger Account Kit config resolution.
 - The [supported callback keys](../README.md#registering-callbacks-from-a-provider) may be supplied inline or by the registry. Defining the same field in both places fails with `E_ACCOUNT_KIT_INVALID_CONFIGURATION` during resolution. A second registration or a registration after resolution starts fails when called.
 - `defineConfig` and `defineAdmission` check inline options first. Service resolution checks the final required callbacks, including the `users` adapter, invitation callbacks for enabled invitations and `approval.authorize` for enabled approval. The admission registry can supply the authoriser but enabling approval remains a config choice. An inline-only configuration still works with an empty registry.
+- Registry merging applies to configuration created by the corresponding `defineConfig` or `defineAdmission`. A configuration not created by that helper is used as supplied rather than merged; a missing Account Kit config returns before its registry resolves.
 - The factory runs while the package service is being built, so application services that depend on `AccountKit` or `AccountAdmission` are resolved inside the callbacks, not in the factory body.
 
 ## User flow
@@ -37,11 +38,17 @@ flowchart TD
     B -->|Yes| X["Throw E_ACCOUNT_KIT_INVALID_CONFIGURATION"]
     B -->|No| C["Store factory for lazy resolution"]
     C --> D{"Which entry resolves the configuration?"}
-    D -->|Account Kit service or doctor| E["resolveAccountKitConfig resolves factory, merges fields and calls resolveConfig"]
-    D -->|Admission| F["AdmissionProvider resolves AccountKit, then resolves admission factory and calls resolveAdmissionConfig"]
-    E --> G{"Factory and merged configuration succeed?"}
-    F --> G
-    G -->|No| I["Reject configuration resolution"]
+    D -->|Account Kit service or doctor| E["resolveAccountKitConfig reads config and resolves factory when config exists"]
+    D -->|Admission| F["AdmissionProvider resolves AccountKit and admission config, then admission factory"]
+    E -->|Missing config| M["Return undefined; service refuses or doctor reports missing config"]
+    E -->|Factory fails| I["Reject configuration resolution"]
+    F -->|Resolution fails| I
+    E -->|Present| Q{"Config made by its define helper?"}
+    F --> Q
+    Q -->|No| R["Use supplied config without merging callbacks"]
+    R --> J
+    Q -->|Yes| G{"Factory and merged configuration succeed?"}
+    G -->|No| I
     G -->|Yes| J{"Caller?"}
     J -->|Service provider| H["Construct service with resolved configuration"]
     J -->|Doctor| K["AccountKitDoctor passes merged config to runDoctor"]

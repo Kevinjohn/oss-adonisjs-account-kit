@@ -39,11 +39,13 @@ The runnable API example traces the controller and middleware entry in its [admi
 flowchart TD
  A["admissionMiddleware resolves admission and calls kit.managedHttp.assertGuard"] --> B{"Guard matches configured name and strategy?"}
  B -->|No| X["Throw guard configuration error"]
- B -->|Yes| C{"Which managed guard.current adapter?"}
- C -->|Session| D["Authenticate selected guard, mark auth and read revision and optional handle"]
- C -->|Access token| E["Authenticate selected guard, mark auth and read token identifier"]
+ B -->|Yes| C{"Which guard.current implementation did the host supply?"}
+ C -->|Package session adapter| D["Authenticate selected guard, mark auth and read revision and optional handle"]
+ C -->|Package access-token adapter| E["Authenticate selected guard, mark auth and read token identifier"]
+ C -->|Host adapter| T["Host guard authenticates and returns current credential evidence"]
  D --> Q{"guard.current succeeds?"}
  E --> Q
+ T --> Q
  Q -->|No| Z["Propagate guard refusal"]
  Q -->|Yes| F["AccountAdmission.require(input, options)"]
  S["Direct host caller supplies credential evidence"] --> F

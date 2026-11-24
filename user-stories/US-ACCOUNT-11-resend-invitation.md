@@ -31,6 +31,7 @@ flowchart TD
 ```mermaid
 flowchart TD
   M["Managed route resolves actor and parses positive invitation ID"] --> A["invitations.resend"]
+  H["Host supplies authorised actor and invitation ID"] --> A
   A --> B["Check capability and ID; load actor; preflight both permissions in a locking transaction"]
   B -->|Refused| D["Surface error without issuing new link"]
   B -->|Accepted| T["Consume actor and invitation resend budgets"]

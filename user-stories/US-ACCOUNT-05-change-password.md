@@ -15,7 +15,7 @@ As a signed-in account holder, I want to replace my password so that I can prote
 - A wrong or missing proof, unknown actor, or disallowed new password leaves the existing password unchanged.
 - An accepted change stores the new password, clears applicable recovery proofs, advances credential state, ends other credentials according to `keepCurrent`, and runs observers/notification callbacks after commit. For a preserved session, the caller must refresh the stored revision. The service returns the resulting revision; post-commit failure does not undo the change.
 
-- The social proof is bound to `password_change` and requires `socialAuthentication`. Managed password changes use an active account check by default, forward current credential evidence as `keepCurrent`, and return 200 with `{ changed: true }`. The managed session handler refreshes the guard revision on success or on a recognised committed follow-up error.
+- The social proof is bound to `password_change` and requires `socialAuthentication`. Managed password changes use an active account check by default, forward current credential evidence as `keepCurrent`, and return 200 with `{ changed: true }`. The managed session handler calls the guard's optional `refresh` on success or on a recognised committed follow-up error. If refresh fails, the password remains changed and the refresh error propagates.
 - If the managed write recognises a committed follow-up failure, it returns 202 with `{ committed: true }`.
 
 ## User flow
@@ -42,8 +42,10 @@ flowchart TD
   C -->|Accepted| F["Store password, clear pending email change and recovery proofs, and run invalidateChangedCredentials with keepCurrent"]
   F --> G["Read resulting revision within transaction; commit"]
   G --> H["Run credential observer, password notice and lifecycle callback"]
-  H -->|Success| J["Return revision; managed session guard refreshes, then handler returns changed true"]
-  H -->|Failure| K["Attach committed revision to error and rethrow; managed session guard refreshes before propagating"]
+  H -->|Success| J["Return revision; managed session invokes optional guard refresh, then returns changed true"]
+  H -->|Failure| K["Attach committed revision to error; managed session invokes optional refresh before propagating"]
+  J -->|Refresh fails| R["Propagate refresh error; password remains changed"]
+  K -->|Refresh fails| R
 ```
 
 **Code references:** [`changePassword`](../src/change_password.ts), [`confirmActor`](../src/actor_confirmation.ts), [`invalidateChangedCredentials`](../src/credential_revision.ts), [`managed password handler`](../src/http/handlers_email_password_management.ts), [`password change tests`](../tests/credentials_password_change.spec.ts), [managed committed-failure response](../src/http/managed.ts)

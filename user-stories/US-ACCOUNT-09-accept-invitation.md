@@ -13,6 +13,7 @@ As an invited person, I want to redeem the invitation sent to my address so that
 
 - **Inputs and result:** `invitations.inspect({ token })` returns `{ email, role }` for a valid invitation or `null`, without consuming it. `invitations.accept({ token, password, registrationData? })` returns the created account, checks password and mapped registration fields, and consumes the selected invitation plus all other live invitations for that email across scopes in one transaction. It runs each `onInvitationAccepted` callback in ascending scope order and does not invoke an inviter authorisation callback.
 - The managed preview returns the email and role or an invalid-proof response. Managed acceptance returns 201 with the represented account. A failed transaction rolls back the account and invitation consumption together. A post-commit follow-up failure leaves acceptance complete.
+- After a duplicate-address failure, the service rechecks the invitation after rollback. If another acceptance has consumed it, the result is invalid token; if it remains live, the registered-address refusal remains.
 - If the managed write recognises a committed follow-up failure, it returns 202 with `{ committed: true }`.
 
 ## User flow
@@ -35,13 +36,16 @@ flowchart TD
 flowchart TD
   P0["Managed invitation GET or direct invitations.inspect"] --> P1["Return email and role from live token without consuming; invalid proof returns null or managed refusal"]
   M["Managed acceptance validates password and configurable fields"] --> A["invitations.accept"]
+  H0["Host submits token, password and optional registration data"] --> A
   A --> B["Check capability and proof/password shape; map registration fields and prepare password"]
   B --> C["Transaction checks live invitation and unregistered recipient address"]
-  C -->|Refused| E["Roll back and surface relevant error"]
+  C -->|Duplicate address| Q["Roll back and inspect invitation again; report invalid token if consumed, otherwise registered address"]
+  C -->|Other refusal| E["Roll back and surface relevant error"]
   C -->|Eligible| F["Create account to claim unique email, then consume selected token and recheck address"]
   F -->|Proof changed| E
   F -->|Accepted| G["Consume other live invitations; verify email and apply grants in ascending scope order"]
   G --> H["Commit; emit acceptance follow-ups and return saved account or managed 201; surface committed failure if one occurs"]
+  F -->|Concurrent duplicate email| Q
 ```
 
 **Code references:** [implementation](../src/invitations.ts), [`tests/invitations_acceptance.spec.ts`](../tests/invitations_acceptance.spec.ts), [managed invitation preview and acceptance](../src/http/handlers_invitations.ts), [invitation grant order](../src/invitation_match.ts), [managed committed-failure response](../src/http/managed.ts)

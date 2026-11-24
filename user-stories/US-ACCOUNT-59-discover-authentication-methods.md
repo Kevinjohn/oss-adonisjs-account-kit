@@ -13,7 +13,7 @@ As a visitor, I want to see which authentication methods are available so that I
 
 - The public endpoint returns enabled provider names and nullable `lastUsedMethod` without looking up an account.
 - The handler reads the session hint and uses the host’s `lastUsedMethod(context)` result instead when configured. It allowlists the selected value to `password` or one of `extensions.social.providers`, with `null` for an absent or unrecognised selection.
-- When the endpoint is mounted, successful managed password login or a managed social credential handoff attempts to remember the visitor-local hint in the session and via optional `rememberLastUsedMethod(context, method)`. A failed write leaves the completed sign-in valid.
+- When the endpoint is mounted, successful managed password login or a managed social credential handoff attempts to remember the visitor-local hint in the session and then via optional `rememberLastUsedMethod(context, method)`. A session write failure skips the extension write; either failure leaves the completed sign-in valid. A failure reading the hint, including from `lastUsedMethod`, propagates from the methods request.
 
 ## User flow
 
@@ -31,10 +31,12 @@ Scope: public managed route and visitor-local hint resolution; the host owns the
 
 ```mermaid
 flowchart TD
-    A["registerManagedRoutes mounts socialAuthentication"] --> B["GET auth/methods reaches public social methods handler"]
+    A["registerManagedRoutes selects socialAuthentication without excluding auth.methods"] --> B["GET auth/methods reaches public social methods handler"]
     B --> D["auth.methods reads server-session hint; if configured, use lastUsedMethod extension result"]
+    D -->|Read fails| X["Propagate methods-request failure"]
     D --> C["Allowlist selected value to password or enabled providers; respond 200 with providers and nullable lastUsedMethod"]
-    P["Managed password login or social handoff succeeds with auth.methods mounted"] --> W["rememberManagedMethod attempts session and extension writes for subsequent requests"]
+    P["Managed password login or social handoff succeeds with auth.methods mounted"] --> W["rememberManagedMethod attempts session write, then optional extension write"]
+    W -->|Write fails| Y["Suppress hint failure; retain established sign-in"]
 ```
 
 **Code references:** [`managed social handler`](../src/http/managed_social_account_handlers.ts), [social route registration](../src/http/routes.ts), [managed mounting and methods flag](../src/http/managed.ts), [password hint producer](../src/http/handlers_authentication.ts), [social hint producers](../src/http/social.ts), [hint writer](../src/http/last_used_method.ts), [`managed social tests`](../tests/managed_social_http.spec.ts)

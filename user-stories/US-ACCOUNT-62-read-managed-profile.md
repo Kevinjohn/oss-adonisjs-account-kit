@@ -16,7 +16,7 @@ As a signed-in account holder, I want to read the representation exposed by my a
 
 ## Acceptance criteria
 
-- The guard resolves the current credential and authentication.current loads the account. Limited access allows accounts pending verification to reach this read.
+- The selected guard authenticates the current credential and is responsible for token expiry; `authentication.current` loads the account and checks the stored sign-in. Limited access allows accounts pending verification to reach this read.
 - A stale or refused credential fails before representation. On success the handler returns 200 with account set to the host representation when supplied or the default public representation.
 - The default representation returns `id`, `email`, `unverifiedEmail`, `hasPassword` and `active`. A registry-backed session check can update its last-seen timestamp.
 
@@ -33,9 +33,9 @@ flowchart TD
 
 ```mermaid
 flowchart TD
-  A["executeManagedRequest resolves kit and asserts configured guard"] --> B["Configured managed guard reads session or access-token evidence"]
+  A["executeManagedRequest resolves kit and asserts configured guard"] --> B["Configured managed guard authenticates session or token and reads evidence; guard owns token expiry"]
   B -->|Refused| D["Propagate refusal"]
-  B -->|Evidence available| E["authentication.current locks account and checks revision/registry or token ownership and expiry, then canAccess"]
+  B -->|Evidence available| E["authentication.current locks account and checks revision/registry or token ownership, then canAccess"]
   E -->|Refused| D
   E -->|Accepted| F["Update session last-seen when due, then project current account"]
   F --> G["account.profile.show awaits host representation or default projection"]
@@ -43,4 +43,4 @@ flowchart TD
   G -->|Host representation fails| D
 ```
 
-**Code references:** [managed dispatch](../src/http/managed_execution.ts), [profile handler](../src/http/handlers_authentication.ts), [current account check](../src/authentication.ts), [public projection](../src/http/response_helpers.ts)
+**Code references:** [managed dispatch](../src/http/managed_execution.ts), [token guard](../src/http/managed_token_guard.ts), [profile handler](../src/http/handlers_authentication.ts), [current account check](../src/authentication.ts), [public projection](../src/http/response_helpers.ts)

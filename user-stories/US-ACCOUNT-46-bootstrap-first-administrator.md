@@ -44,7 +44,7 @@ flowchart TD
  F -->|No| G
  F -->|Yes| H["Attempt invitation.sent lifecycle observer and retain any committed fault"]
  H --> I{"Matching invitation approval still pending?"}
- I -->|No| G
+ I -->|No| P["Throw bootstrap-approval-changed exception; command reports its invalid-input code and rerun guidance without a link"]
  I -->|Yes| K["reportOperatorOutcome prints result and bearer warning"]
  K --> L{"Committed follow-up fault?"}
  L -->|Yes| M["Include fault and report exit code 1 with link already printed"]

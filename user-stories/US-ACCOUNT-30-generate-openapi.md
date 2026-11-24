@@ -34,7 +34,9 @@ flowchart TD
  A["account-kit:openapi"] --> B["Commit queued router and inspect managedRouteRegistration"]
  B --> C{"Registration exists?"}
  C -->|No| D["Log error and set exitCode 1"]
- C -->|Yes| E["Resolve session cookie and host package defaults; generate OpenAPI 3.1 with optional title/version"]
+ C -->|Yes| S["Resolve session cookie and host package defaults"]
+ S -->|Session configuration fails| K0["Propagate configuration error"]
+ S -->|Resolved| E["generateManagedOpenApi with optional title/version"]
  E --> V{"Generation succeeds?"}
  V -->|No| D
  V -->|Yes| F{"--output supplied?"}

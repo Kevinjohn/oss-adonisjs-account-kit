@@ -11,7 +11,7 @@ As an application integrator, I want to exercise my custom user adapter against 
 
 ## Acceptance criteria
 
-- **Inputs and result:** `assertUsersAdapterContract(fixture)` receives a `UsersAdapter`, transaction runner, `storedPassword`, `verifyPassword`, `acquireAccountLock`, `assertLockBlocksWriter`, and optional unique `emailPrefix`, registration data, string-ID setting and registration-update assertions. It resolves when the contract assertions pass; assertion failures reject. The helper exercises normalised lookup/create, password verification and non-plaintext storage, verification timestamps, update/rollback behaviour, optional prepared-hash and registration-update paths when supplied, deletion when supported, and row locking through an independent writer. It is not a dry run: it commits fixture accounts and updates. Optional deletion removes only the inactive fixture and its recreation; the primary fixture remains, and cleanup is not guaranteed after failure or interruption.
+- **Inputs and result:** `assertUsersAdapterContract(fixture)` receives a `UsersAdapter`, transaction runner, `storedPassword`, `verifyPassword`, `acquireAccountLock`, `assertLockBlocksWriter`, and optional unique `emailPrefix`, registration data, string-ID setting and registration-update assertions. It resolves when the contract assertions pass; assertion failures reject. The helper exercises normalised lookup/create, password verification and non-plaintext storage, verification timestamps, update/rollback behaviour, optional prepared-hash and registration-update paths when supplied, deletion when supported, and the package-owned account lock through an independent writer. It is not a dry run: it commits fixture accounts and updates. Optional deletion removes only the inactive fixture and its recreation; the primary and any prepared-hash fixture remain, and cleanup is not guaranteed after failure or interruption.
 - **Environment and cleanup:** Run only against a dedicated disposable database with the same schema and connection arrangement as the adapter. Before reuse, remove all rows tied to the run's unique prefix or recreate the database, including after an interrupted test. A passing helper call is test evidence for the supplied fixture and database, not a claim that every application runtime combination was tested.
 
 ## User flow
@@ -35,12 +35,12 @@ Scope: the `assertUsersAdapterContract` test helper and the fixture it receives.
 flowchart TD
  A["assertUsersAdapterContract(fixture)"] --> B["Run create, normalised lookup, password and verification checks inside fixture transaction"]
  B --> C["Commit account; inspect stored password and check lookups, email updates, rollback and verification transactions"]
- C --> D["Acquire adapter account lock and invoke independent-writer probe"]
+ C --> D["Invoke independent-writer probe with fixture's package account-lock callback"]
  D --> E["Check password updates, optional prepared-hash paths and inactive/pending-email behaviour"]
  E --> F["Run optional registration-update and supported deletion checks"]
  F --> G{"Do all assertions resolve?"}
  G -->|No| H["Reject with assertion or fixture error; committed fixture rows may remain"]
- G -->|Yes| I["Resolve; primary fixture row remains for caller cleanup"]
+ G -->|Yes| I["Resolve; primary and any prepared-hash fixture rows remain for caller cleanup"]
 ```
 
 **Code references:** [`assertUsersAdapterContract`](../testing/adapter_contract.ts), [custom adapter recipe](../docs/recipes/custom-adapter.md), [`Lucid fixture`](../tests/lucid_adapter.spec.ts), [`Drizzle fixtures`](../tests/drizzle_adapter.spec.ts), [`Prisma fixtures`](../tests/prisma_adapter.spec.ts), [`SQL fixtures`](../tests/sql_adapter.spec.ts)
