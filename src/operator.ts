@@ -7,6 +7,7 @@ import {
   settleCommitted,
   type PostCommitEffect,
 } from './effects.js'
+import { isInvitationRole } from './invitation_input.js'
 import { isEmailShaped, normalizeEmail } from './email.js'
 import {
   EmailAlreadyRegisteredError,
@@ -73,8 +74,7 @@ export async function issueOperatorInvitation(
 ): Promise<OperatorInviteResult> {
   requireDelivery(input.deliver)
   const email = requireEmail(input.email)
-  if (typeof input.role !== 'string' || input.role.length < 1 || input.role.length > 64)
-    throw new InvalidInputError('Invalid role')
+  if (!isInvitationRole(input.role)) throw new InvalidInputError('Invalid role')
   if (await deps.config.users.findByEmail(email)) throw new EmailAlreadyRegisteredError()
 
   const token = generateToken(deps.config.tokenSecretLength)

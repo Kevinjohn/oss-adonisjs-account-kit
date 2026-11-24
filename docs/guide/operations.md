@@ -160,7 +160,8 @@ prints one safe diagnostic to stderr.
 - `account-kit:invite` replaces any invitation already issued for the address and scope
   (`--scope`, unscoped by default), so rerunning it with the same scope after a lost link works. The invitation has no inviter (`inviterId` is `null`). It refuses an
   address that already has an account. The role becomes the invitation role; assign application
-  roles in `onInvitationAccepted`, as for any invitation.
+  roles in `onInvitationAccepted`, as for any invitation. See the
+  [invitation input rules](account-operations.md#invitation-input-rules) for role and scope bounds.
 - `account-kit:reset-link` reports an unknown address (`E_ACCOUNT_KIT_USER_NOT_FOUND`) instead of
   answering generically, and skips the timing floor. It replaces the account's live reset link and
   runs `onPasswordResetIssuedTransaction`. It builds the URL after finding the account and before

@@ -3664,13 +3664,17 @@
                   "role": {
                     "type": "string",
                     "minLength": 1,
-                    "maxLength": 64
+                    "pattern": "^\\s*\\S(?:[\\s\\S]{0,62}\\S)?\\s*$",
+                    "description": "The server trims surrounding whitespace, then requires 1–64 UTF-16 code units. The schema counts Unicode code points."
                   },
                   "scope": {
-                    "type": "string",
+                    "type": [
+                      "string",
+                      "null"
+                    ],
                     "minLength": 1,
                     "maxLength": 255,
-                    "description": "The team or workspace the invitation is for."
+                    "description": "Exact scope. The server requires 1–255 UTF-16 code units. The schema counts Unicode code points. Omit it or send null for an unscoped invitation."
                   }
                 },
                 "required": [
@@ -3880,7 +3884,8 @@
             "schema": {
               "type": "integer",
               "minimum": 1,
-              "maximum": 100
+              "maximum": 100,
+              "default": 25
             }
           },
           {
@@ -3894,7 +3899,7 @@
           {
             "in": "query",
             "name": "scope",
-            "description": "Only invitations for this team or workspace.",
+            "description": "Exact scope. The server requires 1–255 UTF-16 code units. The schema counts Unicode code points. Omit it to list invitations across scopes.",
             "schema": {
               "type": "string",
               "minLength": 1,

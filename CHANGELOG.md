@@ -3,6 +3,7 @@
 ## Unreleased
 
 - Report Ace operator failures once with safe guidance while preserving the original command error.
+- Align the invitation OpenAPI fields with shared input bounds and managed role trimming.
 
 ## 0.6.0 - 2026-11-23
 

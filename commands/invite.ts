@@ -1,4 +1,5 @@
 import { BaseCommand, args, flags } from '@adonisjs/core/ace'
+import { invitationRoleLength, invitationScopeLength } from '../src/invitation_input.js'
 import { AccountKit } from '../src/account_kit.js'
 import type { OperatorInviteResult } from '../src/types.js'
 import { reportOperatorOutcome, completeOperatorCommand } from './operator_output.js'
@@ -13,10 +14,15 @@ export default class InviteAccount extends BaseCommand {
   @args.string({ description: 'Email address to invite' })
   declare email: string
 
-  @flags.string({ description: 'Role stored on the invitation (1-64 characters)', required: true })
+  @flags.string({
+    description: `Role stored on the invitation (${invitationRoleLength.minLength}-${invitationRoleLength.maxLength} characters)`,
+    required: true,
+  })
   declare role: string
 
-  @flags.string({ description: 'Team or workspace the invitation is for (1-255 characters)' })
+  @flags.string({
+    description: `Team or workspace the invitation is for (${invitationScopeLength.minLength}-${invitationScopeLength.maxLength} characters)`,
+  })
   declare scope?: string
 
   @flags.boolean({ description: 'Print the acceptance link instead of emailing it' })

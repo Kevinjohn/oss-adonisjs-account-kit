@@ -79,6 +79,22 @@ without regard to case or accents, so on MySQL use scopes that differ in more th
 [workspace invitation recipe](../recipes/multi-tenant.md) keeps creation, listing and management
 permissions bound to the selected workspace.
 
+### Invitation input rules
+
+Role and scope lengths use JavaScript string length.
+
+- Send requires an email address and a role. Account Kit normalises email for lookup and
+  storage. Roles must contain 1–64 characters. Managed HTTP trims the role before validating
+  its length, so a whitespace-only role fails. Direct `invitations.send`, `operator.invite`
+  and the operator commands validate the role as supplied and preserve its whitespace.
+- Scope is exact application text of 1–255 characters, including any whitespace. On send,
+  an omitted or `null` scope creates an unscoped invitation. Omit `--scope` for an unscoped
+  operator invitation.
+- Listing accepts an integer page size (`limit`) from 1 to 100 and defaults to 25. Omitting
+  scope lists across scopes subject to host authorisation. Direct `invitations.list` also
+  accepts `scope: null` to select only unscoped invitations. The managed list query accepts a
+  scope string or omission.
+
 ### Signing in with the invited address
 
 An invited person may never open the link: the email is late, or they click "Sign in with Google"

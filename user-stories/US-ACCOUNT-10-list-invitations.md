@@ -5,13 +5,13 @@ As an authorised inviter or operator, I want to list invitations visible under h
 **Status:** Current when the host explicitly enables the opt-in `invitations` capability
 **Access:** Host list authorisation callback and the caller-supplied `limit` (default 25, maximum 100), `cursor` and `scope` inputs determine visible results.
 **Entry:** Host calls `invitations.list` or mounts `account.invitation.list` (GET `account/invitations`, active access by default).
-**Documentation:** [usage.md](../docs/guide/usage.md)
+**Documentation:** [Invitation input rules](../docs/guide/account-operations.md#invitation-input-rules)
 **Source:** [`src/invitation_management.ts`](../src/invitation_management.ts)
 **Coverage:** [`tests/invitation_listing.spec.ts`](../tests/invitation_listing.spec.ts), [`tests/invitations_inspection.spec.ts`](../tests/invitations_inspection.spec.ts)
 
 ## Acceptance criteria
 
-- **Inputs and result:** `invitations.list({ actorId, limit?, cursor?, scope? })` returns `{ items, nextCursor }`. `limit` defaults to 25 and cannot exceed 100; omitted scope lists every scope, while `null` selects unscoped invitations. `authorize.listInvitations` controls visibility.
+- **Inputs and result:** `invitations.list({ actorId, limit?, cursor?, scope? })` returns `{ items, nextCursor }`. `limit` accepts integers from 1 to 100 and defaults to 25. Omitted scope lists across scopes subject to `authorize.listInvitations`. Supply 1–255 characters of exact scope text to select a scope. Direct callers can also pass `scope: null` to select only unscoped invitations. The managed query offers scope text or omission.
 
 - `authorize.listInvitations(actor, context)` receives an empty context for omitted scope or `{ scope }` for an explicit filter. Each page is ordered oldest first by creation time, then ID. Managed success returns 200 with the same page object.
 
