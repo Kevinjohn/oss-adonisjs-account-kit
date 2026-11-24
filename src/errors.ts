@@ -267,13 +267,19 @@ export const E_ACCOUNT_KIT_POST_COMMIT = PostCommitException
  *
  * @example
  * ```ts
- * import { isCommittedFailure } from '@kevinjohn/adonisjs-account-kit'
+ * import { E_ACCOUNT_KIT_DELIVERY, isCommittedFailure } from '@kevinjohn/adonisjs-account-kit'
  *
  * try {
  *   await kit.passwordReset.reset({ token, password })
  * } catch (error) {
  *   if (!isCommittedFailure(error)) throw error
- *   logger.error({ err: error }, 'Password reset follow-up failed')
+ *   logger.error(
+ *     {
+ *       operation: 'password_reset.reset',
+ *       failure: error instanceof E_ACCOUNT_KIT_DELIVERY ? 'delivery' : 'post_commit',
+ *     },
+ *     'Password reset follow-up failed'
+ *   )
  * }
  * ```
  */
