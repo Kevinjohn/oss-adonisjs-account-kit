@@ -33,7 +33,7 @@ Requires Node.js 24+, AdonisJS 7 with Lucid, and `@adonisjs/limiter`. Install th
 
 ```sh
 node ace add @adonisjs/limiter
-pnpm add https://github.com/Kevinjohn/oss-adonisjs-account-kit/releases/download/v0.6.1/kevinjohn-adonisjs-account-kit-0.6.1.tgz
+pnpm add https://github.com/Kevinjohn/oss-adonisjs-account-kit/releases/download/v0.7.0/kevinjohn-adonisjs-account-kit-0.7.0.tgz
 ```
 
 Choose an integration path before configuring the package or running its migrations:
@@ -154,9 +154,6 @@ working with nothing registered.
 See the [user story catalogue](user-stories/README.md) for source-reviewed account journeys, opt-in capabilities and operator surfaces.
 
 ## Quick example
-
-The constructor names below are for the unreleased API. If you installed v0.6.1 using the command
-above, use the [v0.6.1 documentation](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/v0.6.1/README.md).
 
 A forgot-password action. The [getting started tutorial](docs/guide/getting-started.md) adds
 validation, error mapping and the reset action.
