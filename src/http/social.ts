@@ -85,8 +85,7 @@ function resolveClientChallenge<Credential>(
     const { verifier, challenge } = generateVerifierAndChallenge()
     return { verifier, clientChallenge: challenge }
   }
-  if (!clientChallenge)
-    throw new E_ACCOUNT_KIT_CLIENT_CHALLENGE_REQUIRED('Client challenge is required')
+  if (!clientChallenge) throw new E_ACCOUNT_KIT_CLIENT_CHALLENGE_REQUIRED()
   return { verifier: null, clientChallenge }
 }
 

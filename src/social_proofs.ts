@@ -3,9 +3,10 @@ import { lockUser, transaction } from './db.js'
 import { consumeRows } from './consume_rows.js'
 import { revision } from './credential_revision.js'
 import {
-  E_ACCOUNT_KIT_SOCIAL_PROOF_INVALID,
   E_ACCOUNT_KIT_SOCIAL_PROOF_MALFORMED,
   E_ACCOUNT_KIT_SOCIAL_PROOF_STALE,
+  E_ACCOUNT_KIT_SOCIAL_PASSWORD_INPUT_INVALID,
+  E_ACCOUNT_KIT_SOCIAL_PASSWORD_REJECTED,
 } from './errors.js'
 import { isSensitivePurpose } from './social_enums.js'
 import {
@@ -74,7 +75,7 @@ export async function proveSocialPassword(
   }
 ): Promise<string> {
   if (typeof input.password !== 'string' || !isSensitivePurpose(input.purpose) || !input.current)
-    throw new E_ACCOUNT_KIT_SOCIAL_PROOF_INVALID()
+    throw new E_ACCOUNT_KIT_SOCIAL_PASSWORD_INPUT_INVALID()
   await deps.throttler.consume('identity:user', String(input.current.userId), deps.config.throttle)
   return transaction(deps.db, async (trx) => {
     const user = await requireAuthenticatedUser(deps, input.current, trx)
@@ -82,7 +83,7 @@ export async function proveSocialPassword(
       !user.hasPassword ||
       !(await deps.config.users.verifyPassword(user.id, input.password, trx))
     )
-      throw new E_ACCOUNT_KIT_SOCIAL_PROOF_INVALID()
+      throw new E_ACCOUNT_KIT_SOCIAL_PASSWORD_REJECTED()
     return issueProof(trx, deps.config, user.id, input.purpose)
   })
 }

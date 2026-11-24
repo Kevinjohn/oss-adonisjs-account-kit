@@ -7,8 +7,9 @@ import { consumeUserToken, isUserEmailUniqueViolation, transaction } from './db.
 import { finishCommitted, createLifecycleEffect, postCommit, settleCommitted } from './effects.js'
 import {
   E_ACCOUNT_KIT_EMAIL_ALREADY_REGISTERED,
-  E_ACCOUNT_KIT_INVALID_TOKEN,
   type E_ACCOUNT_KIT_POST_COMMIT,
+  E_ACCOUNT_KIT_PROOF_TOKEN_MALFORMED,
+  E_ACCOUNT_KIT_EMAIL_CHANGE_ACCOUNT_MISSING,
 } from './errors.js'
 import { clearRecoveryTokens } from './credential_cleanup.js'
 import { hashToken, isTokenShaped } from './tokens.js'
@@ -48,7 +49,7 @@ export async function completeEmailChange(
   deps: Pick<ServiceDependencies, 'config' | 'db'>,
   input: CompleteEmailChangeInput
 ): Promise<AccountUser> {
-  if (!isTokenShaped(input.token)) throw new E_ACCOUNT_KIT_INVALID_TOKEN()
+  if (!isTokenShaped(input.token)) throw new E_ACCOUNT_KIT_PROOF_TOKEN_MALFORMED()
   const operationId = randomUUID()
 
   let changed: { user: AccountUser; previousEmail: string }
@@ -74,7 +75,7 @@ export async function completeEmailChange(
         await deps.config.users.markEmailVerified(user.id, DateTime.utc(), trx)
         await clearRecoveryTokens(trx, user.id, ['password_reset_tokens'])
         const reloaded = await deps.config.users.findById(user.id, trx)
-        if (!reloaded) throw new E_ACCOUNT_KIT_INVALID_TOKEN()
+        if (!reloaded) throw new E_ACCOUNT_KIT_EMAIL_CHANGE_ACCOUNT_MISSING()
         await invalidateChangedCredentials(trx, deps.config, reloaded, {
           operation: 'email_change',
           operationId,

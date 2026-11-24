@@ -91,7 +91,7 @@ export async function decideAdmission(
       const subject = await users.findById(input.userId, trx)
       if (!subject) throw new E_ACCOUNT_KIT_USER_NOT_FOUND()
       const actor = await users.findById(input.actorId, trx)
-      if (!actor) throw new E_ACCOUNT_KIT_ACTOR_NOT_FOUND('Unknown actor')
+      if (!actor) throw new E_ACCOUNT_KIT_ACTOR_NOT_FOUND()
       if (String(actor.id) === String(subject.id)) throw new E_ACCOUNT_KIT_ADMISSION_SELF_DECISION()
       const actorRow = await readAdmissionRow(trx, actor.id)
       if (!evaluateAdmission(deps.config, actor, actorRow).admitted)

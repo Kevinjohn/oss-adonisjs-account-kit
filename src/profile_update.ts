@@ -45,7 +45,7 @@ export async function updateProfile(
   if (input.email === undefined && !hasRegistrationData)
     throw new E_ACCOUNT_KIT_INVALID_INPUT('Profile update is empty')
   if (input.email !== undefined && !isEmailShaped(input.email))
-    throw new E_ACCOUNT_KIT_EMAIL_INVALID('Invalid email')
+    throw new E_ACCOUNT_KIT_EMAIL_INVALID()
   const newEmail = input.email === undefined ? undefined : normalizeEmail(input.email)
   const registrationData = hasRegistrationData
     ? await mapRegistrationFields(deps.config, input.registrationData)

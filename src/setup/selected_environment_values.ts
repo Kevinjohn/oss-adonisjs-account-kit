@@ -80,19 +80,14 @@ async function resolveEnvironmentValue(
           throw new E_ACCOUNT_KIT_ENV_ASSIGNMENT_AMBIGUOUS(
             'Selected environment assignment is ambiguous'
           )
-        if (!assignmentValue.test(line))
-          throw new E_ACCOUNT_KIT_ENV_ASSIGNMENT_MALFORMED(
-            'Selected environment assignment is malformed'
-          )
+        if (!assignmentValue.test(line)) throw new E_ACCOUNT_KIT_ENV_ASSIGNMENT_MALFORMED()
         found = true
         if (line.includes('$') || line.includes('`'))
           throw new E_ACCOUNT_KIT_INDIRECT_ENVIRONMENT_VALUE()
         try {
           value = parseEnv(line)[variable] ?? null
         } catch {
-          throw new E_ACCOUNT_KIT_ENV_ASSIGNMENT_MALFORMED(
-            'Selected environment assignment is malformed'
-          )
+          throw new E_ACCOUNT_KIT_ENV_ASSIGNMENT_MALFORMED()
         }
         if (!validate(value))
           throw new E_ACCOUNT_KIT_ENV_VALUE_INVALID(

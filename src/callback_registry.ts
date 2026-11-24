@@ -25,16 +25,8 @@ export class CallbackRegistry<Callbacks extends object> {
    * ```
    */
   register(factory: () => Callbacks | Promise<Callbacks>): void {
-    if (this.#resolved)
-      throw new E_ACCOUNT_KIT_CALLBACK_REGISTRATION_TOO_LATE(
-        'callbacks',
-        `account_kit: callbacks must be registered before ${this.#service} is first resolved`
-      )
-    if (this.#factory)
-      throw new E_ACCOUNT_KIT_CALLBACK_ALREADY_REGISTERED(
-        'callbacks',
-        'account_kit: callbacks are already registered'
-      )
+    if (this.#resolved) throw new E_ACCOUNT_KIT_CALLBACK_REGISTRATION_TOO_LATE(this.#service)
+    if (this.#factory) throw new E_ACCOUNT_KIT_CALLBACK_ALREADY_REGISTERED()
     this.#factory = factory
   }
 

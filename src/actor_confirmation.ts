@@ -14,7 +14,7 @@ export async function requireUser(
   trx?: Trx
 ): Promise<AccountUser> {
   const user = await config.users.findById(id, trx)
-  if (!user) throw new E_ACCOUNT_KIT_ACTOR_NOT_FOUND('Unknown actor')
+  if (!user) throw new E_ACCOUNT_KIT_ACTOR_NOT_FOUND()
   return user
 }
 

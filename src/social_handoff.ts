@@ -13,6 +13,12 @@ import {
   E_ACCOUNT_KIT_SOCIAL_HANDOFF_MISSING,
   E_ACCOUNT_KIT_SOCIAL_HANDOFF_REJECTED,
   E_ACCOUNT_KIT_SOCIAL_HANDOFF_GUARD_MISMATCH,
+  E_ACCOUNT_KIT_SOCIAL_HANDOFF_VERIFIER_MISMATCH,
+  E_ACCOUNT_KIT_SOCIAL_HANDOFF_ACCOUNT_CHANGED,
+  E_ACCOUNT_KIT_SOCIAL_HANDOFF_ACCOUNT_MISSING,
+  E_ACCOUNT_KIT_SOCIAL_HANDOFF_ACCESS_DENIED,
+  E_ACCOUNT_KIT_SOCIAL_HANDOFF_REVISION_STALE,
+  E_ACCOUNT_KIT_SOCIAL_HANDOFF_PROVIDER_MISSING,
 } from './errors.js'
 import { listEnabledSocialProviders, readSqlTimestamp, type Dependencies } from './social_shared.js'
 import { generateToken, hashToken, isTokenShaped } from './tokens.js'
@@ -90,15 +96,14 @@ export async function redeemSocialHandoff<Credential>(
       readSqlTimestamp(trx)
     )
     const row = rows[0]
-    if (
-      !row ||
-      row.user_id !== candidate.user_id ||
-      !verifierMatches(input.verifier, row.client_challenge)
-    )
-      throw new E_ACCOUNT_KIT_SOCIAL_HANDOFF_REJECTED()
+    if (!row) throw new E_ACCOUNT_KIT_SOCIAL_HANDOFF_MISSING()
+    if (row.user_id !== candidate.user_id) throw new E_ACCOUNT_KIT_SOCIAL_HANDOFF_ACCOUNT_CHANGED()
+    if (!verifierMatches(input.verifier, row.client_challenge))
+      throw new E_ACCOUNT_KIT_SOCIAL_HANDOFF_VERIFIER_MISMATCH()
     const user = await deps.config.users.findById(row.user_id, trx)
-    if (!user || !requireAccountAccessDecision(await auth.canAccess(user, trx)))
-      throw new E_ACCOUNT_KIT_SOCIAL_HANDOFF_REJECTED()
+    if (!user) throw new E_ACCOUNT_KIT_SOCIAL_HANDOFF_ACCOUNT_MISSING()
+    if (!requireAccountAccessDecision(await auth.canAccess(user, trx)))
+      throw new E_ACCOUNT_KIT_SOCIAL_HANDOFF_ACCESS_DENIED()
     const currentRevision = await revision(trx, deps.config, user.id)
     const establishedProvider = await getUsableHandoffProvider(
       trx,
@@ -106,8 +111,9 @@ export async function redeemSocialHandoff<Credential>(
       user.id,
       row.social_identity_id
     )
-    if (currentRevision !== row.credential_revision || !establishedProvider)
-      throw new E_ACCOUNT_KIT_SOCIAL_HANDOFF_REJECTED()
+    if (currentRevision !== row.credential_revision)
+      throw new E_ACCOUNT_KIT_SOCIAL_HANDOFF_REVISION_STALE()
+    if (!establishedProvider) throw new E_ACCOUNT_KIT_SOCIAL_HANDOFF_PROVIDER_MISSING()
     return {
       account: buildAccountProjection(user),
       revision: currentRevision,

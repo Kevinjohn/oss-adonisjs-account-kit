@@ -3,8 +3,9 @@ import { useTestApp } from './helpers/app.js'
 import { insertUser, makeService, makeUsersAdapter } from './helpers/fakes.js'
 import {
   E_ACCOUNT_KIT_IDENTITY_NOT_CONFIRMED,
-  E_ACCOUNT_KIT_SOCIAL_PROOF_INVALID,
   E_ACCOUNT_KIT_THROTTLED,
+  E_ACCOUNT_KIT_SOCIAL_PASSWORD_INPUT_INVALID,
+  E_ACCOUNT_KIT_SOCIAL_PASSWORD_REJECTED,
 } from '../src/errors.js'
 import { current, provider } from './helpers/social_identity.js'
 import type { UserId } from '../src/types.js'
@@ -43,7 +44,17 @@ test.group('social password proof budget', (group) => {
         password: 'wrong-password',
         purpose: 'social_link',
       })
-    await assert.rejects(prove, E_ACCOUNT_KIT_SOCIAL_PROOF_INVALID)
+    await assert.rejects(
+      () =>
+        account.socialAuthentication.provePassword({
+          current: current(user.id),
+          password: null as never,
+          purpose: 'social_link',
+        }),
+      E_ACCOUNT_KIT_SOCIAL_PASSWORD_INPUT_INVALID
+    )
+    assert.lengthOf(verified, 0)
+    await assert.rejects(prove, E_ACCOUNT_KIT_SOCIAL_PASSWORD_REJECTED)
     assert.lengthOf(verified, 1)
     await assert.rejects(prove, E_ACCOUNT_KIT_THROTTLED)
     assert.lengthOf(verified, 1)

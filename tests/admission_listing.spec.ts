@@ -1,7 +1,11 @@
 /* eslint-disable @unicorn/no-await-expression-member -- Keep each assertion next to the operation it inspects. */
 
 import { test } from '@japa/runner'
-import { E_ACCOUNT_KIT_AUTHORIZATION, E_ACCOUNT_KIT_INVALID_INPUT } from '../src/errors.js'
+import {
+  E_ACCOUNT_KIT_INVALID_INPUT,
+  E_ACCOUNT_KIT_ADMISSION_POLICY_DENIED,
+  E_ACCOUNT_KIT_ADMISSION_ACTOR_NOT_ADMITTED,
+} from '../src/errors.js'
 import { useAdmissionApp } from './helpers/admission_schema.js'
 import { allowDecisions, makeAdmission, writeAdmissionRow } from './helpers/admission.js'
 import { insertUser, makeUsersAdapter } from './helpers/fakes.js'
@@ -108,7 +112,10 @@ test.group('admission listing', (group) => {
         },
       },
     })
-    await assert.rejects(() => admission.list({ actorId: actor.id }), E_ACCOUNT_KIT_AUTHORIZATION)
+    await assert.rejects(
+      () => admission.list({ actorId: actor.id }),
+      E_ACCOUNT_KIT_ADMISSION_POLICY_DENIED
+    )
     assert.deepEqual(calls, [actor.id])
     await assert.rejects(() => admission.list({ actorId: 999_999 }), 'Unknown actor')
   })
@@ -117,9 +124,15 @@ test.group('admission listing', (group) => {
     const { actor } = await seed()
     const { admission } = makeAdmission(kit, approvalOnly)
     await writeAdmissionRow(kit, actor.id, { approval: 'revoked' })
-    await assert.rejects(() => admission.list({ actorId: actor.id }), E_ACCOUNT_KIT_AUTHORIZATION)
+    await assert.rejects(
+      () => admission.list({ actorId: actor.id }),
+      E_ACCOUNT_KIT_ADMISSION_ACTOR_NOT_ADMITTED
+    )
     await kit.db.from('account_admissions').where('user_id', actor.id).delete()
-    await assert.rejects(() => admission.list({ actorId: actor.id }), E_ACCOUNT_KIT_AUTHORIZATION)
+    await assert.rejects(
+      () => admission.list({ actorId: actor.id }),
+      E_ACCOUNT_KIT_ADMISSION_ACTOR_NOT_ADMITTED
+    )
   })
 
   test('pages rows that share a created_at by id', async ({ assert }) => {

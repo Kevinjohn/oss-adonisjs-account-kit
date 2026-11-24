@@ -3,6 +3,10 @@ import { test } from '@japa/runner'
 import {
   E_ACCOUNT_KIT_ADAPTER_CONTRACT,
   E_ACCOUNT_KIT_SOCIAL_TRANSACTION_INVALID,
+  E_ACCOUNT_KIT_SOCIAL_HANDOFF_VERIFIER_MISMATCH,
+  E_ACCOUNT_KIT_SOCIAL_HANDOFF_MISSING,
+  E_ACCOUNT_KIT_SOCIAL_HANDOFF_REJECTED,
+  E_ACCOUNT_KIT_SOCIAL_HANDOFF_REVISION_STALE,
 } from '../src/errors.js'
 import { dbTime } from './helpers/db_time.js'
 import { advanceCredentialRevision } from '../src/credential_revision.js'
@@ -80,7 +84,7 @@ test.group('social continuation and handoff', (group) => {
           verifier: 'b'.repeat(43),
           guard,
         }),
-      'Invalid social transaction'
+      E_ACCOUNT_KIT_SOCIAL_HANDOFF_VERIFIER_MISMATCH
     )
     const exchanged = await account.socialAuthentication.redeemHandoff({
       code: result.handoffCode,
@@ -93,7 +97,7 @@ test.group('social continuation and handoff', (group) => {
     await assert.rejects(
       () =>
         account.socialAuthentication.redeemHandoff({ code: result.handoffCode!, verifier, guard }),
-      'Invalid social transaction'
+      E_ACCOUNT_KIT_SOCIAL_HANDOFF_MISSING
     )
     const githubStart = await account.socialAuthentication.begin({
       provider: 'github',
@@ -281,7 +285,7 @@ test.group('social continuation and handoff', (group) => {
           verifier,
           guard,
         }),
-      'Invalid social transaction'
+      E_ACCOUNT_KIT_SOCIAL_HANDOFF_REJECTED
     )
     assert.equal(terminated, 1)
   })
@@ -314,7 +318,7 @@ test.group('social continuation and handoff', (group) => {
           verifier,
           guard: sessionGuard,
         }),
-      'Invalid social transaction'
+      E_ACCOUNT_KIT_SOCIAL_HANDOFF_REVISION_STALE
     )
     assert.lengthOf(await kit.db.from('social_identities'), 1)
   })

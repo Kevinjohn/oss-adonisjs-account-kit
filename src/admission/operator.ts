@@ -27,7 +27,7 @@ async function lockSubject(
   trx: Parameters<typeof lockUser>[0],
   email: unknown
 ): Promise<AccountUser> {
-  if (!isEmailShaped(email)) throw new E_ACCOUNT_KIT_EMAIL_INVALID('Invalid email')
+  if (!isEmailShaped(email)) throw new E_ACCOUNT_KIT_EMAIL_INVALID()
   const found = await deps.accountConfig.users.findByEmail(normalizeEmail(email), trx)
   if (!found) throw new E_ACCOUNT_KIT_USER_NOT_FOUND()
   await lockUser(trx, deps.accountConfig, found.id)
@@ -87,9 +87,7 @@ export async function grantOperatorInvitation(
       const subject = await lockSubject(deps, trx, input.email)
       const existing = await readAdmissionRow(trx, subject.id)
       if (existing && existing.invitation_recorded_at !== null)
-        throw new E_ACCOUNT_KIT_ADMISSION_INVITATION_EVIDENCE_EXISTS(
-          'Invitation evidence is already recorded'
-        )
+        throw new E_ACCOUNT_KIT_ADMISSION_INVITATION_EVIDENCE_EXISTS()
       const now = sqlTimestamp(trx)
       const row = await upsertAdmissionRow(
         trx,

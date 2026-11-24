@@ -106,6 +106,55 @@ test.group('account HTTP error mapping', () => {
     )
   })
 
+  test('protects proof outcomes while keeping their raw causes distinct', ({ assert }) => {
+    for (const [proof, failures] of [
+      [
+        'invitation',
+        [
+          new errors.E_ACCOUNT_KIT_PROOF_TOKEN_MALFORMED(),
+          new errors.E_ACCOUNT_KIT_INVITATION_PROOF_MISSING(),
+          new errors.E_ACCOUNT_KIT_INVITATION_ACCOUNT_MISSING(),
+        ],
+      ],
+      [
+        'email',
+        [
+          new errors.E_ACCOUNT_KIT_PROOF_TOKEN_MALFORMED(),
+          new errors.E_ACCOUNT_KIT_EMAIL_CHANGE_ACCOUNT_MISSING(),
+        ],
+      ],
+    ] as const) {
+      assert.equal(new Set(failures.map(({ code }) => code)).size, failures.length)
+      const response = accountErrorResponse(new errors.E_ACCOUNT_KIT_INVALID_TOKEN(), { proof })
+      for (const error of failures)
+        assert.deepEqual(accountErrorResponse(error, { proof }), response)
+    }
+    for (const error of [
+      new errors.E_ACCOUNT_KIT_SOCIAL_PASSWORD_INPUT_INVALID(),
+      new errors.E_ACCOUNT_KIT_SOCIAL_PASSWORD_REJECTED(),
+    ]) {
+      assert.notEqual(error.code, 'E_ACCOUNT_KIT_SOCIAL_PROOF_INVALID')
+      assert.deepEqual(
+        accountErrorResponse(error),
+        accountErrorResponse(new errors.E_ACCOUNT_KIT_SOCIAL_PROOF_INVALID())
+      )
+    }
+    for (const error of [
+      new errors.E_ACCOUNT_KIT_SOCIAL_HANDOFF_VERIFIER_MISMATCH(),
+      new errors.E_ACCOUNT_KIT_SOCIAL_HANDOFF_ACCOUNT_CHANGED(),
+      new errors.E_ACCOUNT_KIT_SOCIAL_HANDOFF_ACCOUNT_MISSING(),
+      new errors.E_ACCOUNT_KIT_SOCIAL_HANDOFF_ACCESS_DENIED(),
+      new errors.E_ACCOUNT_KIT_SOCIAL_HANDOFF_REVISION_STALE(),
+      new errors.E_ACCOUNT_KIT_SOCIAL_HANDOFF_PROVIDER_MISSING(),
+    ]) {
+      assert.notEqual(error.code, 'E_ACCOUNT_KIT_SOCIAL_HANDOFF_INVALID')
+      assert.deepEqual(
+        accountErrorResponse(error),
+        accountErrorResponse(new errors.E_ACCOUNT_KIT_SOCIAL_HANDOFF_INVALID())
+      )
+    }
+  })
+
   test('conceals whether a social callback reached the upstream provider', ({ assert }) => {
     const unknown = new errors.E_ACCOUNT_KIT_SOCIAL_TRANSACTION_INVALID()
     const upstream = new errors.E_ACCOUNT_KIT_SOCIAL_PROVIDER_FAILED({

@@ -16,7 +16,7 @@ import { admissionTable } from './rows.js'
 import type { AdmissionContext } from './service.js'
 
 function requireEmail(value: unknown): string {
-  if (!isEmailShaped(value)) throw new E_ACCOUNT_KIT_EMAIL_INVALID('Invalid email')
+  if (!isEmailShaped(value)) throw new E_ACCOUNT_KIT_EMAIL_INVALID()
   return normalizeEmail(value)
 }
 

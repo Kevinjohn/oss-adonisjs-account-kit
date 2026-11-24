@@ -5,6 +5,9 @@ import {
   E_ACCOUNT_KIT_INVALID_INPUT,
   E_ACCOUNT_KIT_INVALID_TOKEN,
   E_ACCOUNT_KIT_POST_COMMIT,
+  E_ACCOUNT_KIT_PROOF_TOKEN_MALFORMED,
+  E_ACCOUNT_KIT_INVITATION_PROOF_MISSING,
+  E_ACCOUNT_KIT_INVITATION_ACCOUNT_MISSING,
 } from '../src/errors.js'
 import { transaction } from '../src/db.js'
 import type { AccountUser } from '../src/types.js'
@@ -40,6 +43,33 @@ test.group('invitations.accept', (group) => {
     )
     assert.lengthOf(await kit.db.from('account_invitations'), 1)
     await account.invitations.accept({ token, password: 'LongerPassword12345' })
+  })
+
+  test('distinguishes a malformed or missing proof from an account reload failure that rolls back acceptance', async ({
+    assert,
+  }) => {
+    const actor = await createActor()
+    const users = makeUsersAdapter(kit.db, kit.hash)
+    const mark = users.markEmailVerified
+    const find = users.findById
+    let marked: AccountUser['id'] | undefined
+    users.markEmailVerified = async (...args) => {
+      await mark(...args)
+      marked = args[0]
+    }
+    users.findById = async (id, trx) => (id === marked ? null : find(id, trx))
+    const { account, recorder } = service({ users })
+    const { invitation, token } = await issue(account, recorder, actor.id)
+    const accept = (proof: string) =>
+      account.invitations.accept({ token: proof, password: 'new-password123' })
+
+    await assert.rejects(() => accept('bad'), E_ACCOUNT_KIT_PROOF_TOKEN_MALFORMED)
+    const unavailable = (token[0] === 'a' ? 'b' : 'a') + token.slice(1)
+    await assert.rejects(() => accept(unavailable), E_ACCOUNT_KIT_INVITATION_PROOF_MISSING)
+    await assert.rejects(() => accept(token), E_ACCOUNT_KIT_INVITATION_ACCOUNT_MISSING)
+    assert.isDefined(marked)
+    assert.lengthOf(await kit.db.from('users').where('email', invitation.email), 0)
+    assert.lengthOf(await kit.db.from('account_invitations').where('id', invitation.id), 1)
   })
 
   test('consumes the token, creates a verified hashed user, runs callback in transaction, and reloads', async ({

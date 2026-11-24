@@ -48,7 +48,7 @@ export async function requestMagicLink(
   const started = performance.now()
   try {
     const auth = requireAuthentication(deps.config)
-    if (!isEmailShaped(input.email)) throw new E_ACCOUNT_KIT_EMAIL_INVALID('Invalid email')
+    if (!isEmailShaped(input.email)) throw new E_ACCOUNT_KIT_EMAIL_INVALID()
     if (typeof input.clientKey !== 'string' || input.clientKey.trim() === '')
       throw new E_ACCOUNT_KIT_INVALID_INPUT('Invalid client key')
     if (!isClientChallenge(input.clientChallenge))

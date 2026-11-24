@@ -30,7 +30,7 @@ export async function register(
 ): Promise<AccountUser> {
   if (deps.config.registration?.availability === 'closed')
     throw new E_ACCOUNT_KIT_REGISTRATION_CLOSED('Registration is closed')
-  if (!isEmailShaped(input.email)) throw new E_ACCOUNT_KIT_EMAIL_INVALID('Invalid email')
+  if (!isEmailShaped(input.email)) throw new E_ACCOUNT_KIT_EMAIL_INVALID()
   const email = normalizeEmail(input.email)
   if (!isPasswordAllowed(input.password, deps.config.passwordPolicy))
     throw new E_ACCOUNT_KIT_INVALID_INPUT('Invalid password')

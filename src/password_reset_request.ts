@@ -18,7 +18,7 @@ export async function requestPasswordReset(
 ): Promise<void> {
   const started = performance.now()
   try {
-    if (!isEmailShaped(input.email)) throw new E_ACCOUNT_KIT_EMAIL_INVALID('Invalid email')
+    if (!isEmailShaped(input.email)) throw new E_ACCOUNT_KIT_EMAIL_INVALID()
     if (typeof input.clientKey !== 'string' || input.clientKey.trim() === '')
       throw new E_ACCOUNT_KIT_INVALID_INPUT('Invalid client key')
     const email = normalizeEmail(input.email)

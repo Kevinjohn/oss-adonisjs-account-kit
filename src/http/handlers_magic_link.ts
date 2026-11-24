@@ -40,8 +40,7 @@ export const magicLinkHandlers = {
       verifier = resolveMagicLinkVerifier(requireMagicLinkSession(context))
       clientChallenge = deriveClientChallenge(verifier)
     }
-    if (!clientChallenge)
-      throw new E_ACCOUNT_KIT_CLIENT_CHALLENGE_REQUIRED('Client challenge is required')
+    if (!clientChallenge) throw new E_ACCOUNT_KIT_CLIENT_CHALLENGE_REQUIRED()
     try {
       await kit.magicLink.request({ email: input.email, clientKey: request.ip(), clientChallenge })
     } catch (error) {

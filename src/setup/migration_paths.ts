@@ -118,15 +118,10 @@ export async function inspectMigrationDirectory(
       }
     }
   }
-  if (!directory && !explicit)
-    throw new E_ACCOUNT_KIT_MIGRATION_DIRECTORY_UNRESOLVED(
-      'Unable to determine the Lucid migration directory statically; pass --migration-directory with the application-relative directory used by the selected connection'
-    )
+  if (!directory && !explicit) throw new E_ACCOUNT_KIT_MIGRATION_DIRECTORY_UNRESOLVED()
   const normalize = (name: string) => normalizeMigrationDirectory(root, name)
   if (explicit && directory && (await normalize(explicit)) !== (await normalize(directory)))
-    throw new E_ACCOUNT_KIT_MIGRATION_DIRECTORY_CONFLICT(
-      'The explicit migration directory differs from the configured Lucid migration directory'
-    )
+    throw new E_ACCOUNT_KIT_MIGRATION_DIRECTORY_CONFLICT()
   const path = await normalize(explicit ?? directory!)
   const names = await readMigrationNames(root, path)
   if (path !== defaultMigrationDirectory) {
@@ -138,10 +133,7 @@ export async function inspectMigrationDirectory(
           !`${defaultMigrationDirectory}/${name}`.startsWith(`${path}/`)
       )
     )
-      throw new E_ACCOUNT_KIT_MIGRATION_DIRECTORY_DUPLICATE(
-        'Account Kit migrations already exist in database/migrations; reconcile the migration paths and applied history manually before generating another copy',
-        defaultMigrationDirectory
-      )
+      throw new E_ACCOUNT_KIT_MIGRATION_DIRECTORY_DUPLICATE()
   }
   return { path, names }
 }

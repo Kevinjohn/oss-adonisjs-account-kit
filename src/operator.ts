@@ -38,7 +38,7 @@ function requireDelivery(value: unknown): asserts value is 'send' | 'print' {
 }
 
 function requireEmail(value: unknown): string {
-  if (!isEmailShaped(value)) throw new E_ACCOUNT_KIT_EMAIL_INVALID('Invalid email')
+  if (!isEmailShaped(value)) throw new E_ACCOUNT_KIT_EMAIL_INVALID()
   return normalizeEmail(value)
 }
 

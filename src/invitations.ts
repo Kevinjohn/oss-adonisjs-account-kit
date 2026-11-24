@@ -20,6 +20,9 @@ import {
   E_ACCOUNT_KIT_INVALID_TOKEN,
   type E_ACCOUNT_KIT_POST_COMMIT,
   E_ACCOUNT_KIT_EMAIL_INVALID,
+  E_ACCOUNT_KIT_PROOF_TOKEN_MALFORMED,
+  E_ACCOUNT_KIT_INVITATION_PROOF_MISSING,
+  E_ACCOUNT_KIT_INVITATION_ACCOUNT_MISSING,
 } from './errors.js'
 import { isPasswordAllowed } from './password.js'
 import { buildPasswordAttributes, preparePassword } from './password_hashing.js'
@@ -50,7 +53,7 @@ export async function acceptInvitation(
 ): Promise<AccountUser> {
   if (!isPasswordAllowed(input.password, deps.config.passwordPolicy))
     throw new E_ACCOUNT_KIT_INVALID_INPUT('Invalid password')
-  if (!isTokenShaped(input.token)) throw new E_ACCOUNT_KIT_INVALID_TOKEN()
+  if (!isTokenShaped(input.token)) throw new E_ACCOUNT_KIT_PROOF_TOKEN_MALFORMED()
   const registrationData = await mapRegistrationFields(deps.config, input.registrationData)
   const operationId = randomUUID()
   const password = await preparePassword(deps.config.users, input.password)
@@ -67,7 +70,7 @@ export async function acceptInvitation(
           .where('expires_at', '>', sqlTimestamp(trx))
           .select('email')
           .first()
-        if (!candidate) throw new E_ACCOUNT_KIT_INVALID_TOKEN()
+        if (!candidate) throw new E_ACCOUNT_KIT_INVITATION_PROOF_MISSING()
         if (await deps.config.users.findByEmail(candidate.email, trx))
           throw new E_ACCOUNT_KIT_EMAIL_ALREADY_REGISTERED()
         // Claim the unique user email before consuming invitation rows, matching automatic
@@ -88,7 +91,8 @@ export async function acceptInvitation(
           tokenHash,
           sqlTimestamp(trx, now)
         )
-        if (!row || row.email !== candidate.email) throw new E_ACCOUNT_KIT_INVALID_TOKEN()
+        if (!row) throw new E_ACCOUNT_KIT_INVITATION_PROOF_MISSING()
+        if (row.email !== candidate.email) throw new E_ACCOUNT_KIT_INVALID_TOKEN()
         // The other scopes' pending invitations for the address join the same acceptance.
         const others = await consumeRows<InvitationDatabaseRow>(
           trx,
@@ -99,10 +103,10 @@ export async function acceptInvitation(
 
         await deps.config.users.markEmailVerified(user.id, now, trx)
         const reloaded = await deps.config.users.findById(user.id, trx)
-        if (!reloaded) throw new E_ACCOUNT_KIT_INVALID_TOKEN()
+        if (!reloaded) throw new E_ACCOUNT_KIT_INVITATION_ACCOUNT_MISSING()
         const invitationIds = await applyInvitations(deps.config, trx, reloaded, [row, ...others])
         const accepted = await deps.config.users.findById(user.id, trx)
-        if (!accepted) throw new E_ACCOUNT_KIT_INVALID_TOKEN()
+        if (!accepted) throw new E_ACCOUNT_KIT_INVITATION_ACCOUNT_MISSING()
         return { user: accepted, invitationIds }
       })
     ))
@@ -146,7 +150,7 @@ export async function sendInvitation(
   deps: ServiceDependencies,
   input: InvitationsSendInput
 ): Promise<Invitation> {
-  if (!isEmailShaped(input.email)) throw new E_ACCOUNT_KIT_EMAIL_INVALID('Invalid email')
+  if (!isEmailShaped(input.email)) throw new E_ACCOUNT_KIT_EMAIL_INVALID()
   if (!isInvitationRole(input.role)) throw new E_ACCOUNT_KIT_INVALID_INPUT('Invalid role')
   const scope = normalizeScope(input.scope)
   const email = normalizeEmail(input.email)

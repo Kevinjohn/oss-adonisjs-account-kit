@@ -1,9 +1,10 @@
 // Pages through admission records for an approver.
 import { DateTime } from 'luxon'
 import {
-  E_ACCOUNT_KIT_AUTHORIZATION,
   E_ACCOUNT_KIT_INVALID_INPUT,
   E_ACCOUNT_KIT_ACTOR_NOT_FOUND,
+  E_ACCOUNT_KIT_ADMISSION_ACTOR_NOT_ADMITTED,
+  E_ACCOUNT_KIT_ADMISSION_POLICY_DENIED,
 } from '../errors.js'
 import { readIsoTimestamp, sqlTimestamp } from '../timestamps.js'
 import type { UserId } from '../types.js'
@@ -40,14 +41,14 @@ export async function paginateAdmissions(
     input.cursor === undefined ? null : decodeKeysetCursor(input.cursor, 'Invalid admission cursor')
   const { users } = deps.accountConfig
   const actor = await users.findById(input.actorId)
-  if (!actor) throw new E_ACCOUNT_KIT_ACTOR_NOT_FOUND('Unknown actor')
+  if (!actor) throw new E_ACCOUNT_KIT_ACTOR_NOT_FOUND()
   // Like a decision, listing needs an admitted actor: a revoked approver loses read access too.
   if (
     !evaluateAdmission(deps.config, actor, await readAdmissionRow(deps.db.connection(), actor.id))
       .admitted
   )
-    throw new E_ACCOUNT_KIT_AUTHORIZATION()
-  if ((await authorize.list(actor, {})) !== true) throw new E_ACCOUNT_KIT_AUTHORIZATION()
+    throw new E_ACCOUNT_KIT_ADMISSION_ACTOR_NOT_ADMITTED()
+  if ((await authorize.list(actor, {})) !== true) throw new E_ACCOUNT_KIT_ADMISSION_POLICY_DENIED()
 
   const query = deps.db
     .from(admissionTable)

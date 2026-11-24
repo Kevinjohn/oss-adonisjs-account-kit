@@ -4,6 +4,8 @@ import {
   E_ACCOUNT_KIT_EMAIL_ALREADY_REGISTERED,
   E_ACCOUNT_KIT_INVALID_TOKEN,
   E_ACCOUNT_KIT_POST_COMMIT,
+  E_ACCOUNT_KIT_PROOF_TOKEN_MALFORMED,
+  E_ACCOUNT_KIT_EMAIL_CHANGE_ACCOUNT_MISSING,
 } from '../src/errors.js'
 import { DateTime } from 'luxon'
 import { test } from '@japa/runner'
@@ -52,6 +54,36 @@ test.group('emailPasswordManagement', (group) => {
     await assert.rejects(
       () => account.emailPasswordManagement.completeEmailChange({ token }),
       E_ACCOUNT_KIT_INVALID_TOKEN
+    )
+  })
+
+  test('an account reload failure keeps the original address and restores the consumed proof', async ({
+    assert,
+  }) => {
+    const user = await createUser()
+    const users = makeUsersAdapter(kit.db, kit.hash)
+    const setEmail = users.setEmail
+    const findById = users.findById
+    let changed = false
+    users.setEmail = async (...args) => {
+      await setEmail(...args)
+      changed = true
+    }
+    users.findById = async (id, trx) => (changed && id === user.id ? null : findById(id, trx))
+    const recorder = makeNotify()
+    const account = service({ users, notify: recorder.notify })
+    const token = await issueEmailChange(account, user, recorder)
+    const complete = (proof: string) =>
+      account.emailPasswordManagement.completeEmailChange({ token: proof })
+
+    await assert.rejects(() => complete('bad'), E_ACCOUNT_KIT_PROOF_TOKEN_MALFORMED)
+    await assert.rejects(() => complete(token), E_ACCOUNT_KIT_EMAIL_CHANGE_ACCOUNT_MISSING)
+    assert.isTrue(changed)
+    const stored = await kit.db.from('users').where('id', user.id).first()
+    assert.equal(stored.email, user.email)
+    assert.lengthOf(
+      await kit.db.from('email_verification_tokens').where('hash', hashToken(token)),
+      1
     )
   })
 
