@@ -1,5 +1,9 @@
 import type { HttpContext } from '@adonisjs/core/http'
-import { E_ACCOUNT_KIT_INVALID_INPUT, E_ACCOUNT_KIT_SOCIAL_TRANSACTION_INVALID } from '../errors.js'
+import {
+  E_ACCOUNT_KIT_INVALID_INPUT,
+  E_ACCOUNT_KIT_SOCIAL_TRANSACTION_INVALID,
+  E_ACCOUNT_KIT_CLIENT_CHALLENGE_REQUIRED,
+} from '../errors.js'
 import { isSocialProviderName } from '../social_providers.js'
 import { isSensitivePurpose, isSocialBeginIntent, isSocialIntent } from '../social_enums.js'
 import type {
@@ -81,7 +85,8 @@ function resolveClientChallenge<Credential>(
     const { verifier, challenge } = generateVerifierAndChallenge()
     return { verifier, clientChallenge: challenge }
   }
-  if (!clientChallenge) throw new E_ACCOUNT_KIT_INVALID_INPUT('Client challenge is required')
+  if (!clientChallenge)
+    throw new E_ACCOUNT_KIT_CLIENT_CHALLENGE_REQUIRED('Client challenge is required')
   return { verifier: null, clientChallenge }
 }
 

@@ -12,6 +12,7 @@ import { confirmActor, requireUser } from './actor_confirmation.js'
 import type { ChangePasswordInput } from './types.js'
 import type { ServiceDependencies } from './service_dependencies.js'
 
+/** @throws {AggregateError} Work and cleanup both failed. The work failure is first. */
 export async function changePassword(
   deps: ServiceDependencies,
   input: ChangePasswordInput

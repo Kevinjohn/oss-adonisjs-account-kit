@@ -41,6 +41,7 @@ async function guardDependency<T>(run: () => Promise<T>): Promise<T> {
   }
 }
 
+/** @throws {AggregateError} Work and cleanup both failed. The work failure is first. */
 export async function inspectAccountAccess(
   deps: Pick<ServiceDependencies, 'config' | 'db'>,
   input: AccountAccessInput

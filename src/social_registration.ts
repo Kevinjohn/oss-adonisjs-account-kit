@@ -19,6 +19,7 @@ import {
 } from './social_shared.js'
 import type { SocialCallbackResult, SocialProviderName, Trx } from './types.js'
 
+/** @throws {AggregateError} Work and cleanup both failed. The work failure is first. */
 export async function completeRegistration(
   deps: Dependencies,
   input: {

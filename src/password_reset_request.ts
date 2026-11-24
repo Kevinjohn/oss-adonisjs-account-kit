@@ -5,7 +5,7 @@ import { DateTime } from 'luxon'
 import { lockUser, transaction } from './db.js'
 import { finishCommitted, createLifecycleEffect, postCommit, settleCommitted } from './effects.js'
 import { normalizeEmail, isEmailShaped } from './email.js'
-import { E_ACCOUNT_KIT_INVALID_INPUT } from './errors.js'
+import { E_ACCOUNT_KIT_INVALID_INPUT, E_ACCOUNT_KIT_EMAIL_INVALID } from './errors.js'
 import { waitForFloor } from './timing.js'
 import { generateToken, hashToken } from './tokens.js'
 import { expiresAt } from './ttl.js'
@@ -18,7 +18,7 @@ export async function requestPasswordReset(
 ): Promise<void> {
   const started = performance.now()
   try {
-    if (!isEmailShaped(input.email)) throw new E_ACCOUNT_KIT_INVALID_INPUT('Invalid email')
+    if (!isEmailShaped(input.email)) throw new E_ACCOUNT_KIT_EMAIL_INVALID('Invalid email')
     if (typeof input.clientKey !== 'string' || input.clientKey.trim() === '')
       throw new E_ACCOUNT_KIT_INVALID_INPUT('Invalid client key')
     const email = normalizeEmail(input.email)
@@ -65,6 +65,8 @@ export async function requestPasswordReset(
  * Store `token` as the user's single live reset token. Locks the user, re-reads it, and issues
  * nothing (null) when the stored email no longer matches. Shared by the public request path and
  * the operator command.
+ *
+ * @throws {AggregateError} Work and cleanup both failed. The work failure is first.
  */
 export function issueResetToken(
   deps: Pick<ServiceDependencies, 'config' | 'db'>,

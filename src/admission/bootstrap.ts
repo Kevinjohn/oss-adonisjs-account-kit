@@ -7,6 +7,7 @@ import {
   E_ACCOUNT_KIT_BOOTSTRAP_APPROVAL_CHANGED,
   E_ACCOUNT_KIT_CAPABILITY_DISABLED,
   E_ACCOUNT_KIT_INVALID_INPUT,
+  E_ACCOUNT_KIT_EMAIL_INVALID,
 } from '../errors.js'
 import { sqlTimestamp } from '../timestamps.js'
 import type { OperatorInviteResult } from '../types.js'
@@ -15,7 +16,7 @@ import { admissionTable } from './rows.js'
 import type { AdmissionContext } from './service.js'
 
 function requireEmail(value: unknown): string {
-  if (!isEmailShaped(value)) throw new E_ACCOUNT_KIT_INVALID_INPUT('Invalid email')
+  if (!isEmailShaped(value)) throw new E_ACCOUNT_KIT_EMAIL_INVALID('Invalid email')
   return normalizeEmail(value)
 }
 

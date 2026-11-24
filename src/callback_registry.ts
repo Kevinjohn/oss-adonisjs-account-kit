@@ -1,5 +1,8 @@
 // Holds the callbacks an application provider registers, so config files need not import them.
-import { E_ACCOUNT_KIT_INVALID_CONFIGURATION } from './errors.js'
+import {
+  E_ACCOUNT_KIT_CALLBACK_REGISTRATION_TOO_LATE,
+  E_ACCOUNT_KIT_CALLBACK_ALREADY_REGISTERED,
+} from './errors.js'
 import type { AccountKitCallbacks } from './types.js'
 
 /** A registry for one package service. The service reads it once, when first resolved. */
@@ -23,12 +26,12 @@ export class CallbackRegistry<Callbacks extends object> {
    */
   register(factory: () => Callbacks | Promise<Callbacks>): void {
     if (this.#resolved)
-      throw new E_ACCOUNT_KIT_INVALID_CONFIGURATION(
+      throw new E_ACCOUNT_KIT_CALLBACK_REGISTRATION_TOO_LATE(
         'callbacks',
         `account_kit: callbacks must be registered before ${this.#service} is first resolved`
       )
     if (this.#factory)
-      throw new E_ACCOUNT_KIT_INVALID_CONFIGURATION(
+      throw new E_ACCOUNT_KIT_CALLBACK_ALREADY_REGISTERED(
         'callbacks',
         'account_kit: callbacks are already registered'
       )

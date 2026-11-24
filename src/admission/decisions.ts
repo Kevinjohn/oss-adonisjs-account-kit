@@ -3,9 +3,11 @@ import { randomUUID } from 'node:crypto'
 import { lockUser, transaction } from '../db.js'
 import {
   E_ACCOUNT_KIT_ADMISSION_DECISION,
-  E_ACCOUNT_KIT_AUTHORIZATION,
-  E_ACCOUNT_KIT_INVALID_INPUT,
   E_ACCOUNT_KIT_USER_NOT_FOUND,
+  E_ACCOUNT_KIT_ACTOR_NOT_FOUND,
+  E_ACCOUNT_KIT_ADMISSION_SELF_DECISION,
+  E_ACCOUNT_KIT_ADMISSION_ACTOR_NOT_ADMITTED,
+  E_ACCOUNT_KIT_ADMISSION_POLICY_DENIED,
 } from '../errors.js'
 import { sqlTimestamp } from '../timestamps.js'
 import type { AccountUser, Trx, UserId } from '../types.js'
@@ -66,6 +68,8 @@ export async function applyTransition(
 /**
  * An approver's decision. Locks the actor and the subject; the actor must exist, differ from the
  * subject, be admitted themselves and be allowed by `authorize.decide`.
+ *
+ * @throws {AggregateError} Work and cleanup both failed. The work failure is first.
  */
 export async function decideAdmission(
   deps: AdmissionContext,
@@ -87,13 +91,13 @@ export async function decideAdmission(
       const subject = await users.findById(input.userId, trx)
       if (!subject) throw new E_ACCOUNT_KIT_USER_NOT_FOUND()
       const actor = await users.findById(input.actorId, trx)
-      if (!actor) throw new E_ACCOUNT_KIT_INVALID_INPUT('Unknown actor')
-      if (String(actor.id) === String(subject.id)) throw new E_ACCOUNT_KIT_AUTHORIZATION()
+      if (!actor) throw new E_ACCOUNT_KIT_ACTOR_NOT_FOUND('Unknown actor')
+      if (String(actor.id) === String(subject.id)) throw new E_ACCOUNT_KIT_ADMISSION_SELF_DECISION()
       const actorRow = await readAdmissionRow(trx, actor.id)
       if (!evaluateAdmission(deps.config, actor, actorRow).admitted)
-        throw new E_ACCOUNT_KIT_AUTHORIZATION()
+        throw new E_ACCOUNT_KIT_ADMISSION_ACTOR_NOT_ADMITTED()
       if ((await authorize.decide(actor, subject, { trx })) !== true)
-        throw new E_ACCOUNT_KIT_AUTHORIZATION()
+        throw new E_ACCOUNT_KIT_ADMISSION_POLICY_DENIED()
       return applyTransition(trx, subject, transition, actor.id)
     }),
     (record) => ({

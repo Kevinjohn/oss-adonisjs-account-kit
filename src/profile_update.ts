@@ -11,6 +11,7 @@ import {
   E_ACCOUNT_KIT_EMAIL_ALREADY_REGISTERED,
   E_ACCOUNT_KIT_INVALID_INPUT,
   type E_ACCOUNT_KIT_POST_COMMIT,
+  E_ACCOUNT_KIT_EMAIL_INVALID,
 } from './errors.js'
 import { mapRegistrationFields } from './registration_fields.js'
 import { clearRecoveryTokens } from './credential_cleanup.js'
@@ -35,6 +36,7 @@ export async function requestEmailChange(
   })
 }
 
+/** @throws {AggregateError} Work and cleanup both failed. The work failure is first. */
 export async function updateProfile(
   deps: ServiceDependencies,
   input: UpdateProfileInput
@@ -43,7 +45,7 @@ export async function updateProfile(
   if (input.email === undefined && !hasRegistrationData)
     throw new E_ACCOUNT_KIT_INVALID_INPUT('Profile update is empty')
   if (input.email !== undefined && !isEmailShaped(input.email))
-    throw new E_ACCOUNT_KIT_INVALID_INPUT('Invalid email')
+    throw new E_ACCOUNT_KIT_EMAIL_INVALID('Invalid email')
   const newEmail = input.email === undefined ? undefined : normalizeEmail(input.email)
   const registrationData = hasRegistrationData
     ? await mapRegistrationFields(deps.config, input.registrationData)

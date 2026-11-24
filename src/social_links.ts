@@ -33,7 +33,11 @@ export function mapSocialIdentityRow(row: Record<string, unknown>): SocialIdenti
   }
 }
 
-/** The caller's confirmed linked providers. */
+/**
+ * The caller's confirmed linked providers.
+ *
+ * @throws {AggregateError} Work and cleanup both failed. The work failure is first.
+ */
 export async function listSocialIdentities(
   deps: Dependencies,
   input: { current: CurrentAccountInput }
@@ -52,6 +56,8 @@ export async function listSocialIdentities(
 /**
  * Unlinks a provider with a `social_unlink` proof, keeping at least one way to sign in. A
  * credential change: older sessions and tokens end.
+ *
+ * @throws {AggregateError} Work and cleanup both failed. The work failure is first.
  */
 export async function unlinkSocialIdentity(
   deps: Dependencies,

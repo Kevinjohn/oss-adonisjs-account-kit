@@ -91,6 +91,7 @@ async function listExportedSessions(trx: Trx, userId: UserId) {
   }))
 }
 
+/** @throws {AggregateError} Work and cleanup both failed. The work failure is first. */
 export async function exportAccountData(
   deps: ServiceDependencies,
   input: AccountDataInput

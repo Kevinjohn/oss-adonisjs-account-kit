@@ -44,6 +44,7 @@ export async function inspectVerification(
   return user !== null && activationMatches(proof, user)
 }
 
+/** @throws {AggregateError} Work and cleanup both failed. The work failure is first. */
 export async function sendVerification(
   deps: ServiceDependencies,
   input: VerificationSendInput
@@ -122,6 +123,7 @@ export async function sendVerification(
   return 'sent'
 }
 
+/** @throws {AggregateError} Work and cleanup both failed. The work failure is first. */
 export async function completeVerification(
   deps: Pick<ServiceDependencies, 'config' | 'db'>,
   input: VerificationCompleteInput

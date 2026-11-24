@@ -6,7 +6,10 @@ import {
   E_INVALID_CREDENTIALS,
   E_ACCOUNT_KIT_ACCOUNT_ACCESS_DENIED,
   E_ACCOUNT_KIT_SOCIAL_PROVIDER_FAILED,
+  E_ACCOUNT_KIT_SOCIAL_FRESH_AUTH_UNAVAILABLE,
   E_ACCOUNT_KIT_INVALID_TOKEN,
+  E_ACCOUNT_KIT_INVALID_SESSION,
+  E_ACCOUNT_KIT_SOCIAL_TRANSACTION_INVALID,
   E_ACCOUNT_KIT_INVITATION_MANAGEMENT_DENIED,
   E_ACCOUNT_KIT_INVITATION_NOT_FOUND,
   E_ACCOUNT_KIT_POST_COMMIT,
@@ -30,6 +33,22 @@ const invalidTokenCodes: Record<ProofKind, string> = {
   email: 'E_ACCOUNT_KIT_INVALID_EMAIL_TOKEN',
   invitation: 'E_ACCOUNT_KIT_INVALID_INVITATION_TOKEN',
   magicLink: 'E_ACCOUNT_KIT_INVALID_MAGIC_LINK',
+}
+
+const protectedSocialCodes: Readonly<Record<string, string>> = {
+  // Hide whether a stored confirmation or transaction resolved to a usable account and provider identity.
+  E_ACCOUNT_KIT_SOCIAL_PROFILE_INVALID: 'E_ACCOUNT_KIT_SOCIAL_TRANSACTION_INVALID',
+  E_ACCOUNT_KIT_SOCIAL_CONFIRMATION_STATE_MISSING: 'E_ACCOUNT_KIT_SOCIAL_TRANSACTION_INVALID',
+  E_ACCOUNT_KIT_SOCIAL_CONFIRMATION_ACCOUNT_INVALID: 'E_ACCOUNT_KIT_SOCIAL_TRANSACTION_INVALID',
+  E_ACCOUNT_KIT_SOCIAL_CONFIRMATION_IDENTITY_MISSING: 'E_ACCOUNT_KIT_SOCIAL_TRANSACTION_INVALID',
+  // Hide whether social signup collided with an existing password account.
+  E_ACCOUNT_KIT_SOCIAL_REGISTRATION_EMAIL_CONFLICT: 'E_ACCOUNT_KIT_SOCIAL_REGISTRATION_INVALID',
+  // Hide whether a recent-authentication proof exists or has been used.
+  E_ACCOUNT_KIT_SOCIAL_PROOF_MALFORMED: 'E_ACCOUNT_KIT_SOCIAL_PROOF_INVALID',
+  E_ACCOUNT_KIT_SOCIAL_PROOF_STALE: 'E_ACCOUNT_KIT_SOCIAL_PROOF_INVALID',
+  // Hide whether a handoff exists or remains tied to a usable credential.
+  E_ACCOUNT_KIT_SOCIAL_HANDOFF_MISSING: 'E_ACCOUNT_KIT_SOCIAL_HANDOFF_INVALID',
+  E_ACCOUNT_KIT_SOCIAL_HANDOFF_REJECTED: 'E_ACCOUNT_KIT_SOCIAL_HANDOFF_INVALID',
 }
 
 const publicMessages: Record<string, string> = {
@@ -78,14 +97,23 @@ export function mapPublicErrorIdentity(
   if (error instanceof E_ACCOUNT_KIT_ACCOUNT_ACCESS_DENIED)
     return buildPublicErrorIdentity(403, 'E_ACCOUNT_KIT_ACCOUNT_ACCESS_DENIED')
   // Hide whether the callback reached the upstream provider after matching a stored state.
-  if (error instanceof E_ACCOUNT_KIT_SOCIAL_PROVIDER_FAILED)
-    return buildPublicErrorIdentity(400, 'E_ACCOUNT_KIT_SOCIAL_TRANSACTION_INVALID')
+  if (
+    error instanceof E_ACCOUNT_KIT_SOCIAL_PROVIDER_FAILED ||
+    error instanceof E_ACCOUNT_KIT_SOCIAL_FRESH_AUTH_UNAVAILABLE
+  )
+    return buildPublicErrorIdentity(400, E_ACCOUNT_KIT_SOCIAL_TRANSACTION_INVALID.code)
+  const protectedSocial = protectedSocialCodes[error.code]
+  if (protectedSocial) return buildPublicErrorIdentity(error.status, protectedSocial)
+  // Hide whether the account, current revision or bearer token exists and passed its policy.
+  if (error instanceof E_ACCOUNT_KIT_INVALID_SESSION)
+    return buildPublicErrorIdentity(401, E_ACCOUNT_KIT_INVALID_SESSION.code)
   // Hide the existence of invitations the caller is forbidden to manage.
   if (
     error instanceof E_ACCOUNT_KIT_INVITATION_MANAGEMENT_DENIED ||
     error instanceof E_ACCOUNT_KIT_INVITATION_NOT_FOUND
   )
     return buildPublicErrorIdentity(404, 'E_ACCOUNT_KIT_INVITATION_NOT_FOUND')
+  // Hide proof validity and whether this browser has the matching verifier.
   if (error instanceof E_ACCOUNT_KIT_INVALID_TOKEN)
     return buildPublicErrorIdentity(
       400,

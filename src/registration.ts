@@ -8,6 +8,7 @@ import {
   E_ACCOUNT_KIT_REGISTRATION_CLOSED,
   E_ACCOUNT_KIT_REGISTRATION_EMAIL_ALREADY_REGISTERED,
   E_ACCOUNT_KIT_INVALID_INPUT,
+  E_ACCOUNT_KIT_EMAIL_INVALID,
 } from './errors.js'
 import { isPasswordAllowed } from './password.js'
 import { buildPasswordAttributes, preparePassword } from './password_hashing.js'
@@ -18,14 +19,18 @@ import type { E_ACCOUNT_KIT_POST_COMMIT } from './errors.js'
 import type { AccountUser, RegistrationInput } from './types.js'
 import type { ServiceDependencies } from './service_dependencies.js'
 
-/** Create an inactive account and its activation proof in one transaction. */
+/**
+ * Create an inactive account and its activation proof in one transaction.
+ *
+ * @throws {AggregateError} Work and cleanup both failed. The work failure is first.
+ */
 export async function register(
   deps: Pick<ServiceDependencies, 'config' | 'db'>,
   input: RegistrationInput
 ): Promise<AccountUser> {
   if (deps.config.registration?.availability === 'closed')
     throw new E_ACCOUNT_KIT_REGISTRATION_CLOSED('Registration is closed')
-  if (!isEmailShaped(input.email)) throw new E_ACCOUNT_KIT_INVALID_INPUT('Invalid email')
+  if (!isEmailShaped(input.email)) throw new E_ACCOUNT_KIT_EMAIL_INVALID('Invalid email')
   const email = normalizeEmail(input.email)
   if (!isPasswordAllowed(input.password, deps.config.passwordPolicy))
     throw new E_ACCOUNT_KIT_INVALID_INPUT('Invalid password')

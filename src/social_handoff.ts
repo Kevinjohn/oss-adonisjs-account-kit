@@ -8,7 +8,12 @@ import { buildAccountProjection } from './account_projection.js'
 import { lockUser, transaction } from './db.js'
 import { consumeRows } from './consume_rows.js'
 import { isClientVerifier, verifierMatches } from './client_challenge.js'
-import { E_ACCOUNT_KIT_SOCIAL_HANDOFF_INVALID } from './errors.js'
+import {
+  E_ACCOUNT_KIT_SOCIAL_HANDOFF_INPUT_INVALID,
+  E_ACCOUNT_KIT_SOCIAL_HANDOFF_MISSING,
+  E_ACCOUNT_KIT_SOCIAL_HANDOFF_REJECTED,
+  E_ACCOUNT_KIT_SOCIAL_HANDOFF_GUARD_MISMATCH,
+} from './errors.js'
 import { listEnabledSocialProviders, readSqlTimestamp, type Dependencies } from './social_shared.js'
 import { generateToken, hashToken, isTokenShaped } from './tokens.js'
 import type {
@@ -57,6 +62,7 @@ async function getUsableHandoffProvider(
     : null
 }
 
+/** @throws {AggregateError} Work and cleanup both failed. The work failure is first. */
 export async function redeemSocialHandoff<Credential>(
   deps: Dependencies,
   input: {
@@ -66,19 +72,16 @@ export async function redeemSocialHandoff<Credential>(
   }
 ): Promise<{ account: CurrentAccount; credential: Credential; provider: SocialProviderName }> {
   const auth = deps.config.authentication!
-  if (
-    !isTokenShaped(input.code) ||
-    !isClientVerifier(input.verifier) ||
-    input.guard.strategy !== auth.strategy ||
-    input.guard.name !== auth.guard
-  )
-    throw new E_ACCOUNT_KIT_SOCIAL_HANDOFF_INVALID()
+  if (!isTokenShaped(input.code) || !isClientVerifier(input.verifier))
+    throw new E_ACCOUNT_KIT_SOCIAL_HANDOFF_INPUT_INVALID()
+  if (input.guard.strategy !== auth.strategy || input.guard.name !== auth.guard)
+    throw new E_ACCOUNT_KIT_SOCIAL_HANDOFF_GUARD_MISMATCH()
   const verified = await transaction(deps.db, async (trx) => {
     const candidate = await trx
       .from('social_handoff_codes')
       .where('hash', hashToken(input.code))
       .first()
-    if (!candidate) throw new E_ACCOUNT_KIT_SOCIAL_HANDOFF_INVALID()
+    if (!candidate) throw new E_ACCOUNT_KIT_SOCIAL_HANDOFF_MISSING()
     await lockUser(trx, deps.config, candidate.user_id)
     const rows = await consumeRows<typeof candidate>(
       trx,
@@ -92,10 +95,10 @@ export async function redeemSocialHandoff<Credential>(
       row.user_id !== candidate.user_id ||
       !verifierMatches(input.verifier, row.client_challenge)
     )
-      throw new E_ACCOUNT_KIT_SOCIAL_HANDOFF_INVALID()
+      throw new E_ACCOUNT_KIT_SOCIAL_HANDOFF_REJECTED()
     const user = await deps.config.users.findById(row.user_id, trx)
     if (!user || !requireAccountAccessDecision(await auth.canAccess(user, trx)))
-      throw new E_ACCOUNT_KIT_SOCIAL_HANDOFF_INVALID()
+      throw new E_ACCOUNT_KIT_SOCIAL_HANDOFF_REJECTED()
     const currentRevision = await revision(trx, deps.config, user.id)
     const establishedProvider = await getUsableHandoffProvider(
       trx,
@@ -104,7 +107,7 @@ export async function redeemSocialHandoff<Credential>(
       row.social_identity_id
     )
     if (currentRevision !== row.credential_revision || !establishedProvider)
-      throw new E_ACCOUNT_KIT_SOCIAL_HANDOFF_INVALID()
+      throw new E_ACCOUNT_KIT_SOCIAL_HANDOFF_REJECTED()
     return {
       account: buildAccountProjection(user),
       revision: currentRevision,
@@ -116,7 +119,7 @@ export async function redeemSocialHandoff<Credential>(
     stillValid: async (trx, user) =>
       (await getUsableHandoffProvider(trx, deps.config, user.id, verified.socialIdentityId)) ===
       verified.provider,
-    rejected: () => new E_ACCOUNT_KIT_SOCIAL_HANDOFF_INVALID(),
+    rejected: () => new E_ACCOUNT_KIT_SOCIAL_HANDOFF_REJECTED(),
     cleanupFailed: 'Social credential cleanup failed',
   })
   return { account: verified.account, credential, provider: verified.provider }

@@ -19,6 +19,7 @@ import {
   E_ACCOUNT_KIT_INVITATION_PENDING,
   E_ACCOUNT_KIT_INVALID_TOKEN,
   type E_ACCOUNT_KIT_POST_COMMIT,
+  E_ACCOUNT_KIT_EMAIL_INVALID,
 } from './errors.js'
 import { isPasswordAllowed } from './password.js'
 import { buildPasswordAttributes, preparePassword } from './password_hashing.js'
@@ -42,6 +43,7 @@ import type { ServiceDependencies } from './service_dependencies.js'
 
 export { resendInvitation, revokeInvitation, paginateInvitations } from './invitation_management.js'
 
+/** @throws {AggregateError} Work and cleanup both failed. The work failure is first. */
 export async function acceptInvitation(
   deps: Pick<ServiceDependencies, 'config' | 'db'>,
   input: InvitationsAcceptInput
@@ -144,7 +146,7 @@ export async function sendInvitation(
   deps: ServiceDependencies,
   input: InvitationsSendInput
 ): Promise<Invitation> {
-  if (!isEmailShaped(input.email)) throw new E_ACCOUNT_KIT_INVALID_INPUT('Invalid email')
+  if (!isEmailShaped(input.email)) throw new E_ACCOUNT_KIT_EMAIL_INVALID('Invalid email')
   if (!isInvitationRole(input.role)) throw new E_ACCOUNT_KIT_INVALID_INPUT('Invalid role')
   const scope = normalizeScope(input.scope)
   const email = normalizeEmail(input.email)
@@ -199,6 +201,8 @@ export async function sendInvitation(
  * the actor and operator paths; a pending invitation otherwise surfaces as E_ACCOUNT_KIT_INVITATION_PENDING.
  * `recheckInvite` locks the inviter row and runs `authorize.invite` again with `trx` and the
  * scope. Lock order: inviter, invitation, then whatever the application locks in `invite`.
+ *
+ * @throws {AggregateError} Work and cleanup both failed. The work failure is first.
  */
 export async function storeInvitation(
   deps: Pick<ServiceDependencies, 'config' | 'db'>,

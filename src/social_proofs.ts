@@ -2,7 +2,11 @@
 import { lockUser, transaction } from './db.js'
 import { consumeRows } from './consume_rows.js'
 import { revision } from './credential_revision.js'
-import { E_ACCOUNT_KIT_SOCIAL_PROOF_INVALID } from './errors.js'
+import {
+  E_ACCOUNT_KIT_SOCIAL_PROOF_INVALID,
+  E_ACCOUNT_KIT_SOCIAL_PROOF_MALFORMED,
+  E_ACCOUNT_KIT_SOCIAL_PROOF_STALE,
+} from './errors.js'
 import { isSensitivePurpose } from './social_enums.js'
 import {
   requireAuthenticatedUser,
@@ -20,7 +24,7 @@ export async function consumeSocialSensitiveProof(
   purpose: SensitivePurpose,
   proof: string
 ): Promise<void> {
-  if (!isTokenShaped(proof)) throw new E_ACCOUNT_KIT_SOCIAL_PROOF_INVALID()
+  if (!isTokenShaped(proof)) throw new E_ACCOUNT_KIT_SOCIAL_PROOF_MALFORMED()
   return consumeSocialSensitiveProofHash(trx, config, userId, purpose, hashToken(proof))
 }
 
@@ -39,7 +43,7 @@ export async function consumeSocialSensitiveProofHash(
     readSqlTimestamp(trx)
   )
   if (rows.length !== 1 || rows[0].credential_revision !== (await revision(trx, config, userId)))
-    throw new E_ACCOUNT_KIT_SOCIAL_PROOF_INVALID()
+    throw new E_ACCOUNT_KIT_SOCIAL_PROOF_STALE()
 }
 
 export async function issueProof(
@@ -60,6 +64,7 @@ export async function issueProof(
   return proof
 }
 
+/** @throws {AggregateError} Work and cleanup both failed. The work failure is first. */
 export async function proveSocialPassword(
   deps: Dependencies,
   input: {

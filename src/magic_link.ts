@@ -15,6 +15,7 @@ import {
   E_ACCOUNT_KIT_CREDENTIAL_ISSUANCE_REJECTED,
   E_ACCOUNT_KIT_INVALID_INPUT,
   E_ACCOUNT_KIT_INVALID_TOKEN,
+  E_ACCOUNT_KIT_EMAIL_INVALID,
 } from './errors.js'
 import { waitForFloor } from './timing.js'
 import { generateToken, hashToken, isTokenShaped } from './tokens.js'
@@ -39,6 +40,7 @@ interface LinkRow {
   client_challenge: string
 }
 
+/** @throws {AggregateError} Work and cleanup both failed. The work failure is first. */
 export async function requestMagicLink(
   deps: ServiceDependencies,
   input: MagicLinkRequestInput
@@ -46,7 +48,7 @@ export async function requestMagicLink(
   const started = performance.now()
   try {
     const auth = requireAuthentication(deps.config)
-    if (!isEmailShaped(input.email)) throw new E_ACCOUNT_KIT_INVALID_INPUT('Invalid email')
+    if (!isEmailShaped(input.email)) throw new E_ACCOUNT_KIT_EMAIL_INVALID('Invalid email')
     if (typeof input.clientKey !== 'string' || input.clientKey.trim() === '')
       throw new E_ACCOUNT_KIT_INVALID_INPUT('Invalid client key')
     if (!isClientChallenge(input.clientChallenge))
@@ -132,6 +134,8 @@ export async function inspectMagicLink(
  * still consumes the link: it may have been forwarded or intercepted, so the owner requests a new
  * one. A link whose address no longer matches the account is refused without being consumed; it
  * can never match again.
+ *
+ * @throws {AggregateError} Work and cleanup both failed. The work failure is first.
  */
 export async function completeMagicLink<Credential>(
   deps: ServiceDependencies,

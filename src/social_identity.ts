@@ -10,6 +10,11 @@ import {
   E_ACCOUNT_KIT_SOCIAL_TRANSACTION_INVALID,
   E_ACCOUNT_KIT_SOCIAL_USER_NOT_FOUND,
   E_ACCOUNT_KIT_UNVERIFIED_EMAIL,
+  E_ACCOUNT_KIT_SOCIAL_FRESH_AUTH_UNAVAILABLE,
+  E_ACCOUNT_KIT_SOCIAL_CONFIRMATION_INPUT_INVALID,
+  E_ACCOUNT_KIT_SOCIAL_CONFIRMATION_STATE_MISSING,
+  E_ACCOUNT_KIT_SOCIAL_CONFIRMATION_ACCOUNT_INVALID,
+  E_ACCOUNT_KIT_SOCIAL_CONFIRMATION_IDENTITY_MISSING,
 } from './errors.js'
 import { generateToken, hashToken, isTokenShaped } from './tokens.js'
 import { requireSocialProvider, completeSocialCallback } from './social_callback.js'
@@ -58,7 +63,7 @@ export function createSocialIdentityService(deps: Dependencies) {
       if (input.intent === 'reauth' && !isSensitivePurpose(input.purpose))
         throw new E_ACCOUNT_KIT_SOCIAL_TRANSACTION_INVALID()
       if (input.intent === 'reauth' && !adapter.verifyFreshAuthentication)
-        throw new E_ACCOUNT_KIT_SOCIAL_PROOF_INVALID()
+        throw new E_ACCOUNT_KIT_SOCIAL_FRESH_AUTH_UNAVAILABLE()
       const state = generateToken()
       await transaction(deps.db, async (trx) => {
         const user =
@@ -102,7 +107,7 @@ export function createSocialIdentityService(deps: Dependencies) {
     }): Promise<{ state: string; url: string }> {
       const adapter = requireSocialProvider(deps, input.provider)
       if (!isClientChallenge(input.clientChallenge) || !isTokenShaped(input.verificationToken))
-        throw new E_ACCOUNT_KIT_SOCIAL_TRANSACTION_INVALID()
+        throw new E_ACCOUNT_KIT_SOCIAL_CONFIRMATION_INPUT_INVALID()
       const state = generateToken()
       await transaction(deps.db, async (trx) => {
         const token = await trx
@@ -111,18 +116,18 @@ export function createSocialIdentityService(deps: Dependencies) {
           .where('expires_at', '>', readSqlTimestamp(trx))
           .where('purpose', 'activation')
           .first()
-        if (!token) throw new E_ACCOUNT_KIT_SOCIAL_TRANSACTION_INVALID()
+        if (!token) throw new E_ACCOUNT_KIT_SOCIAL_CONFIRMATION_STATE_MISSING()
         await lockUser(trx, deps.config, token.tokenable_id)
         const user = await deps.config.users.findById(token.tokenable_id, trx)
         if (!user || isActiveAccount(user) || user.email !== token.email)
-          throw new E_ACCOUNT_KIT_SOCIAL_TRANSACTION_INVALID()
+          throw new E_ACCOUNT_KIT_SOCIAL_CONFIRMATION_ACCOUNT_INVALID()
         const pending = await trx
           .from('social_identities')
           .where('user_id', user.id)
           .where('provider', input.provider)
           .whereNull('confirmed_at')
           .first()
-        if (!pending) throw new E_ACCOUNT_KIT_SOCIAL_TRANSACTION_INVALID()
+        if (!pending) throw new E_ACCOUNT_KIT_SOCIAL_CONFIRMATION_IDENTITY_MISSING()
         await trx.table('social_transactions').insert({
           hash: hashToken(state),
           provider: input.provider,

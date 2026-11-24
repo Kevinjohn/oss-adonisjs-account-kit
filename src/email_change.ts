@@ -43,6 +43,7 @@ interface EmailChangeRow {
   purpose: string
 }
 
+/** @throws {AggregateError} Work and cleanup both failed. The work failure is first. */
 export async function completeEmailChange(
   deps: Pick<ServiceDependencies, 'config' | 'db'>,
   input: CompleteEmailChangeInput

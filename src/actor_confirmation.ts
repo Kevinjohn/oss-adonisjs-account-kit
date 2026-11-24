@@ -1,8 +1,8 @@
 import { lockUser } from './db.js'
 import {
   E_ACCOUNT_KIT_IDENTITY_NOT_CONFIRMED,
-  E_ACCOUNT_KIT_INVALID_INPUT,
   E_ACCOUNT_KIT_NO_PASSWORD,
+  E_ACCOUNT_KIT_ACTOR_NOT_FOUND,
 } from './errors.js'
 import { consumeSocialSensitiveProof } from './social_proofs.js'
 import type { AccountUser, ResolvedConfig, SensitivePurpose, Trx, UserId } from './types.js'
@@ -14,7 +14,7 @@ export async function requireUser(
   trx?: Trx
 ): Promise<AccountUser> {
   const user = await config.users.findById(id, trx)
-  if (!user) throw new E_ACCOUNT_KIT_INVALID_INPUT('Unknown actor')
+  if (!user) throw new E_ACCOUNT_KIT_ACTOR_NOT_FOUND('Unknown actor')
   return user
 }
 

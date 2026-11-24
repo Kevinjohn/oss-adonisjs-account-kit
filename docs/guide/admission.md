@@ -214,7 +214,7 @@ JSON:API body. The package sends no notification of any kind.
 the actor and the subject in id order, so two approvers deciding on each other cannot deadlock.
 They are refused with:
 
-- `E_ACCOUNT_KIT_USER_NOT_FOUND` for an unknown subject, `E_ACCOUNT_KIT_INVALID_INPUT('Unknown actor')` for an unknown
+- `E_ACCOUNT_KIT_USER_NOT_FOUND` for an unknown subject, `E_ACCOUNT_KIT_ACTOR_NOT_FOUND` for an unknown
   actor;
 - `E_ACCOUNT_KIT_AUTHORIZATION` when the actor is the subject, when the actor is not admitted, or when
   `authorize.decide(actor, subject, { trx })` returns anything but `true`;

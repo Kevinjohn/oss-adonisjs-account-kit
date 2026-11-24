@@ -1,3 +1,4 @@
+import { E_ACCOUNT_KIT_SOCIAL_ADMISSION_CALLBACK_REQUIRED } from '../src/errors.js'
 import { test } from '@japa/runner'
 import { useTestApp } from './helpers/app.js'
 import { insertUser, makeService } from './helpers/fakes.js'
@@ -104,7 +105,7 @@ test.group('social continuation and handoff', (group) => {
           continuation: pending.continuation!,
           registrationData: { consent: true },
         }),
-      'Invalid social transaction'
+      E_ACCOUNT_KIT_SOCIAL_ADMISSION_CALLBACK_REQUIRED
     )
     await assert.rejects(
       () =>

@@ -1,5 +1,11 @@
 import { RuntimeException } from '@adonisjs/core/exceptions'
-import { E_ACCOUNT_KIT_INVALID_SETUP_SOURCE, E_ACCOUNT_KIT_MIGRATION_DIRECTORY } from '../errors.js'
+import {
+  E_ACCOUNT_KIT_INVALID_SETUP_SOURCE,
+  E_ACCOUNT_KIT_MIGRATION_DIRECTORY,
+  E_ACCOUNT_KIT_MIGRATION_DIRECTORY_UNRESOLVED,
+  E_ACCOUNT_KIT_MIGRATION_DIRECTORY_CONFLICT,
+  E_ACCOUNT_KIT_MIGRATION_DIRECTORY_DUPLICATE,
+} from '../errors.js'
 import { lstat, readdir } from 'node:fs/promises'
 import { join, relative, sep } from 'node:path'
 import { inspectDatabaseConnection } from './database_inspection.js'
@@ -113,12 +119,12 @@ export async function inspectMigrationDirectory(
     }
   }
   if (!directory && !explicit)
-    throw new E_ACCOUNT_KIT_MIGRATION_DIRECTORY(
+    throw new E_ACCOUNT_KIT_MIGRATION_DIRECTORY_UNRESOLVED(
       'Unable to determine the Lucid migration directory statically; pass --migration-directory with the application-relative directory used by the selected connection'
     )
   const normalize = (name: string) => normalizeMigrationDirectory(root, name)
   if (explicit && directory && (await normalize(explicit)) !== (await normalize(directory)))
-    throw new E_ACCOUNT_KIT_MIGRATION_DIRECTORY(
+    throw new E_ACCOUNT_KIT_MIGRATION_DIRECTORY_CONFLICT(
       'The explicit migration directory differs from the configured Lucid migration directory'
     )
   const path = await normalize(explicit ?? directory!)
@@ -132,7 +138,7 @@ export async function inspectMigrationDirectory(
           !`${defaultMigrationDirectory}/${name}`.startsWith(`${path}/`)
       )
     )
-      throw new E_ACCOUNT_KIT_MIGRATION_DIRECTORY(
+      throw new E_ACCOUNT_KIT_MIGRATION_DIRECTORY_DUPLICATE(
         'Account Kit migrations already exist in database/migrations; reconcile the migration paths and applied history manually before generating another copy',
         defaultMigrationDirectory
       )

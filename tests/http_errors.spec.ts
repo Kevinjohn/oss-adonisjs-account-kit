@@ -76,6 +76,36 @@ test.group('account HTTP error mapping', () => {
     assert.equal(session?.body.errors[0].code, 'E_ACCOUNT_KIT_INVALID_SESSION')
   })
 
+  test('keeps raw session and proof failures distinct from their protective responses', ({
+    assert,
+  }) => {
+    for (const error of [
+      new errors.E_ACCOUNT_KIT_SESSION_ACCOUNT_MISSING(),
+      new errors.E_ACCOUNT_KIT_SESSION_REVISION_INVALID(),
+      new errors.E_ACCOUNT_KIT_SESSION_TOKEN_MISSING(),
+      new errors.E_ACCOUNT_KIT_SESSION_ACCESS_DENIED(),
+    ]) {
+      assert.notEqual(error.code, 'E_ACCOUNT_KIT_INVALID_SESSION')
+      assert.deepEqual(
+        accountErrorResponse(error),
+        accountErrorResponse(new errors.E_ACCOUNT_KIT_INVALID_SESSION())
+      )
+    }
+    const malformed = new errors.E_ACCOUNT_KIT_PROOF_TOKEN_MALFORMED()
+    const accountMissing = new errors.E_ACCOUNT_KIT_PASSWORD_RESET_ACCOUNT_MISSING()
+    assert.notEqual(malformed.code, accountMissing.code)
+    assert.deepEqual(
+      accountErrorResponse(malformed, { proof: 'password' }),
+      accountErrorResponse(accountMissing, { proof: 'password' })
+    )
+    const verifierMissing = new errors.E_ACCOUNT_KIT_MAGIC_LINK_VERIFIER_REQUIRED()
+    assert.equal(verifierMissing.code, 'E_ACCOUNT_KIT_MAGIC_LINK_VERIFIER_REQUIRED')
+    assert.equal(
+      accountErrorResponse(verifierMissing, { proof: 'magicLink' })?.body.errors[0].code,
+      'E_ACCOUNT_KIT_INVALID_MAGIC_LINK'
+    )
+  })
+
   test('conceals whether a social callback reached the upstream provider', ({ assert }) => {
     const unknown = new errors.E_ACCOUNT_KIT_SOCIAL_TRANSACTION_INVALID()
     const upstream = new errors.E_ACCOUNT_KIT_SOCIAL_PROVIDER_FAILED({

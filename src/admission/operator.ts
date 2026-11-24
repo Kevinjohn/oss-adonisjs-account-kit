@@ -3,9 +3,10 @@ import { randomUUID } from 'node:crypto'
 import { lockUser, transaction } from '../db.js'
 import { isEmailShaped, normalizeEmail } from '../email.js'
 import {
-  E_ACCOUNT_KIT_ADMISSION_DECISION,
   E_ACCOUNT_KIT_INVALID_INPUT,
   E_ACCOUNT_KIT_USER_NOT_FOUND,
+  E_ACCOUNT_KIT_ADMISSION_INVITATION_EVIDENCE_EXISTS,
+  E_ACCOUNT_KIT_EMAIL_INVALID,
 } from '../errors.js'
 import { sqlTimestamp } from '../timestamps.js'
 import type { AccountUser } from '../types.js'
@@ -26,7 +27,7 @@ async function lockSubject(
   trx: Parameters<typeof lockUser>[0],
   email: unknown
 ): Promise<AccountUser> {
-  if (!isEmailShaped(email)) throw new E_ACCOUNT_KIT_INVALID_INPUT('Invalid email')
+  if (!isEmailShaped(email)) throw new E_ACCOUNT_KIT_EMAIL_INVALID('Invalid email')
   const found = await deps.accountConfig.users.findByEmail(normalizeEmail(email), trx)
   if (!found) throw new E_ACCOUNT_KIT_USER_NOT_FOUND()
   await lockUser(trx, deps.accountConfig, found.id)
@@ -35,7 +36,11 @@ async function lockSubject(
   return subject
 }
 
-/** Approve or revoke by email, with the same transitions as an approver and no actor. */
+/**
+ * Approve or revoke by email, with the same transitions as an approver and no actor.
+ *
+ * @throws {AggregateError} Work and cleanup both failed. The work failure is first.
+ */
 export async function applyOperatorDecision(
   deps: AdmissionContext,
   input: { email: string },
@@ -62,6 +67,8 @@ export async function applyOperatorDecision(
 /**
  * Record operator invitation evidence for an existing account. `role` is stored on the record
  * only; it grants nothing. Refuses an account that already has evidence.
+ *
+ * @throws {AggregateError} Work and cleanup both failed. The work failure is first.
  */
 export async function grantOperatorInvitation(
   deps: AdmissionContext,
@@ -80,7 +87,9 @@ export async function grantOperatorInvitation(
       const subject = await lockSubject(deps, trx, input.email)
       const existing = await readAdmissionRow(trx, subject.id)
       if (existing && existing.invitation_recorded_at !== null)
-        throw new E_ACCOUNT_KIT_ADMISSION_DECISION('Invitation evidence is already recorded')
+        throw new E_ACCOUNT_KIT_ADMISSION_INVITATION_EVIDENCE_EXISTS(
+          'Invitation evidence is already recorded'
+        )
       const now = sqlTimestamp(trx)
       const row = await upsertAdmissionRow(
         trx,

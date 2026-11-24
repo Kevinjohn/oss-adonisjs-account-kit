@@ -14,6 +14,7 @@ import {
   E_ACCOUNT_KIT_INVALID_INPUT,
   E_ACCOUNT_KIT_USER_NOT_FOUND,
   type E_ACCOUNT_KIT_POST_COMMIT,
+  E_ACCOUNT_KIT_EMAIL_INVALID,
 } from './errors.js'
 import { transaction } from './db.js'
 import { replaceBootstrapInvitation } from './bootstrap_invitation.js'
@@ -37,7 +38,7 @@ function requireDelivery(value: unknown): asserts value is 'send' | 'print' {
 }
 
 function requireEmail(value: unknown): string {
-  if (!isEmailShaped(value)) throw new E_ACCOUNT_KIT_INVALID_INPUT('Invalid email')
+  if (!isEmailShaped(value)) throw new E_ACCOUNT_KIT_EMAIL_INVALID('Invalid email')
   return normalizeEmail(value)
 }
 
@@ -67,7 +68,11 @@ export async function issueStandaloneOperatorInvitation(
   return issueOperatorInvitation(deps, input)
 }
 
-/** Internal composition for the admission approval written in the invitation transaction. */
+/**
+ * Internal composition for the admission approval written in the invitation transaction.
+ *
+ * @throws {AggregateError} Work and cleanup both failed. The work failure is first.
+ */
 export async function issueOperatorInvitation(
   deps: Pick<ServiceDependencies, 'config' | 'db'>,
   input: OperatorInviteInput,

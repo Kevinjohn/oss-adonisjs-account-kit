@@ -9,6 +9,7 @@ import { deleteUserRows } from './user_rows.js'
 import type { AccountDataInput, DeletedAccount } from './types.js'
 import type { ServiceDependencies } from './service_dependencies.js'
 
+/** @throws {AggregateError} Work and cleanup both failed. The work failure is first. */
 export async function deleteAccount(
   deps: ServiceDependencies,
   input: AccountDataInput

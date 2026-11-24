@@ -326,7 +326,7 @@ test.group('managed magic-link routes', (group) => {
     const verifier = 'c'.repeat(64)
     const missing = await call('POST /api/v1/auth/magic-link', { email: user.email })
     assert.equal(missing.status, 422)
-    assert.equal(missing.body.errors[0].code, 'E_ACCOUNT_KIT_INVALID_INPUT')
+    assert.equal(missing.body.errors[0].code, 'E_ACCOUNT_KIT_CLIENT_CHALLENGE_REQUIRED')
     const requested = await call('POST /api/v1/auth/magic-link', {
       email: user.email,
       clientChallenge: deriveClientChallenge(verifier),

@@ -1,7 +1,9 @@
 import { RuntimeException } from '@adonisjs/core/exceptions'
 import {
   E_ACCOUNT_KIT_INDIRECT_ENVIRONMENT_VALUE,
-  E_ACCOUNT_KIT_SELECTED_ENVIRONMENT_VALUE,
+  E_ACCOUNT_KIT_ENV_ASSIGNMENT_AMBIGUOUS,
+  E_ACCOUNT_KIT_ENV_ASSIGNMENT_MALFORMED,
+  E_ACCOUNT_KIT_ENV_VALUE_INVALID,
 } from '../errors.js'
 import { createReadStream } from 'node:fs'
 import { lstat } from 'node:fs/promises'
@@ -61,7 +63,7 @@ async function resolveEnvironmentValue(
       for await (const line of lines) {
         if (multilineQuote) {
           if (assignmentStart.test(line))
-            throw new E_ACCOUNT_KIT_SELECTED_ENVIRONMENT_VALUE(
+            throw new E_ACCOUNT_KIT_ENV_ASSIGNMENT_AMBIGUOUS(
               'Selected environment assignment is inside a multiline value'
             )
           if (hasClosingQuote(line, multilineQuote)) multilineQuote = null
@@ -74,9 +76,13 @@ async function resolveEnvironmentValue(
             multilineQuote = quotedAssignment[1] as '"' | "'" | '`'
         }
         if (!assignmentStart.test(line)) continue
-        if (found || !assignmentValue.test(line))
-          throw new E_ACCOUNT_KIT_SELECTED_ENVIRONMENT_VALUE(
+        if (found)
+          throw new E_ACCOUNT_KIT_ENV_ASSIGNMENT_AMBIGUOUS(
             'Selected environment assignment is ambiguous'
+          )
+        if (!assignmentValue.test(line))
+          throw new E_ACCOUNT_KIT_ENV_ASSIGNMENT_MALFORMED(
+            'Selected environment assignment is malformed'
           )
         found = true
         if (line.includes('$') || line.includes('`'))
@@ -84,12 +90,12 @@ async function resolveEnvironmentValue(
         try {
           value = parseEnv(line)[variable] ?? null
         } catch {
-          throw new E_ACCOUNT_KIT_SELECTED_ENVIRONMENT_VALUE(
+          throw new E_ACCOUNT_KIT_ENV_ASSIGNMENT_MALFORMED(
             'Selected environment assignment is malformed'
           )
         }
         if (!validate(value))
-          throw new E_ACCOUNT_KIT_SELECTED_ENVIRONMENT_VALUE(
+          throw new E_ACCOUNT_KIT_ENV_VALUE_INVALID(
             `Selected environment value must be ${expected}`
           )
       }

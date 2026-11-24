@@ -959,3 +959,531 @@ class SetupCleanupFailedException extends Exception {
 
 /** @reexport */
 export const E_ACCOUNT_KIT_SETUP_CLEANUP_FAILED = SetupCleanupFailedException
+
+/** The acting account does not exist. */
+class ActorNotFoundException extends InvalidInputException {
+  static code = 'E_ACCOUNT_KIT_ACTOR_NOT_FOUND'
+  static status = 422
+
+  constructor(message?: string, options?: ErrorOptions) {
+    super(message, options)
+  }
+}
+
+/** @reexport */
+export const E_ACCOUNT_KIT_ACTOR_NOT_FOUND = ActorNotFoundException
+
+/** The supplied email address is malformed. */
+class EmailInvalidException extends InvalidInputException {
+  static code = 'E_ACCOUNT_KIT_EMAIL_INVALID'
+  static status = 422
+
+  constructor(message?: string, options?: ErrorOptions) {
+    super(message, options)
+  }
+}
+
+/** @reexport */
+export const E_ACCOUNT_KIT_EMAIL_INVALID = EmailInvalidException
+
+/** The request has no client challenge. */
+class ClientChallengeRequiredException extends InvalidInputException {
+  static code = 'E_ACCOUNT_KIT_CLIENT_CHALLENGE_REQUIRED'
+  static status = 422
+
+  constructor(message?: string, options?: ErrorOptions) {
+    super(message, options)
+  }
+}
+
+/** @reexport */
+export const E_ACCOUNT_KIT_CLIENT_CHALLENGE_REQUIRED = ClientChallengeRequiredException
+
+/** The credential no longer refers to an account. */
+class SessionAccountMissingException extends InvalidSessionException {
+  static code = 'E_ACCOUNT_KIT_SESSION_ACCOUNT_MISSING'
+  static status = 401
+
+  constructor(options?: ErrorOptions) {
+    super(options)
+  }
+}
+
+/** @reexport */
+export const E_ACCOUNT_KIT_SESSION_ACCOUNT_MISSING = SessionAccountMissingException
+
+/** The session lacks a matching credential revision. */
+class SessionRevisionInvalidException extends InvalidSessionException {
+  static code = 'E_ACCOUNT_KIT_SESSION_REVISION_INVALID'
+  static status = 401
+
+  constructor(options?: ErrorOptions) {
+    super(options)
+  }
+}
+
+/** @reexport */
+export const E_ACCOUNT_KIT_SESSION_REVISION_INVALID = SessionRevisionInvalidException
+
+/** The active bearer token is absent. */
+class SessionTokenMissingException extends InvalidSessionException {
+  static code = 'E_ACCOUNT_KIT_SESSION_TOKEN_MISSING'
+  static status = 401
+
+  constructor(options?: ErrorOptions) {
+    super(options)
+  }
+}
+
+/** @reexport */
+export const E_ACCOUNT_KIT_SESSION_TOKEN_MISSING = SessionTokenMissingException
+
+/** The application denied access for the current credential. */
+class SessionAccessDeniedException extends InvalidSessionException {
+  static code = 'E_ACCOUNT_KIT_SESSION_ACCESS_DENIED'
+  static status = 401
+
+  constructor(options?: ErrorOptions) {
+    super(options)
+  }
+}
+
+/** @reexport */
+export const E_ACCOUNT_KIT_SESSION_ACCESS_DENIED = SessionAccessDeniedException
+
+/** An existing account has no password. */
+class CredentialsPasswordUnavailableException extends InvalidCredentialsException {
+  static code = 'E_ACCOUNT_KIT_CREDENTIALS_PASSWORD_UNAVAILABLE'
+  static status = 401
+
+  constructor(options?: ErrorOptions) {
+    super(options)
+  }
+}
+
+/** @reexport */
+export const E_ACCOUNT_KIT_CREDENTIALS_PASSWORD_UNAVAILABLE =
+  CredentialsPasswordUnavailableException
+
+/** The actor tried to decide their own admission. */
+class AdmissionSelfDecisionException extends AuthorizationException {
+  static code = 'E_ACCOUNT_KIT_ADMISSION_SELF_DECISION'
+  static status = 403
+
+  constructor(message?: string, options?: ErrorOptions) {
+    super(message, options)
+  }
+}
+
+/** @reexport */
+export const E_ACCOUNT_KIT_ADMISSION_SELF_DECISION = AdmissionSelfDecisionException
+
+/** The actor has not been admitted. */
+class AdmissionActorNotAdmittedException extends AuthorizationException {
+  static code = 'E_ACCOUNT_KIT_ADMISSION_ACTOR_NOT_ADMITTED'
+  static status = 403
+
+  constructor(message?: string, options?: ErrorOptions) {
+    super(message, options)
+  }
+}
+
+/** @reexport */
+export const E_ACCOUNT_KIT_ADMISSION_ACTOR_NOT_ADMITTED = AdmissionActorNotAdmittedException
+
+/** The application denied this admission decision. */
+class AdmissionPolicyDeniedException extends AuthorizationException {
+  static code = 'E_ACCOUNT_KIT_ADMISSION_POLICY_DENIED'
+  static status = 403
+
+  constructor(message?: string, options?: ErrorOptions) {
+    super(message, options)
+  }
+}
+
+/** @reexport */
+export const E_ACCOUNT_KIT_ADMISSION_POLICY_DENIED = AdmissionPolicyDeniedException
+
+/** The account already has recorded invitation evidence. */
+class AdmissionInvitationEvidenceExistsException extends AdmissionDecisionException {
+  static code = 'E_ACCOUNT_KIT_ADMISSION_INVITATION_EVIDENCE_EXISTS'
+  static status = 409
+
+  constructor(message?: string, options?: ErrorOptions) {
+    super(message, options)
+  }
+}
+
+/** @reexport */
+export const E_ACCOUNT_KIT_ADMISSION_INVITATION_EVIDENCE_EXISTS =
+  AdmissionInvitationEvidenceExistsException
+
+/** The proof token has an invalid format. */
+class ProofTokenMalformedException extends InvalidTokenException {
+  static code = 'E_ACCOUNT_KIT_PROOF_TOKEN_MALFORMED'
+  static status = 400
+
+  constructor(message?: string, options?: ErrorOptions) {
+    super(message, options)
+  }
+}
+
+/** @reexport */
+export const E_ACCOUNT_KIT_PROOF_TOKEN_MALFORMED = ProofTokenMalformedException
+
+/** The reset proof has no remaining account. */
+class PasswordResetAccountMissingException extends InvalidTokenException {
+  static code = 'E_ACCOUNT_KIT_PASSWORD_RESET_ACCOUNT_MISSING'
+  static status = 400
+
+  constructor(message?: string, options?: ErrorOptions) {
+    super(message, options)
+  }
+}
+
+/** @reexport */
+export const E_ACCOUNT_KIT_PASSWORD_RESET_ACCOUNT_MISSING = PasswordResetAccountMissingException
+
+/** The callback has no client verifier. */
+class MagicLinkVerifierRequiredException extends InvalidTokenException {
+  static code = 'E_ACCOUNT_KIT_MAGIC_LINK_VERIFIER_REQUIRED'
+  static status = 400
+
+  constructor(message?: string, options?: ErrorOptions) {
+    super(message, options)
+  }
+}
+
+/** @reexport */
+export const E_ACCOUNT_KIT_MAGIC_LINK_VERIFIER_REQUIRED = MagicLinkVerifierRequiredException
+
+/** The provider profile has an invalid shape. */
+class SocialProfileInvalidException extends SocialRegistrationInvalidException {
+  static code = 'E_ACCOUNT_KIT_SOCIAL_PROFILE_INVALID'
+  static status = 400
+
+  constructor(options?: ErrorOptions) {
+    super(options)
+  }
+}
+
+/** @reexport */
+export const E_ACCOUNT_KIT_SOCIAL_PROFILE_INVALID = SocialProfileInvalidException
+
+/** The inserted social identity could not be read back. */
+class SocialIdentityNotPersistedException extends AccountKitException {
+  static code = 'E_ACCOUNT_KIT_SOCIAL_IDENTITY_NOT_PERSISTED'
+  static status = 500
+
+  constructor(message?: string, options?: ErrorOptions) {
+    super(message, options)
+  }
+}
+
+/** @reexport */
+export const E_ACCOUNT_KIT_SOCIAL_IDENTITY_NOT_PERSISTED = SocialIdentityNotPersistedException
+
+/** Registration policy is closed. */
+class SocialRegistrationClosedException extends SocialRegistrationInvalidException {
+  static code = 'E_ACCOUNT_KIT_SOCIAL_REGISTRATION_CLOSED'
+  static status = 400
+
+  constructor(options?: ErrorOptions) {
+    super(options)
+  }
+}
+
+/** @reexport */
+export const E_ACCOUNT_KIT_SOCIAL_REGISTRATION_CLOSED = SocialRegistrationClosedException
+
+/** Application-controlled social registration has no admission callback. */
+class SocialAdmissionCallbackRequiredException extends AccountKitException {
+  static code = 'E_ACCOUNT_KIT_SOCIAL_ADMISSION_CALLBACK_REQUIRED'
+  static status = 500
+
+  constructor(message?: string, options?: ErrorOptions) {
+    super(message, options)
+  }
+}
+
+/** @reexport */
+export const E_ACCOUNT_KIT_SOCIAL_ADMISSION_CALLBACK_REQUIRED =
+  SocialAdmissionCallbackRequiredException
+
+/** Social registration cannot use an existing account email. */
+class SocialRegistrationEmailConflictException extends SocialRegistrationInvalidException {
+  static code = 'E_ACCOUNT_KIT_SOCIAL_REGISTRATION_EMAIL_CONFLICT'
+  static status = 400
+
+  constructor(options?: ErrorOptions) {
+    super(options)
+  }
+}
+
+/** @reexport */
+export const E_ACCOUNT_KIT_SOCIAL_REGISTRATION_EMAIL_CONFLICT =
+  SocialRegistrationEmailConflictException
+
+/** The new account could not be read back. */
+class SocialAccountNotPersistedException extends AccountKitException {
+  static code = 'E_ACCOUNT_KIT_SOCIAL_ACCOUNT_NOT_PERSISTED'
+  static status = 500
+
+  constructor(message?: string, options?: ErrorOptions) {
+    super(message, options)
+  }
+}
+
+/** @reexport */
+export const E_ACCOUNT_KIT_SOCIAL_ACCOUNT_NOT_PERSISTED = SocialAccountNotPersistedException
+
+/** The configured social adapter cannot verify fresh authentication. */
+class SocialFreshAuthUnavailableException extends SocialProofException {
+  static code = 'E_ACCOUNT_KIT_SOCIAL_FRESH_AUTH_UNAVAILABLE'
+  static status = 403
+
+  constructor(options?: ErrorOptions) {
+    super(options)
+  }
+}
+
+/** @reexport */
+export const E_ACCOUNT_KIT_SOCIAL_FRESH_AUTH_UNAVAILABLE = SocialFreshAuthUnavailableException
+
+/** The submitted social proof has an invalid format. */
+class SocialProofMalformedException extends SocialProofException {
+  static code = 'E_ACCOUNT_KIT_SOCIAL_PROOF_MALFORMED'
+  static status = 403
+
+  constructor(options?: ErrorOptions) {
+    super(options)
+  }
+}
+
+/** @reexport */
+export const E_ACCOUNT_KIT_SOCIAL_PROOF_MALFORMED = SocialProofMalformedException
+
+/** The social proof is absent, expired, consumed or obsolete. */
+class SocialProofStaleException extends SocialProofException {
+  static code = 'E_ACCOUNT_KIT_SOCIAL_PROOF_STALE'
+  static status = 403
+
+  constructor(options?: ErrorOptions) {
+    super(options)
+  }
+}
+
+/** @reexport */
+export const E_ACCOUNT_KIT_SOCIAL_PROOF_STALE = SocialProofStaleException
+
+/** The social confirmation input is malformed. */
+class SocialConfirmationInputInvalidException extends SocialTransactionException {
+  static code = 'E_ACCOUNT_KIT_SOCIAL_CONFIRMATION_INPUT_INVALID'
+  static status = 400
+
+  constructor(options?: ErrorOptions) {
+    super(options)
+  }
+}
+
+/** @reexport */
+export const E_ACCOUNT_KIT_SOCIAL_CONFIRMATION_INPUT_INVALID =
+  SocialConfirmationInputInvalidException
+
+/** The social confirmation proof is absent. */
+class SocialConfirmationStateMissingException extends SocialTransactionException {
+  static code = 'E_ACCOUNT_KIT_SOCIAL_CONFIRMATION_STATE_MISSING'
+  static status = 400
+
+  constructor(options?: ErrorOptions) {
+    super(options)
+  }
+}
+
+/** @reexport */
+export const E_ACCOUNT_KIT_SOCIAL_CONFIRMATION_STATE_MISSING =
+  SocialConfirmationStateMissingException
+
+/** The confirmation proof no longer matches an eligible account. */
+class SocialConfirmationAccountInvalidException extends SocialTransactionException {
+  static code = 'E_ACCOUNT_KIT_SOCIAL_CONFIRMATION_ACCOUNT_INVALID'
+  static status = 400
+
+  constructor(options?: ErrorOptions) {
+    super(options)
+  }
+}
+
+/** @reexport */
+export const E_ACCOUNT_KIT_SOCIAL_CONFIRMATION_ACCOUNT_INVALID =
+  SocialConfirmationAccountInvalidException
+
+/** The pending provider identity is absent. */
+class SocialConfirmationIdentityMissingException extends SocialTransactionException {
+  static code = 'E_ACCOUNT_KIT_SOCIAL_CONFIRMATION_IDENTITY_MISSING'
+  static status = 400
+
+  constructor(options?: ErrorOptions) {
+    super(options)
+  }
+}
+
+/** @reexport */
+export const E_ACCOUNT_KIT_SOCIAL_CONFIRMATION_IDENTITY_MISSING =
+  SocialConfirmationIdentityMissingException
+
+/** The handoff input is malformed. */
+class SocialHandoffInputInvalidException extends SocialHandoffInvalidException {
+  static code = 'E_ACCOUNT_KIT_SOCIAL_HANDOFF_INPUT_INVALID'
+  static status = 400
+
+  constructor(options?: ErrorOptions) {
+    super(options)
+  }
+}
+
+/** @reexport */
+export const E_ACCOUNT_KIT_SOCIAL_HANDOFF_INPUT_INVALID = SocialHandoffInputInvalidException
+
+/** The handoff is absent, expired or already used. */
+class SocialHandoffMissingException extends SocialHandoffInvalidException {
+  static code = 'E_ACCOUNT_KIT_SOCIAL_HANDOFF_MISSING'
+  static status = 400
+
+  constructor(options?: ErrorOptions) {
+    super(options)
+  }
+}
+
+/** @reexport */
+export const E_ACCOUNT_KIT_SOCIAL_HANDOFF_MISSING = SocialHandoffMissingException
+
+/** The handoff no longer permits credential issuance. */
+class SocialHandoffRejectedException extends SocialHandoffInvalidException {
+  static code = 'E_ACCOUNT_KIT_SOCIAL_HANDOFF_REJECTED'
+  static status = 400
+
+  constructor(options?: ErrorOptions) {
+    super(options)
+  }
+}
+
+/** @reexport */
+export const E_ACCOUNT_KIT_SOCIAL_HANDOFF_REJECTED = SocialHandoffRejectedException
+
+/** The service has already resolved its callbacks. */
+class CallbackRegistrationTooLateException extends InvalidConfigurationException {
+  static code = 'E_ACCOUNT_KIT_CALLBACK_REGISTRATION_TOO_LATE'
+  static status = 500
+
+  constructor(field: string, message: string, options?: ErrorOptions) {
+    super(field, message, options)
+  }
+}
+
+/** @reexport */
+export const E_ACCOUNT_KIT_CALLBACK_REGISTRATION_TOO_LATE = CallbackRegistrationTooLateException
+
+/** A callback factory is already registered. */
+class CallbackAlreadyRegisteredException extends InvalidConfigurationException {
+  static code = 'E_ACCOUNT_KIT_CALLBACK_ALREADY_REGISTERED'
+  static status = 500
+
+  constructor(field: string, message: string, options?: ErrorOptions) {
+    super(field, message, options)
+  }
+}
+
+/** @reexport */
+export const E_ACCOUNT_KIT_CALLBACK_ALREADY_REGISTERED = CallbackAlreadyRegisteredException
+
+/** Setup cannot infer a migration directory. */
+class MigrationDirectoryUnresolvedException extends MigrationDirectoryException {
+  static code = 'E_ACCOUNT_KIT_MIGRATION_DIRECTORY_UNRESOLVED'
+  static status = 500
+
+  constructor(message: string, field?: string, options?: ErrorOptions) {
+    super(message, field, options)
+  }
+}
+
+/** @reexport */
+export const E_ACCOUNT_KIT_MIGRATION_DIRECTORY_UNRESOLVED = MigrationDirectoryUnresolvedException
+
+/** The explicit directory conflicts with the configured directory. */
+class MigrationDirectoryConflictException extends MigrationDirectoryException {
+  static code = 'E_ACCOUNT_KIT_MIGRATION_DIRECTORY_CONFLICT'
+  static status = 500
+
+  constructor(message: string, field?: string, options?: ErrorOptions) {
+    super(message, field, options)
+  }
+}
+
+/** @reexport */
+export const E_ACCOUNT_KIT_MIGRATION_DIRECTORY_CONFLICT = MigrationDirectoryConflictException
+
+/** Account Kit migrations already exist in a different directory. */
+class MigrationDirectoryDuplicateException extends MigrationDirectoryException {
+  static code = 'E_ACCOUNT_KIT_MIGRATION_DIRECTORY_DUPLICATE'
+  static status = 500
+
+  constructor(message: string, field?: string, options?: ErrorOptions) {
+    super(message, field, options)
+  }
+}
+
+/** @reexport */
+export const E_ACCOUNT_KIT_MIGRATION_DIRECTORY_DUPLICATE = MigrationDirectoryDuplicateException
+
+/** The selected assignment has multiple possible readings. */
+class EnvAssignmentAmbiguousException extends SelectedEnvironmentValueException {
+  static code = 'E_ACCOUNT_KIT_ENV_ASSIGNMENT_AMBIGUOUS'
+  static status = 500
+
+  constructor(message?: string, options?: ErrorOptions) {
+    super(message, options)
+  }
+}
+
+/** @reexport */
+export const E_ACCOUNT_KIT_ENV_ASSIGNMENT_AMBIGUOUS = EnvAssignmentAmbiguousException
+
+/** The selected assignment cannot be parsed. */
+class EnvAssignmentMalformedException extends SelectedEnvironmentValueException {
+  static code = 'E_ACCOUNT_KIT_ENV_ASSIGNMENT_MALFORMED'
+  static status = 500
+
+  constructor(message?: string, options?: ErrorOptions) {
+    super(message, options)
+  }
+}
+
+/** @reexport */
+export const E_ACCOUNT_KIT_ENV_ASSIGNMENT_MALFORMED = EnvAssignmentMalformedException
+
+/** The selected value fails its domain validation. */
+class EnvValueInvalidException extends SelectedEnvironmentValueException {
+  static code = 'E_ACCOUNT_KIT_ENV_VALUE_INVALID'
+  static status = 500
+
+  constructor(message?: string, options?: ErrorOptions) {
+    super(message, options)
+  }
+}
+
+/** @reexport */
+export const E_ACCOUNT_KIT_ENV_VALUE_INVALID = EnvValueInvalidException
+
+/** The supplied guard differs from the configured guard. */
+class SocialHandoffGuardMismatchException extends SocialHandoffInvalidException {
+  static code = 'E_ACCOUNT_KIT_SOCIAL_HANDOFF_GUARD_MISMATCH'
+  static status = 400
+
+  constructor(options?: ErrorOptions) {
+    super(options)
+  }
+}
+
+/** @reexport */
+export const E_ACCOUNT_KIT_SOCIAL_HANDOFF_GUARD_MISMATCH = SocialHandoffGuardMismatchException

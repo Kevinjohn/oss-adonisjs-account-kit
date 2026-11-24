@@ -280,7 +280,18 @@ Copy this file to `resources/lang/<locale>/errors.json` and translate the values
   "E_ACCOUNT_KIT_REGISTRATION_CLOSED": "Public registration is unavailable.",
   "E_ACCOUNT_KIT_REGISTRATION_EMAIL_ALREADY_REGISTERED": "The account request conflicts with an existing account.",
   "E_ACCOUNT_KIT_SOCIAL_HANDOFF_INVALID": "Account request rejected.",
-  "E_ACCOUNT_KIT_SOCIAL_REGISTRATION_INVALID": "Account request rejected."
+  "E_ACCOUNT_KIT_SOCIAL_REGISTRATION_INVALID": "Account request rejected.",
+  "E_ACCOUNT_KIT_ACTOR_NOT_FOUND": "Account request rejected.",
+  "E_ACCOUNT_KIT_ADMISSION_ACTOR_NOT_ADMITTED": "Account request rejected.",
+  "E_ACCOUNT_KIT_ADMISSION_INVITATION_EVIDENCE_EXISTS": "Account request rejected.",
+  "E_ACCOUNT_KIT_ADMISSION_POLICY_DENIED": "Account request rejected.",
+  "E_ACCOUNT_KIT_ADMISSION_SELF_DECISION": "Account request rejected.",
+  "E_ACCOUNT_KIT_CLIENT_CHALLENGE_REQUIRED": "Account request rejected.",
+  "E_ACCOUNT_KIT_EMAIL_INVALID": "Account request rejected.",
+  "E_ACCOUNT_KIT_SOCIAL_CONFIRMATION_INPUT_INVALID": "Account request rejected.",
+  "E_ACCOUNT_KIT_SOCIAL_HANDOFF_GUARD_MISMATCH": "Account request rejected.",
+  "E_ACCOUNT_KIT_SOCIAL_HANDOFF_INPUT_INVALID": "Account request rejected.",
+  "E_ACCOUNT_KIT_SOCIAL_REGISTRATION_CLOSED": "Account request rejected."
 }
 ```
 

@@ -100,6 +100,7 @@ async function commitTransaction(
   }
 }
 
+/** @throws {AggregateError} Work and cleanup both failed. The work failure is first. */
 async function runAndCommit<T>(
   trx: Trx,
   callback: (trx: Trx) => Promise<T>,
@@ -222,7 +223,11 @@ async function beginSQLiteTransaction(
   }
 }
 
-/** One SQLite attempt on a dedicated connection, with busy_timeout off and cleanup afterwards. */
+/**
+ * One SQLite attempt on a dedicated connection, with busy_timeout off and cleanup afterwards.
+ *
+ * @throws {AggregateError} Work and cleanup both failed. The work failure is first.
+ */
 async function runSqliteTransactionAttempt<T>(
   connection: Connection,
   callback: (trx: Trx) => Promise<T>,
@@ -282,7 +287,11 @@ async function runSqliteTransactionAttempt<T>(
   return result as T
 }
 
-/** Retry SQLite attempts on SQLITE_BUSY until the deadline; never retry after a commit. */
+/**
+ * Retry SQLite attempts on SQLITE_BUSY until the deadline; never retry after a commit.
+ *
+ * @throws {AggregateError} Work and cleanup both failed. The work failure is first.
+ */
 async function runSqliteTransaction<T>(
   connection: Connection,
   callback: (trx: Trx) => Promise<T>
@@ -334,6 +343,7 @@ export async function transaction<T>(db: Database, callback: (trx: Trx) => Promi
   return insideTransaction.run(true, () => openTransaction(db, connection, callback))
 }
 
+/** @throws {AggregateError} Work and cleanup both failed. The work failure is first. */
 async function openTransaction<T>(
   db: Database,
   connection: Connection,

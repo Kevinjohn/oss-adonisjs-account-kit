@@ -17,6 +17,8 @@ import {
   E_ACCOUNT_KIT_SOCIAL_PROVIDER_FAILED,
   E_ACCOUNT_KIT_SOCIAL_USER_NOT_FOUND,
   E_ACCOUNT_KIT_UNVERIFIED_EMAIL,
+  E_ACCOUNT_KIT_SOCIAL_PROFILE_INVALID,
+  E_ACCOUNT_KIT_SOCIAL_FRESH_AUTH_UNAVAILABLE,
 } from './errors.js'
 import { readTimestamp } from './timestamps.js'
 import { generateToken, hashToken, isTokenShaped } from './tokens.js'
@@ -117,7 +119,11 @@ export function isIdentityConflict(error: unknown): boolean {
   return isUniqueViolation(error, 'social_identities', ['provider', 'provider_user_id'])
 }
 
-/** Consumes the state once, resolves the provider profile and returns the outcome. */
+/**
+ * Consumes the state once, resolves the provider profile and returns the outcome.
+ *
+ * @throws {AggregateError} Work and cleanup both failed. The work failure is first.
+ */
 export async function completeSocialCallback(
   deps: Dependencies,
   input: SocialCallbackInput
@@ -139,13 +145,19 @@ export async function completeSocialCallback(
     const adapter = requireSocialProvider(deps, name)
     profile = requireProviderProfile(await adapter.resolve(input.callback))
     if (candidate.intent === 'reauth') {
-      if (!adapter.verifyFreshAuthentication) throw new E_ACCOUNT_KIT_SOCIAL_PROOF_INVALID()
+      if (!adapter.verifyFreshAuthentication)
+        throw new E_ACCOUNT_KIT_SOCIAL_FRESH_AUTH_UNAVAILABLE()
       freshEvidence = await adapter.verifyFreshAuthentication(input.callback, {
         state: input.state,
         subject: profile.subject,
       })
     }
   } catch (cause) {
+    if (
+      cause instanceof E_ACCOUNT_KIT_SOCIAL_PROFILE_INVALID ||
+      cause instanceof E_ACCOUNT_KIT_SOCIAL_FRESH_AUTH_UNAVAILABLE
+    )
+      throw cause
     throw new E_ACCOUNT_KIT_SOCIAL_PROVIDER_FAILED({ cause })
   }
   let userCreateFailure: unknown

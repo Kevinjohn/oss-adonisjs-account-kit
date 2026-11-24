@@ -31,6 +31,11 @@ import {
   E_ACCOUNT_KIT_INVALID_SESSION,
   E_ACCOUNT_KIT_THROTTLED,
   E_ACCOUNT_KIT_UNVERIFIED_EMAIL,
+  E_ACCOUNT_KIT_SESSION_ACCOUNT_MISSING,
+  E_ACCOUNT_KIT_SESSION_REVISION_INVALID,
+  E_ACCOUNT_KIT_SESSION_TOKEN_MISSING,
+  E_ACCOUNT_KIT_SESSION_ACCESS_DENIED,
+  E_ACCOUNT_KIT_CREDENTIALS_PASSWORD_UNAVAILABLE,
 } from './errors.js'
 import type {
   AccountAccessInput,
@@ -65,7 +70,7 @@ async function requireCurrentAccountAndSession(
   const auth = requireAuthentication(deps.config)
   await lockUser(trx, deps.config, input.userId)
   const user = await deps.config.users.findById(input.userId, trx)
-  if (!user) throw new E_ACCOUNT_KIT_INVALID_SESSION()
+  if (!user) throw new E_ACCOUNT_KIT_SESSION_ACCOUNT_MISSING()
   let session: LiveSession | undefined
   if (auth.strategy === 'session') {
     // Absence is different from the valid pre-first-change null stamp.
@@ -73,7 +78,7 @@ async function requireCurrentAccountAndSession(
       !Object.hasOwn(input, 'revision') ||
       input.revision !== (await revision(trx, deps.config, input.userId))
     )
-      throw new E_ACCOUNT_KIT_INVALID_SESSION()
+      throw new E_ACCOUNT_KIT_SESSION_REVISION_INVALID()
     if (isSessionRegistryEnabled(deps.config))
       session = await requireLiveSession(trx, input.userId, input.sessionHandle)
   } else {
@@ -85,10 +90,10 @@ async function requireCurrentAccountAndSession(
         .where('tokenable_id', input.userId)
         .first())
     )
-      throw new E_ACCOUNT_KIT_INVALID_SESSION()
+      throw new E_ACCOUNT_KIT_SESSION_TOKEN_MISSING()
   }
   if (!requireAccountAccessDecision(await auth.canAccess(user, trx)))
-    throw new E_ACCOUNT_KIT_INVALID_SESSION()
+    throw new E_ACCOUNT_KIT_SESSION_ACCESS_DENIED()
   if (session) await touchSession(trx, deps.config, session)
   return { account: buildAccountProjection(user), session }
 }
@@ -220,11 +225,13 @@ export function createAuthenticationService(deps: ServiceDependencies) {
       try {
         verified = await transaction(deps.db, async (trx) => {
           const candidate = await deps.config.users.findByEmail(email, trx)
-          if (!candidate?.hasPassword) throw new E_ACCOUNT_KIT_CREDENTIALS_ACCOUNT_UNAVAILABLE()
+          if (!candidate) throw new E_ACCOUNT_KIT_CREDENTIALS_ACCOUNT_UNAVAILABLE()
+          if (!candidate.hasPassword) throw new E_ACCOUNT_KIT_CREDENTIALS_PASSWORD_UNAVAILABLE()
           await lockUser(trx, deps.config, candidate.id)
           const user = await deps.config.users.findById(candidate.id, trx)
-          if (!user || user.email !== email || !user.hasPassword)
+          if (!user || user.email !== email)
             throw new E_ACCOUNT_KIT_CREDENTIALS_ACCOUNT_UNAVAILABLE()
+          if (!user.hasPassword) throw new E_ACCOUNT_KIT_CREDENTIALS_PASSWORD_UNAVAILABLE()
           if (!(await deps.config.users.verifyPassword(user.id, input.password, trx)))
             throw new E_ACCOUNT_KIT_CREDENTIALS_PASSWORD_MISMATCH()
           if (!requireAccountAccessDecision(await auth.canAccess(user, trx)))
