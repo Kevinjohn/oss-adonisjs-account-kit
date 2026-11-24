@@ -341,6 +341,9 @@ authorisation policy.
 | `start/routes.ts`                                 | `GET /account/admission` and `POST /account/admission/request` (limited); the list and decisions and `GET /reports` (admitted) |
 | `examples/api/tests/functional/admission.spec.ts` | The flows above, for both guard strategies                                                                                     |
 
+Callbacks resolve admission when called, for the reason given in
+[registering callbacks from a provider](../../README.md#registering-callbacks-from-a-provider).
+
 ## Files delta
 
 `account-kit:admission:install` adds:
