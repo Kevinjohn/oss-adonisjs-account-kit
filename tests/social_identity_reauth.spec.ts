@@ -2,7 +2,7 @@ import {
   E_ACCOUNT_KIT_IDENTITY_NOT_CONFIRMED,
   E_ACCOUNT_KIT_EMAIL_ALREADY_REGISTERED,
   E_ACCOUNT_KIT_SOCIAL_FRESH_AUTH_UNAVAILABLE,
-  E_ACCOUNT_KIT_SOCIAL_PROVIDER_FAILED,
+  E_ACCOUNT_KIT_SOCIAL_CALLBACK_FRESH_AUTH_UNAVAILABLE,
 } from '../src/errors.js'
 import { accountErrorResponse } from '../src/error_response.js'
 import { DateTime } from 'luxon'
@@ -110,8 +110,11 @@ test.group('social reauthentication proof atomicity', (group) => {
     const callbackFailure = await account.socialAuthentication
       .callback({ state: withoutFreshAuthentication.state, callback: {}, current: actor })
       .catch((error: unknown) => error)
-    assert.instanceOf(callbackFailure, E_ACCOUNT_KIT_SOCIAL_PROVIDER_FAILED)
-    const failure = callbackFailure as InstanceType<typeof E_ACCOUNT_KIT_SOCIAL_PROVIDER_FAILED>
+    assert.instanceOf(callbackFailure, E_ACCOUNT_KIT_SOCIAL_CALLBACK_FRESH_AUTH_UNAVAILABLE)
+    const failure = callbackFailure as InstanceType<
+      typeof E_ACCOUNT_KIT_SOCIAL_CALLBACK_FRESH_AUTH_UNAVAILABLE
+    >
+    assert.equal(failure.code, 'E_ACCOUNT_KIT_SOCIAL_CALLBACK_FRESH_AUTH_UNAVAILABLE')
     assert.instanceOf(failure.cause, E_ACCOUNT_KIT_SOCIAL_FRESH_AUTH_UNAVAILABLE)
     assert.equal(accountErrorResponse(failure)?.status, 400)
     assert.equal(

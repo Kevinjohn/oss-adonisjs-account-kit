@@ -285,6 +285,10 @@ HTTP mapper may use a less specific code for privacy. Multiple independent commi
 carry `E_ACCOUNT_KIT_COMMITTED_EFFECTS_FAILED` as their cause, with the original failures in the
 `errors` array in observed order.
 
+`E_ACCOUNT_KIT_SOCIAL_CALLBACK_FRESH_AUTH_UNAVAILABLE` identifies a matched callback whose
+provider cannot verify fresh authentication. The public response uses 400
+`E_ACCOUNT_KIT_SOCIAL_TRANSACTION_INVALID` to protect callback state.
+
 | Constructor                                          | Code                                                 | Status | Cause                                                                                     |
 | ---------------------------------------------------- | ---------------------------------------------------- | -----: | ----------------------------------------------------------------------------------------- |
 | `E_ACCOUNT_KIT_INVALID_ACCESS_DECISION`              | `E_ACCOUNT_KIT_INVALID_ACCESS_DECISION`              |    500 | The access policy returned a value other than a boolean.                                  |

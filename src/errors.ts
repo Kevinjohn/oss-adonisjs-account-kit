@@ -880,6 +880,20 @@ class SocialProviderFailedException extends SocialTransactionException {
 /** @reexport */
 export const E_ACCOUNT_KIT_SOCIAL_PROVIDER_FAILED = SocialProviderFailedException
 
+/** The provider matched a callback state but cannot verify fresh authentication. */
+class SocialCallbackFreshAuthUnavailableException extends SocialProviderFailedException {
+  static code = 'E_ACCOUNT_KIT_SOCIAL_CALLBACK_FRESH_AUTH_UNAVAILABLE'
+  static status = 400
+
+  constructor(options?: ErrorOptions) {
+    super(options)
+  }
+}
+
+/** @reexport */
+export const E_ACCOUNT_KIT_SOCIAL_CALLBACK_FRESH_AUTH_UNAVAILABLE =
+  SocialCallbackFreshAuthUnavailableException
+
 /** The one-use social handoff cannot be redeemed. */
 class SocialHandoffInvalidException extends SocialTransactionException {
   static code = 'E_ACCOUNT_KIT_SOCIAL_HANDOFF_INVALID'
