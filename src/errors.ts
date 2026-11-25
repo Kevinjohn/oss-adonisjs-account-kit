@@ -451,6 +451,10 @@ export const E_ACCOUNT_KIT_BOOTSTRAP_APPROVAL_CHANGED = BootstrapApprovalChanged
 class UnsupportedProvidersConfigurationException extends Exception {
   static code = 'E_ACCOUNT_KIT_UNSUPPORTED_PROVIDERS_CONFIGURATION'
   static status = 500
+
+  constructor(message: string) {
+    super(message)
+  }
 }
 
 /** @reexport */
@@ -461,6 +465,10 @@ export const E_ACCOUNT_KIT_UNSUPPORTED_PROVIDERS_CONFIGURATION =
 class UnsupportedConfigShapeException extends Exception {
   static code = 'E_ACCOUNT_KIT_UNSUPPORTED_CONFIG_SHAPE'
   static status = 500
+
+  constructor(message: string) {
+    super(message)
+  }
 }
 
 /** @reexport */
@@ -470,6 +478,10 @@ export const E_ACCOUNT_KIT_UNSUPPORTED_CONFIG_SHAPE = UnsupportedConfigShapeExce
 class InvalidProvidersFlagException extends Exception {
   static code = 'E_ACCOUNT_KIT_INVALID_PROVIDERS_FLAG'
   static status = 500
+
+  constructor(message: string) {
+    super(message)
+  }
 }
 
 /** @reexport */
@@ -515,6 +527,10 @@ class InvalidSetupSourceException extends Exception {
   static code = 'E_ACCOUNT_KIT_INVALID_SETUP_SOURCE'
   static status = 500
   static message = 'Setup cannot inspect invalid TypeScript source'
+
+  constructor() {
+    super()
+  }
 }
 
 /** @reexport */
@@ -524,6 +540,10 @@ export const E_ACCOUNT_KIT_INVALID_SETUP_SOURCE = InvalidSetupSourceException
 class SelectedEnvironmentValueException extends Exception {
   static code = 'E_ACCOUNT_KIT_SELECTED_ENVIRONMENT_VALUE'
   static status = 500
+
+  constructor(message: string) {
+    super(message)
+  }
 }
 
 /** @reexport */
@@ -534,6 +554,10 @@ class IndirectEnvironmentValueException extends SelectedEnvironmentValueExceptio
   static code = 'E_ACCOUNT_KIT_INDIRECT_ENVIRONMENT_VALUE'
   static status = 500
   static message = 'Selected environment assignment must be a direct value'
+
+  constructor() {
+    super(IndirectEnvironmentValueException.message)
+  }
 }
 
 /** @reexport */

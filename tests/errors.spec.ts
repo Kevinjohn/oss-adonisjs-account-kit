@@ -1,4 +1,5 @@
 import { test } from '@japa/runner'
+import type { Exception } from '@adonisjs/core/exceptions'
 import {
   E_ACCOUNT_KIT_ACCOUNT_ACCESS_DENIED,
   E_ACCOUNT_KIT,
@@ -7,14 +8,20 @@ import {
   E_ACCOUNT_KIT_DELIVERY,
   E_ACCOUNT_KIT_EMAIL_ALREADY_REGISTERED,
   E_ACCOUNT_KIT_IDENTITY_NOT_CONFIRMED,
+  E_ACCOUNT_KIT_INDIRECT_ENVIRONMENT_VALUE,
   E_INVALID_CREDENTIALS,
   E_ACCOUNT_KIT_INVALID_CONFIGURATION,
   E_ACCOUNT_KIT_INVALID_INPUT,
+  E_ACCOUNT_KIT_INVALID_PROVIDERS_FLAG,
+  E_ACCOUNT_KIT_INVALID_SETUP_SOURCE,
   E_ACCOUNT_KIT_INVALID_TOKEN,
   E_ACCOUNT_KIT_INVITATION_PENDING,
   E_ACCOUNT_KIT_NO_PASSWORD,
   E_ACCOUNT_KIT_POST_COMMIT,
+  E_ACCOUNT_KIT_SELECTED_ENVIRONMENT_VALUE,
   E_ACCOUNT_KIT_THROTTLED,
+  E_ACCOUNT_KIT_UNSUPPORTED_CONFIG_SHAPE,
+  E_ACCOUNT_KIT_UNSUPPORTED_PROVIDERS_CONFIGURATION,
 } from '../src/errors.js'
 
 test.group('account kit errors', () => {
@@ -39,6 +46,26 @@ test.group('account kit errors', () => {
     assert.equal(error.code, 'E_ACCOUNT_KIT_INVALID_CONFIGURATION')
     assert.equal(error.status, 500)
     assert.equal(error.cause, cause)
+  })
+
+  test('setup exceptions keep their code and status when a caller passes extra options', ({
+    assert,
+  }) => {
+    const override = { code: 'E_OTHER', status: 200 }
+    const setupErrors = [
+      { ErrorType: E_ACCOUNT_KIT_UNSUPPORTED_PROVIDERS_CONFIGURATION, message: 'not static' },
+      { ErrorType: E_ACCOUNT_KIT_UNSUPPORTED_CONFIG_SHAPE, message: 'not static' },
+      { ErrorType: E_ACCOUNT_KIT_INVALID_PROVIDERS_FLAG, message: 'unsupported provider' },
+      { ErrorType: E_ACCOUNT_KIT_SELECTED_ENVIRONMENT_VALUE, message: 'ambiguous' },
+      { ErrorType: E_ACCOUNT_KIT_INVALID_SETUP_SOURCE, message: undefined },
+      { ErrorType: E_ACCOUNT_KIT_INDIRECT_ENVIRONMENT_VALUE, message: undefined },
+    ]
+    for (const { ErrorType, message } of setupErrors) {
+      const error: Exception = Reflect.construct(ErrorType, [message, override])
+      assert.equal(error.code, ErrorType.code, ErrorType.name)
+      assert.equal(error.status, 500, ErrorType.name)
+      assert.equal(error.message, message ?? ErrorType.message, ErrorType.name)
+    }
   })
 
   test('class statuses are the documented HTTP contract', ({ assert }) => {

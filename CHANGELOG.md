@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- **Breaking:** The setup and retirement command exceptions (`E_ACCOUNT_KIT_UNSUPPORTED_PROVIDERS_CONFIGURATION`,
+  `E_ACCOUNT_KIT_UNSUPPORTED_CONFIG_SHAPE`, `E_ACCOUNT_KIT_INVALID_PROVIDERS_FLAG`,
+  `E_ACCOUNT_KIT_INVALID_SETUP_SOURCE`, `E_ACCOUNT_KIT_SELECTED_ENVIRONMENT_VALUE` and
+  `E_ACCOUNT_KIT_INDIRECT_ENVIRONMENT_VALUE`) take only the arguments their
+  throw sites use. A caller can no longer change their `code` or `status`; code that passed options
+  to one of them no longer type-checks.
+
 ## 0.7.0 - 2026-11-24
 
 - Document that callback factories run while `AccountKit` or `AccountAdmission` is being built, so application services that depend on them are resolved inside the callbacks; the README admission example now does this. Checked against the registry, provider and container code paths named in the issue, with the format and docs-build checks.
