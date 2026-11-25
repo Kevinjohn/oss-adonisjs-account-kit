@@ -4,11 +4,11 @@ import { appendFileSync, cpSync } from 'node:fs'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { run } from './pack_checkout.js'
-import { createAdonisApp } from './scaffold_app.js'
+import { createAdonisJsApp } from './scaffold_app.js'
 import { writeDemoIdentity } from './demo_identity.js'
 
 const overlay = fileURLToPath(new URL('overlay', import.meta.url))
-const { appDir, archivePath } = createAdonisApp('create_app.ts')
+const { appDir, archivePath } = createAdonisJsApp('create_app.ts')
 
 run('pnpm', ['add', archivePath, '@adonisjs/limiter', 'typescript@^5.9.3'], appDir)
 run('node', ['ace', 'configure', '@adonisjs/limiter', '--store=database'], appDir)

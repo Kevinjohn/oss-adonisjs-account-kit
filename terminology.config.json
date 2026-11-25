@@ -1,0 +1,5 @@
+{
+  "allowedInFiles": [
+    { "path": "CONTRIBUTING.md", "terms": ["adonis"], "reason": "the rule names the rejected word" }
+  ]
+}

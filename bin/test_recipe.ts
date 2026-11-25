@@ -115,7 +115,7 @@ const evidence: {
   generatedInventory?: string
   patchBaseline?: string
   routes?: string
-  adonisVersion?: string
+  adonisJsVersion?: string
   databaseVersion?: string
 } = {
   recipe,
@@ -403,7 +403,7 @@ test('original starter login reaches its protected profile', async ({ client, as
     }
   }
   run('pnpm', specCommand)
-  evidence.adonisVersion = JSON.parse(
+  evidence.adonisJsVersion = JSON.parse(
     await readFile(join(appRoot, 'node_modules/@adonisjs/core/package.json'), 'utf8')
   ).version
   const require = createRequire(join(appRoot, 'package.json'))

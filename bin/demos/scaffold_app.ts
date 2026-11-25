@@ -4,7 +4,7 @@ import { basename, dirname, join, resolve } from 'node:path'
 import { packCheckout, run } from './pack_checkout.js'
 
 /** Reads the app directory from the command line, then packs the checkout and creates the app. */
-export function createAdonisApp(script: string) {
+export function createAdonisJsApp(script: string) {
   const [target] = process.argv.slice(2)
   if (!target) throw new Error(`Usage: node bin/demos/${script} <app-dir>`)
   const appDir = resolve(target)

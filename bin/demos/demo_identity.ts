@@ -289,7 +289,9 @@ function validateStarterMetadata(root: string) {
     !dependencies['@adonisjs/lucid'] ||
     !dependencies['better-sqlite3']
   )
-    throw new Error('generated app metadata does not describe the supported Adonis SQLite starter')
+    throw new Error(
+      'generated app metadata does not describe the supported AdonisJS SQLite starter'
+    )
 
   validateDatabaseConfig(databaseConfigPath)
 }

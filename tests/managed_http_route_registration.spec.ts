@@ -99,7 +99,9 @@ test.group('managed HTTP dispatch', () => {
     assert.isTrue(called)
   })
 
-  test('registration keeps Adonis route constraints through router commit', async ({ assert }) => {
+  test('registration keeps AdonisJS route constraints through router commit', async ({
+    assert,
+  }) => {
     for (const [pattern, matcher, intersects] of [
       ['/auth/:id', /^[0-9]+$/, false],
       ['/auth/:id', /^login$/, true],
