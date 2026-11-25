@@ -2,12 +2,16 @@
 
 ## Unreleased
 
-- **Breaking:** The setup and retirement command exceptions (`E_ACCOUNT_KIT_UNSUPPORTED_PROVIDERS_CONFIGURATION`,
-  `E_ACCOUNT_KIT_UNSUPPORTED_CONFIG_SHAPE`, `E_ACCOUNT_KIT_INVALID_PROVIDERS_FLAG`,
-  `E_ACCOUNT_KIT_INVALID_SETUP_SOURCE`, `E_ACCOUNT_KIT_SELECTED_ENVIRONMENT_VALUE` and
-  `E_ACCOUNT_KIT_INDIRECT_ENVIRONMENT_VALUE`) take only the arguments their
-  throw sites use. A caller can no longer change their `code` or `status`; code that passed options
-  to one of them no longer type-checks.
+## 0.8.0 - 2026-11-25
+
+### Changed
+
+- **Breaking:** When constructing `E_ACCOUNT_KIT_UNSUPPORTED_PROVIDERS_CONFIGURATION`,
+  `E_ACCOUNT_KIT_UNSUPPORTED_CONFIG_SHAPE`, `E_ACCOUNT_KIT_INVALID_PROVIDERS_FLAG` or
+  `E_ACCOUNT_KIT_SELECTED_ENVIRONMENT_VALUE`, pass a single message string. Construct
+  `E_ACCOUNT_KIT_INVALID_SETUP_SOURCE` and `E_ACCOUNT_KIT_INDIRECT_ENVIRONMENT_VALUE` with no
+  arguments to use their built-in messages. Remove constructor options such as `cause`, `code`
+  and `status` from calls to all six.
 
 ## 0.7.0 - 2026-11-24
 
