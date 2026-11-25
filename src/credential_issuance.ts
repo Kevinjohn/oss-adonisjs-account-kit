@@ -31,7 +31,7 @@ export interface IssuanceOptions {
 
 /**
  * Establish the credential for an account whose sign-in was verified at `verified.revision`.
- * Adonis token issuance and session writes do not share the package transaction, so a
+ * AdonisJS token issuance and session writes do not share the package transaction, so a
  * post-issuance lock closes the gap before the credential is returned. Session guards with
  * `sessionManagement` receive a fresh handle; only its hash is stored, in that same transaction.
  * A failure attempts to terminate the credential. If termination also fails, both errors are

@@ -9,7 +9,7 @@ export interface ExistingRoute {
   path: string
   /** The route name, if any. */
   name?: string
-  /** Parsed by Adonis when available; retains inherited parameter constraints. */
+  /** Parsed by AdonisJS when available; retains inherited parameter constraints. */
   tokens?: readonly RoutePatternToken[]
   matchers?: Record<string, { match?: RegExp }>
 }
@@ -50,7 +50,7 @@ function tokenizeRoutePath(
 const simpleLookahead = /^\(\?[=!](?:\\.|[^\\()[\]])*\)$/
 
 function matcherAccepts(matcher: RegExp, value: string): boolean {
-  // Adonis can reuse a matcher across requests. Keep the conservative overlap check when a
+  // AdonisJS can reuse a matcher across requests. Keep the conservative overlap check when a
   // sticky matcher may start at an index left by an earlier match.
   const mayStartLater =
     matcher.sticky && (matcher.lastIndex !== 0 || !simpleLookahead.test(matcher.source))
@@ -110,7 +110,7 @@ export function formatCollisionMessage(route: ManagedRoute, collision: ExistingR
   return `Managed route collision: ${route.method} ${route.path} overlaps ${collision.name ?? 'an application route'}`
 }
 
-/** Also run after Adonis commits queued application routes, before it serves requests. */
+/** Also run after AdonisJS commits queued application routes, before it serves requests. */
 export function assertManagedRouteCollisions(
   managed: readonly ManagedRoute[],
   existing: readonly ExistingRoute[]

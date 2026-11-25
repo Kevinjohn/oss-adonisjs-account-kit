@@ -222,7 +222,7 @@ test.group('setup generated sources', (group) => {
     await assert.rejects(() => applySetup(root, plan), /preview mode/)
   })
 
-  test('generated access and proof middleware run through Adonis lazy registration', async ({
+  test('generated access and proof middleware run through AdonisJS lazy registration', async ({
     assert,
   }) => {
     const { root, choices } = await fixture()

@@ -135,7 +135,7 @@ export function registerManagedRoutes<Credential>(
       })
       .as(`accountKit.${route.name}`)
   }
-  // Adonis exposes queued route definitions through toJSON only after commit. The
+  // AdonisJS exposes queued route definitions through toJSON only after commit. The
   // lifecycle wrapper rejects ambiguous application routes before the server starts.
   const commit = router.commit
   router.commit = function (this: Router, ...args: Parameters<Router['commit']>) {

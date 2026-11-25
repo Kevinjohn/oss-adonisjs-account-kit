@@ -94,7 +94,7 @@ test.group('managed route plan', () => {
     )
   })
 
-  test('collision decisions follow the installed Adonis tree router', async ({ assert }) => {
+  test('collision decisions follow the installed AdonisJS tree router', async ({ assert }) => {
     const app = await bootTestApp()
     try {
       const router = await app.app.container.make('router')
@@ -179,7 +179,7 @@ test.group('managed route plan', () => {
     }
   })
 
-  test('honors Adonis parameter constraints and suffixes in both collision checks', async ({
+  test('honors AdonisJS parameter constraints and suffixes in both collision checks', async ({
     assert,
   }) => {
     const app = await bootTestApp()
@@ -276,7 +276,7 @@ test.group('managed route plan', () => {
     }
   })
 
-  test('collision planning agrees with Adonis over parameter-tail permutations', async ({
+  test('collision planning agrees with AdonisJS over parameter-tail permutations', async ({
     assert,
   }) => {
     const app = await bootTestApp()

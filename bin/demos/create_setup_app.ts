@@ -11,13 +11,13 @@ import {
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { run } from './pack_checkout.js'
-import { createAdonisApp } from './scaffold_app.js'
+import { createAdonisJsApp } from './scaffold_app.js'
 import { writeDemoIdentity } from './demo_identity.js'
 
 const choices = fileURLToPath(
   new URL('../../docs/reference/setup_choices.api.example.json', import.meta.url)
 )
-const { appDir, archivePath } = createAdonisApp('create_setup_app.ts')
+const { appDir, archivePath } = createAdonisJsApp('create_setup_app.ts')
 
 // Setup's prerequisites: TypeScript to inspect the app, Mail and a limiter store.
 const packages = ['typescript@^5.9.3', '@adonisjs/mail@^10', '@adonisjs/limiter']

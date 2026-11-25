@@ -317,7 +317,7 @@ test.group('setup session prerequisites', () => {
     })
   })
 
-  test('selected session environment follows Adonis precedence without exposing other values', async ({
+  test('selected session environment follows AdonisJS precedence without exposing other values', async ({
     assert,
   }) => {
     await withFixture(async (choices, state, root) => {

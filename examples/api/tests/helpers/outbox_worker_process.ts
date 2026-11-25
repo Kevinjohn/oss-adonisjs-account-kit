@@ -25,7 +25,7 @@ export type OutboxWorkerProcess = {
   kill(): Promise<void>
 }
 
-/** Start a fresh Adonis process that drains the API example's existing outbox. */
+/** Start a fresh AdonisJS process that drains the API example's existing outbox. */
 export function startOutboxWorkerProcess(mode: WorkerMode): OutboxWorkerProcess {
   const child = fork(fileURLToPath(new URL('./outbox_worker.ts', import.meta.url)), [mode], {
     cwd: process.cwd(),

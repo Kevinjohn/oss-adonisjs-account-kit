@@ -485,7 +485,7 @@ test('selected environment prefers the environment map passed in over dotenv fil
   }
 })
 
-test('selected scalar environment follows Adonis file precedence without evaluating values', async ({
+test('selected scalar environment follows AdonisJS file precedence without evaluating values', async ({
   assert,
 }) => {
   const root = await applicationRoot()

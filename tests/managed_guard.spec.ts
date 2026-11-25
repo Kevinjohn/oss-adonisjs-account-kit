@@ -67,7 +67,9 @@ test.group('managed existing-guard adapters', () => {
     assert.deepEqual(await session.current(ctx), { userId: 42, revision: null })
     assert.deepEqual(await token.current(ctx), { userId: 42, tokenId: 17 })
   })
-  test('normalizes Adonis bigint token identifiers at the service boundary', async ({ assert }) => {
+  test('normalizes AdonisJS bigint token identifiers at the service boundary', async ({
+    assert,
+  }) => {
     const user = { id: 42, currentAccessToken: { identifier: BigInt(17) } }
     const adapter = createManagedGuard({
       strategy: 'access_tokens',

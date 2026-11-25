@@ -21,8 +21,8 @@ const setupError =
   'Managed session authentication requires protectManagedSessionConfig with a revocable server-side store'
 
 /**
- * Resolve the session configuration before Adonis creates SessionMiddleware. The selected
- * factory is called exactly once by Adonis; its actual result is checked and returned.
+ * Resolve the session configuration before AdonisJS creates SessionMiddleware. The selected
+ * factory is called exactly once by AdonisJS; its actual result is checked and returned.
  *
  * @example
  * ```ts
