@@ -24,8 +24,8 @@ current checkout and does not establish release-pinned consumer evidence.
 ## Combined starter apps
 
 For applications that combine Account Kit, Masquerade, Access Control and Soft Delete, choose
-one of the [four tagged starter apps](https://github.com/Kevinjohn/oss-adonisjs-starter-examples/tree/v0.13.0/apps). The
-[shared cookbook](https://github.com/Kevinjohn/oss-adonisjs-starter-examples/tree/v0.13.0/docs/cookbook)
+one of the [four tagged starter apps](https://github.com/Kevinjohn/oss-adonisjs-starter-examples/tree/v0.17.0/apps). The
+[shared cookbook](https://github.com/Kevinjohn/oss-adonisjs-starter-examples/tree/v0.17.0/docs/cookbook)
 uses their tested source. Make combined application and recipe changes in Starter Examples.
 The local fixtures here exercise Account Kit's own consumer, compatibility and recipe contracts.
 
