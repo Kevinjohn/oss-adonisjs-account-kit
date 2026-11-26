@@ -6,7 +6,8 @@
 
 - `defineConfig` now returns an AdonisJS configuration provider. Keep exporting its result from
   `config/account_kit.ts`. If application code reads the resolved configuration directly, use
-  `await configProvider.resolve(app, config)` with `configProvider` from `@adonisjs/core` after boot.
+  `await configProvider.resolve<ResolvedConfig>(app, config)` after boot. Import `configProvider`
+  from `@adonisjs/core` and `ResolvedConfig` from `@kevinjohn/adonisjs-account-kit/types`.
   Replace direct `account_kit` container lookups with `account_kit.manager`, or resolve `AccountKit`
   by class. The class and service import resolve the same singleton.
 - Import `defineConfig` from `@kevinjohn/adonisjs-account-kit/admission` in `config/admission.ts`

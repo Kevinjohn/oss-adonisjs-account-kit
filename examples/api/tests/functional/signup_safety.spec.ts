@@ -1,4 +1,5 @@
 import { configProvider } from '@adonisjs/core'
+import type { ResolvedConfig } from '@kevinjohn/adonisjs-account-kit/types'
 import { randomUUID } from 'node:crypto'
 import { test } from '@japa/runner'
 import limiter from '@adonisjs/limiter/services/main'
@@ -184,7 +185,7 @@ test.group('Signup safety', (group) => {
     client,
     assert,
   }) => {
-    const config = (await configProvider.resolve(app, accountKitConfig))!
+    const config = (await configProvider.resolve<ResolvedConfig>(app, accountKitConfig))!
     assert.equal(config.passwordPolicy.minLength, referencePasswordLimits.minLength)
     assert.equal(config.passwordPolicy.maxLength, referencePasswordLimits.maxLength)
     assert.isFalse(config.passwordPolicy.letters)
