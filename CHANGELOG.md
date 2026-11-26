@@ -30,8 +30,9 @@
   environment files, schema entries and application references that use those defaults.
   Keep explicit setup choices aligned with the names your application uses.
 - Setup and admission install read selected values from the project's environment files.
-  Pass explicit overrides with repeatable `--env=NAME=value`, including `NODE_ENV` and
-  `ENV_PATH` when selecting a profile or directory. Doctor uses the backend origin from
+  Pass explicit overrides with repeatable `--env=NAME=value`. For a shell-selected Lucid connection,
+  pass the variable read by `config/database.ts`, for example `--env=DB_CONNECTION=postgres`.
+  Pass `NODE_ENV` and `ENV_PATH` when selecting a profile or directory. Doctor uses the backend origin from
   `createActionUrls`; pass `--app-url=https://api.example.test` when that setting is absent.
 - Multiple post-commit follow-up failures are represented by an ordered array in the existing
   package exception's `cause`. Update diagnostics that read `cause.errors` to handle an array.

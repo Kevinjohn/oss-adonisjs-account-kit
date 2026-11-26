@@ -309,16 +309,6 @@ const insideTransaction = new AsyncLocalStorage<true>()
 /**
  * Run a database-only callback; callers perform notifications after this resolves.
  *
- * @example
- * ```ts
- * import { transaction } from '@kevinjohn/adonisjs-account-kit/transaction'
- * import db from '@adonisjs/lucid/services/db'
- *
- * await transaction(db, async (trx) => {
- *   await trx.from('users').where('id', userId).update({ display_name: 'Sam Example' })
- * })
- * ```
- *
  * @throws {AggregateError} If transaction work and cleanup both fail, or multiple cleanup steps fail.
  */
 export async function transaction<T>(db: Database, callback: (trx: Trx) => Promise<T>): Promise<T> {

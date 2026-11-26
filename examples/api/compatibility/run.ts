@@ -30,6 +30,7 @@ const factory = new IgnitorFactory()
       providers: [
         () => import('@adonisjs/lucid/database_provider'),
         () => import('@adonisjs/limiter/limiter_provider'),
+        () => import('@kevinjohn/adonisjs-account-kit/account_kit_provider'),
       ],
     },
     config: {
@@ -56,7 +57,6 @@ await app.init()
 await app.boot()
 
 const db = await app.container.make('lucid.db')
-const limiter = await app.container.make('limiter.manager')
 const [{ default: User }, { default: hash }] = await Promise.all([
   import('./user.js'),
   import('@adonisjs/core/services/hash'),
@@ -84,8 +84,9 @@ const notifications: {
 let failCredentialTransaction = false
 let failPasswordNotice = false
 let insertDeferredFailure = false
-const account = new AccountKit({
-  config: defineConfig({
+app.config.set(
+  'account_kit',
+  defineConfig({
     limiterSecret: 'minimum-consumer-test-secret-32-bytes-long',
     enabled: ['passwordReset', 'emailVerification', 'invitations', 'emailPasswordManagement'],
     registration: {
@@ -143,10 +144,9 @@ const account = new AccountKit({
       }
       if (failCredentialTransaction) throw new Error('transaction rollback sentinel')
     },
-  }),
-  db,
-  limiter,
-})
+  })
+)
+const account = await app.container.make(AccountKit)
 
 function tokenFromUrl(value: string | undefined): string {
   assert.ok(value)

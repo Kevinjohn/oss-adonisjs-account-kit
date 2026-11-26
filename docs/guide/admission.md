@@ -254,6 +254,10 @@ opaque and checked; a forged one is `E_ACCOUNT_KIT_INVALID_INPUT`.
 | `account-kit:admission:grant-invitation <email> [--role]`                                | Records operator invitation evidence for an existing account; refused when evidence exists. `--role` is stored only; it grants nothing.         |
 | `account-kit:admission:bootstrap <email> --role <role>`                                  | Issues an operator invitation, prints its link and writes an approval for the account it creates. `--cancel` deletes that approval instead.     |
 
+If `config/database.ts` selects its Lucid connection from a value supplied only in the shell,
+pass it to install explicitly, for example `--env=DB_CONNECTION=postgres`. Install accepts the same
+[environment overrides as guided setup](setup.md#environment-overrides).
+
 The runtime commands write one JSON result line to stdout when an operation returns a result.
 A thrown runtime failure leaves the original error on Ace's `command.error`, reports one safe
 diagnostic with a code on stderr and exits with code 1.
