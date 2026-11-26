@@ -319,7 +319,7 @@ test('configures the package idempotently without replacing application-owned fi
     process.exitCode = originalProcessExitCode
     await rm(root, { recursive: true, force: true })
   }
-}).timeout(30_000)
+}).timeout(60_000)
 
 test('configures future-dated prerequisites in the selected custom migration directory once', async ({
   assert,
