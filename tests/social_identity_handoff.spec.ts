@@ -1,7 +1,7 @@
 import { DateTime } from 'luxon'
 import { test } from '@japa/runner'
 import {
-  E_ACCOUNT_KIT_ADAPTER_CONTRACT,
+  E_ACCOUNT_KIT_INVALID_ACCESS_DECISION,
   E_ACCOUNT_KIT_SOCIAL_TRANSACTION_INVALID,
 } from '../src/errors.ts'
 import { dbTime } from './helpers/db_time.ts'
@@ -376,7 +376,7 @@ test.group('social policy contract routing', (group) => {
                 guard,
               })
         ).catch((caught: unknown) => caught)
-        assert.instanceOf(error, E_ACCOUNT_KIT_ADAPTER_CONTRACT)
+        assert.instanceOf(error, E_ACCOUNT_KIT_INVALID_ACCESS_DECISION)
         assert.equal((error as Error).message, 'account_kit: canAccess must resolve to a boolean')
         assert.equal(established, boundary === 'issuance')
         assert.equal(terminated, boundary === 'issuance')

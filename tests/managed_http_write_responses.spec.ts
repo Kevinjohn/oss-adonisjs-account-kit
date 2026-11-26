@@ -92,7 +92,7 @@ test.group('managed HTTP dispatch', () => {
       authentication: {
         current: async () => account,
         requireActive: async () => account,
-        logout: async () => {},
+        revokeCredential: async () => {},
       },
       emailPasswordManagement: {
         updateProfile: async () => user,

@@ -51,4 +51,4 @@ flowchart TD
  H -->|No| J["Throw E_ACCOUNT_KIT_POST_COMMIT with decision saved"]
 ```
 
-**Code references:** [implementation](../src/admission/decisions.ts), [`tests/admission_decision.spec.ts`](../tests/admission_decision.spec.ts), [`tests/admission_decisions.spec.ts`](../tests/admission_decisions.spec.ts), [service entry](../src/admission/service.ts), [committed events](../src/admission/events.ts)
+**Code references:** [implementation](../src/admission/decisions.ts), [`tests/admission_decision.spec.ts`](../tests/admission_decision.spec.ts), [`tests/admission_decisions.spec.ts`](../tests/admission_decisions.spec.ts), [service entry](../src/admission/service.ts), [committed events](../src/admission/notifications.ts)

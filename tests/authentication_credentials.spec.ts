@@ -1,4 +1,5 @@
 import { RuntimeException } from '@adonisjs/core/exceptions'
+import { E_ACCOUNT_KIT_INVALID_ACCESS_DECISION } from '../src/errors.ts'
 import { test } from '@japa/runner'
 import { useTestApp } from './helpers/app.ts'
 import { accessTokenDefaults } from './helpers/access_tokens.ts'
@@ -657,6 +658,7 @@ test.group('authentication policy result contract', (group) => {
             )
           } else {
             assert.instanceOf(result.error, RuntimeException)
+            assert.instanceOf(result.error, E_ACCOUNT_KIT_INVALID_ACCESS_DECISION)
             assert.notInstanceOf(result.error, E_INVALID_CREDENTIALS)
             assert.notInstanceOf(result.error, E_ACCOUNT_KIT_INVALID_SESSION)
             assert.equal(
@@ -728,6 +730,7 @@ test.group('authentication policy result contract', (group) => {
       const causes = (error as AggregateError).errors
       assert.lengthOf(causes, 2)
       assert.instanceOf(causes[0], RuntimeException)
+      assert.instanceOf(causes[0], E_ACCOUNT_KIT_INVALID_ACCESS_DECISION)
       assert.equal(causes[0].message, 'account_kit: canAccess must resolve to a boolean')
       assert.strictEqual(causes[1], cleanupFault)
       assert.isNotNull(await kit.db.from('auth_access_tokens').where('id', issuedId!).first())

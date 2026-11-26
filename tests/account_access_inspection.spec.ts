@@ -2,7 +2,7 @@ import { test } from '@japa/runner'
 import { AccountKit } from '../src/account_kit.ts'
 import {
   E_ACCOUNT_KIT_ACCOUNT_ACCESS_DENIED,
-  E_ACCOUNT_KIT_ADAPTER_CONTRACT,
+  E_ACCOUNT_KIT_INVALID_ACCESS_DECISION,
   E_ACCOUNT_KIT_CAPABILITY_DISABLED,
   E_ACCOUNT_KIT_INVALID_INPUT,
 } from '../src/errors.ts'
@@ -200,7 +200,7 @@ test.group('account access inspection', (group) => {
         }).authentication.inspectAccountAccess({ userId: user.id, requireActive: true })
       )
       assert.notInstanceOf(error, E_ACCOUNT_KIT_ACCOUNT_ACCESS_DENIED)
-      assert.instanceOf(error, E_ACCOUNT_KIT_ADAPTER_CONTRACT)
+      assert.instanceOf(error, E_ACCOUNT_KIT_INVALID_ACCESS_DECISION)
       assert.equal(error.message, 'account_kit: canAccess must resolve to a boolean')
     }
   })

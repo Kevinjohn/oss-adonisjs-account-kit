@@ -46,4 +46,4 @@ flowchart TD
  E -->|Yes| G["Return true; writeResult outputs cancelled and email"]
 ```
 
-**Code references:** [`cancelBootstrap`](../src/admission/bootstrap.ts), [`bootstrap command`](../src/admission/commands/bootstrap.ts), [command output](../commands/operator_output.ts), [operator service entry](../src/admission/service.ts)
+**Code references:** [`cancelBootstrap`](../src/admission/bootstrap.ts), [`bootstrap command`](../commands/admission/bootstrap.ts), [command output](../commands/operator_output.ts), [operator service entry](../src/admission/service.ts)

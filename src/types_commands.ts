@@ -12,13 +12,17 @@ export type AccountKitCommandName =
   | 'account-kit:retirement-impact'
   | 'account-kit:setup'
 
+/** Selects which package commands an application registers. */
 export interface AccountKitCommandsOptions {
   /** Commands to leave out. */
   exclude?: readonly AccountKitCommandName[]
 }
 
+/** The command metadata and class loader consumed by Ace. */
 export interface AccountKitCommandsLoader {
+  /** Lists the commands available to Ace. */
   getMetaData(): Promise<CommandMetaData[]>
+  /** Loads the class for one listed command. */
   getCommand(metaData: CommandMetaData): Promise<typeof BaseCommand | null>
 }
 

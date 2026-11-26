@@ -43,4 +43,4 @@ flowchart TD
  P -->|Allowed| E["Touch tracked session if due, project CurrentAccount and return after commit"]
 ```
 
-**Code references:** [`current`](../src/authentication.ts), [session checks](../src/session_registry.ts), [decision validation](../src/account_access_decision.ts), [account projection](../src/account_projection.ts), [`authentication tests`](../tests/authentication.spec.ts)
+**Code references:** [`current`](../src/authentication.ts), [session checks](../src/session_tracking.ts), [decision validation](../src/account_access_decision.ts), [account projection](../src/account_projection.ts), [`authentication tests`](../tests/authentication.spec.ts)

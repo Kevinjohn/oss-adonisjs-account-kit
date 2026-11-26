@@ -52,4 +52,4 @@ flowchart TD
  J -->|No| L["Throw E_ACCOUNT_KIT_POST_COMMIT with committed state"]
 ```
 
-**Code references:** [implementation](../src/admission/request.ts), [`tests/admission_request.spec.ts`](../tests/admission_request.spec.ts), [service entry](../src/admission/service.ts), [credential check](../src/authentication.ts), [committed events](../src/admission/events.ts)
+**Code references:** [implementation](../src/admission/request.ts), [`tests/admission_request.spec.ts`](../tests/admission_request.spec.ts), [service entry](../src/admission/service.ts), [credential check](../src/authentication.ts), [committed events](../src/admission/notifications.ts)

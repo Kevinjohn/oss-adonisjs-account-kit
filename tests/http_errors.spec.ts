@@ -1,9 +1,11 @@
+import { RuntimeException } from '@adonisjs/core/exceptions'
 import { readFile } from 'node:fs/promises'
 import { test } from '@japa/runner'
 import * as errors from '../src/errors.ts'
 import {
   E_ACCOUNT_KIT,
   E_ACCOUNT_KIT_ADAPTER_CONTRACT,
+  E_ACCOUNT_KIT_INVALID_ACCESS_DECISION,
   E_ACCOUNT_KIT_AUTHORIZATION,
   E_ACCOUNT_KIT_DELIVERY,
   E_ACCOUNT_KIT_EMAIL_ALREADY_REGISTERED,
@@ -26,6 +28,27 @@ function messageOf(response: AccountErrorResponse): string {
 }
 
 test.group('account HTTP error mapping', () => {
+  test('masks a malformed access decision without masking unrelated runtime failures', ({
+    assert,
+  }) => {
+    const error = new E_ACCOUNT_KIT_INVALID_ACCESS_DECISION({
+      cause: new Error('private callback detail'),
+    })
+    assert.instanceOf(error, RuntimeException)
+    assert.equal(error.code, 'E_ACCOUNT_KIT_INVALID_ACCESS_DECISION')
+    assert.equal(error.identifier, 'errors.E_ACCOUNT_KIT_INVALID_ACCESS_DECISION')
+    for (const accept of ['application/json', 'application/vnd.api+json']) {
+      const mapped = accountErrorResponse(error, { accept })!
+      assert.equal(mapped.status, 500)
+      assert.equal(mapped.body.errors[0].code, operationFailed)
+      assert.equal(messageOf(mapped), 'Account operation failed.')
+      assert.notInclude(JSON.stringify(mapped), 'private callback detail')
+      assert.notInclude(JSON.stringify(mapped), error.code)
+    }
+    assert.isNull(accountErrorResponse(new RuntimeException('unrelated fault')))
+    assert.instanceOf(new E_ACCOUNT_KIT_ADAPTER_CONTRACT('invalid guard'), E_ACCOUNT_KIT)
+  })
+
   test('infers plain JSON when error response options are omitted or undefined', ({
     expectTypeOf,
   }) => {

@@ -51,4 +51,4 @@ flowchart TD
  L -->|No| N["Finish with successful printed link"]
 ```
 
-**Code references:** [`bootstrapOperatorInvitation`](../src/admission/bootstrap.ts), [`bootstrap command`](../src/admission/commands/bootstrap.ts), [`operator invitation`](../src/operator.ts), [`bootstrap invitation persistence`](../src/bootstrap_invitation.ts), [command output](../commands/operator_output.ts), [invitation evidence handoff](US-ACCOUNT-51-configure-admission-hooks.md#code-flow), [operator service entry](../src/admission/service.ts)
+**Code references:** [`bootstrapOperatorInvitation`](../src/admission/bootstrap.ts), [`bootstrap command`](../commands/admission/bootstrap.ts), [`operator invitation`](../src/operator.ts), [`bootstrap invitation persistence`](../src/bootstrap_invitation.ts), [command output](../commands/operator_output.ts), [invitation evidence handoff](US-ACCOUNT-51-configure-admission-hooks.md#code-flow), [operator service entry](../src/admission/service.ts)

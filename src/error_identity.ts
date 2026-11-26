@@ -2,7 +2,11 @@ import type { ProofKind } from './types_error_response.ts'
 // The public identity of an Account Kit error: status, stable code, English message and the
 // committed marker. Both renderers build from it, so the managed routes and the application
 // helper cannot disagree.
-import type { E_ACCOUNT_KIT } from './errors.ts'
+import type { E_ACCOUNT_KIT, E_ACCOUNT_KIT_INVALID_ACCESS_DECISION } from './errors.ts'
+
+export type AccountKitResponseError = InstanceType<
+  typeof E_ACCOUNT_KIT | typeof E_ACCOUNT_KIT_INVALID_ACCESS_DECISION
+>
 import {
   E_ACCOUNT_KIT_AUTHORIZATION,
   E_ACCOUNT_KIT_INVALID_SESSION,
@@ -55,7 +59,7 @@ function buildPublicErrorIdentity(status: number, code: string): PublicIdentity 
  * response; the masks keep invitation and authorization details from revealing which case applies.
  */
 export function mapPublicErrorIdentity(
-  error: InstanceType<typeof E_ACCOUNT_KIT>,
+  error: AccountKitResponseError,
   options: { proof?: ProofKind } = {}
 ): PublicIdentity {
   if (error.status >= 500) {
@@ -80,9 +84,7 @@ export function mapPublicErrorIdentity(
 }
 
 /** Headers every package error response carries: no caching, and `Retry-After` when throttled. */
-export function buildPublicErrorHeaders(
-  error: InstanceType<typeof E_ACCOUNT_KIT>
-): Record<string, string> {
+export function buildPublicErrorHeaders(error: AccountKitResponseError): Record<string, string> {
   return {
     'Cache-Control': 'no-store',
     ...(error instanceof E_ACCOUNT_KIT_THROTTLED

@@ -75,6 +75,7 @@ export interface ResolvedAdmissionConfig {
   domain: { allowed: readonly string[]; includeSubdomains: boolean } | null
   invitation: boolean
   approval: { authorize: AdmissionAuthorizeCallbacks } | null
+  /** Receives committed admission notifications. */
   onAdmissionNotification?: (event: AdmissionNotification) => Promise<void>
 }
 

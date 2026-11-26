@@ -1,6 +1,6 @@
 import { test } from '@japa/runner'
 import { registerManagedRoutes } from '../src/http/managed.ts'
-import { E_ACCOUNT_KIT_ADAPTER_CONTRACT } from '../src/errors.ts'
+import { E_ACCOUNT_KIT_INVALID_ACCESS_DECISION } from '../src/errors.ts'
 import { useTestApp } from './helpers/app.ts'
 import { insertUser, makeNotify, makeService } from './helpers/fakes.ts'
 import { fakeManagedHttp, stubGuard } from './helpers/managed_http_fakes.ts'
@@ -81,7 +81,7 @@ test.group('managed HTTP verification policy with live account state', (group) =
       errors: [{ code: 'E_ACCOUNT_KIT_OPERATION_FAILED', message: 'Account operation failed.' }],
     })
     assert.lengthOf(logged, 1)
-    assert.instanceOf(logged[0].err, E_ACCOUNT_KIT_ADAPTER_CONTRACT)
+    assert.instanceOf(logged[0].err, E_ACCOUNT_KIT_INVALID_ACCESS_DECISION)
     assert.equal(
       (logged[0].err as Error).message,
       'account_kit: canAccess must resolve to a boolean'

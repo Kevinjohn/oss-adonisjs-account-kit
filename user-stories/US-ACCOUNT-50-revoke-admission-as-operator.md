@@ -47,4 +47,4 @@ flowchart TD
  G -->|Yes| I["Service returns AdmissionRecord and writeResult prints revoked, userId and email"]
 ```
 
-**Code references:** [`applyOperatorDecision`](../src/admission/operator.ts), [`revoke command`](../src/admission/commands/revoke.ts), [`command tests`](../tests/admission_commands.spec.ts), [committed events](../src/admission/events.ts), [command output](../commands/operator_output.ts), [operator service entry](../src/admission/service.ts)
+**Code references:** [`applyOperatorDecision`](../src/admission/operator.ts), [`revoke command`](../commands/admission/revoke.ts), [`command tests`](../tests/admission_commands.spec.ts), [committed events](../src/admission/notifications.ts), [command output](../commands/operator_output.ts), [operator service entry](../src/admission/service.ts)

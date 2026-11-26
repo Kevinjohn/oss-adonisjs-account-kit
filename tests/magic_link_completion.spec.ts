@@ -1,7 +1,7 @@
 import { DateTime } from 'luxon'
 import { test } from '@japa/runner'
 import {
-  E_ACCOUNT_KIT_ADAPTER_CONTRACT,
+  E_ACCOUNT_KIT_INVALID_ACCESS_DECISION,
   E_INVALID_CREDENTIALS,
   E_ACCOUNT_KIT_INVALID_TOKEN,
 } from '../src/errors.ts'
@@ -439,7 +439,7 @@ test.group('magic-link policy contract routing', (group) => {
             .complete({ token, verifier }, guard)
             .catch((caught: unknown) => caught)
         }
-        assert.instanceOf(error, E_ACCOUNT_KIT_ADAPTER_CONTRACT)
+        assert.instanceOf(error, E_ACCOUNT_KIT_INVALID_ACCESS_DECISION)
         assert.notInstanceOf(error, E_ACCOUNT_KIT_INVALID_TOKEN)
         assert.notInstanceOf(error, E_INVALID_CREDENTIALS)
         assert.equal((error as Error).message, 'account_kit: canAccess must resolve to a boolean')
