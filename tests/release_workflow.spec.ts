@@ -82,7 +82,7 @@ test('packaging tests the release archive and checks the consumer digest before 
 }) => {
   const workflow = await readFile(join(repoRoot, '.github/workflows/release.yml'), 'utf8')
   const block = jobs(workflow).get('package')?.block ?? ''
-  const pack = block.indexOf('bash bin/release_check.sh')
+  const pack = block.indexOf('pnpm release')
   const consumer = block.indexOf('pnpm test:consumer')
   const digest = block.indexOf('.status == "passed" and .candidateSha256 == $sha256')
   const upload = block.indexOf('actions/upload-artifact@')

@@ -1,4 +1,4 @@
-import SetupAccountKit from '../../commands/setup.js'
+import SetupAccountKit from '../../commands/setup.ts'
 
 /** Run the setup prompts, answering each question that starts with a key and leaving the rest blank. */
 export async function interactive(answers: Record<string, string> = {}) {

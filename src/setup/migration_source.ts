@@ -3,8 +3,8 @@ import { access } from 'node:fs/promises'
 import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { Application } from '@adonisjs/core/app'
-import type { buildMigrationSchema } from './migration_definitions.js'
-import { stubsRoot } from '../../stubs/main.js'
+import type { buildMigrationSchema } from './migration_definitions.ts'
+import { stubsRoot } from '../../stubs/main.ts'
 
 type StubsManager = Awaited<ReturnType<Application<any>['stubs']['create']>>
 
@@ -47,8 +47,11 @@ export async function migrationContent(
   const { contents } = await stub.prepare({
     migration: {
       ...schema,
-      // The stub header requires an absolute destination; setup chooses the path in its plan.
-      destination: join(stubsRoot, stubPath.replace(/\.stub$/, '.ts')),
+      // Setup writes to the inspected migration directory in the plan, outside the renderer.
+      path: stubPath
+        .split('/')
+        .at(-1)!
+        .replace(/\.stub$/, '.ts'),
     },
   })
   // The stubs engine trims the file and keeps the blank line after the header; setup writes the

@@ -1,13 +1,13 @@
 /** Managed handlers for the password reset capability: request, link inspection and completion. */
-import type { ManagedEndpointName } from './routes.js'
-import type { ManagedHandler } from './managed_types.js'
+import type { ManagedEndpointName } from './routes.ts'
+import type { ManagedHandler } from './managed_types.ts'
 import {
   sendInvalidProofResponse,
   sendPasswordPolicyErrorResponse,
   reportCommittedFailure,
   translate,
-} from './response_helpers.js'
-import { newPasswordValidator, passwordResetRequestValidator } from './validators.js'
+} from './response_helpers.ts'
+import { newPasswordValidator, passwordResetRequestValidator } from './validators.ts'
 
 export const passwordResetHandlers = {
   'auth.passwordReset.request': async ({ route, context, kit }) => {

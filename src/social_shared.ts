@@ -1,12 +1,12 @@
 // Social helpers shared by the identity, handoff and proof modules: dependencies, clock and actor.
 import { DateTime } from 'luxon'
-import { requireCurrentAccountInTransaction } from './authentication.js'
+import { requireCurrentAccountInTransaction } from './authentication.ts'
 import {
   E_ACCOUNT_KIT_SOCIAL_PROOF_INVALID,
   E_ACCOUNT_KIT_SOCIAL_USER_NOT_FOUND,
-} from './errors.js'
-import { socialProviderNames } from './social_providers.js'
-import { sqlTimestamp, type DialectSource } from './timestamps.js'
+} from './errors.ts'
+import { socialProviderNames } from './social_providers.ts'
+import { sqlTimestamp, type DialectSource } from './timestamps.ts'
 import type {
   AccountUser,
   SocialCallbackResult,
@@ -16,8 +16,8 @@ import type {
   SocialProviderName,
   Trx,
   UserId,
-} from './types.js'
-import type { ServiceDependencies } from './service_dependencies.js'
+} from './types.ts'
+import type { ServiceDependencies } from './service_dependencies.ts'
 
 /** Public outcome and follow-ups belonging to one committed social transaction attempt. */
 export interface SocialTransactionResult {
@@ -31,7 +31,7 @@ export type Dependencies = ServiceDependencies
 const MINUTES = 10
 export const calculateSocialExpiry = (client: DialectSource) =>
   sqlTimestamp(client, DateTime.utc().plus({ minutes: MINUTES }))
-export const readSqlTimestamp = (client: DialectSource) => sqlTimestamp(client)
+export const readSqlTimestamp = (client: DialectSource) => sqlTimestamp(client, DateTime.utc())
 
 export function listEnabledSocialProviders(config: ResolvedConfig): SocialProviderName[] {
   return socialProviderNames.filter(

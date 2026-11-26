@@ -1,22 +1,22 @@
 // Issues a guard credential after a verified sign-in and re-checks the account under its lock.
-import { requireAccountAccessDecision } from './account_access_decision.js'
-import { revision } from './credential_revision.js'
-import { lockUser, transaction } from './db.js'
+import { requireAccountAccessDecision } from './account_access_decision.ts'
+import { revision } from './credential_revision.ts'
+import { lockUser, transaction } from './db.ts'
 import {
   generateSessionHandle,
   recordSession,
   isSessionRegistryEnabled,
   sessionTable,
-} from './session_registry.js'
-import { hashToken } from './tokens.js'
+} from './session_registry.ts'
+import { hashToken } from './tokens.ts'
 import type {
   AccountUser,
   AuthenticationGuard,
   CurrentAccount,
   ResolvedAuthenticationConfig,
   Trx,
-} from './types.js'
-import type { ServiceDependencies } from './service_dependencies.js'
+} from './types.ts'
+import type { ServiceDependencies } from './service_dependencies.ts'
 
 export interface IssuanceOptions {
   /** Untrusted display text for the sign-in list; truncated to 255 characters. */
@@ -36,6 +36,8 @@ export interface IssuanceOptions {
  * `sessionManagement` receive a fresh handle; only its hash is stored, in that same transaction.
  * A failure attempts to terminate the credential. If termination also fails, both errors are
  * reported and the credential may remain active.
+ *
+ * @throws {AggregateError} If issuance and termination both fail.
  */
 export async function establishCredential<Credential>(
   deps: Pick<ServiceDependencies, 'config' | 'db'>,

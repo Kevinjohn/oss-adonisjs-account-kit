@@ -2,6 +2,43 @@
 
 ## Unreleased
 
+### Breaking changes
+
+- `defineConfig` now returns an AdonisJS configuration provider. Keep exporting its result from
+  `config/account_kit.ts`. If application code reads the resolved configuration directly, use
+  `await configProvider.resolve<ResolvedConfig>(app, config)` after boot. Import `configProvider`
+  from `@adonisjs/core` and `ResolvedConfig` from `@kevinjohn/adonisjs-account-kit/types`.
+  Replace direct `account_kit` container lookups with `account_kit.manager`, or resolve `AccountKit`
+  by class. The class and service import resolve the same singleton.
+- Import `defineConfig` from `@kevinjohn/adonisjs-account-kit/admission` in `config/admission.ts`
+  in place of `defineAdmission`.
+- Replace the managed access, proof-header and admission middleware factories with default class
+  imports from `/middleware/managed_account`, `/middleware/proof_headers` and
+  `/middleware/admission`. Instantiate each with the same options and call `instance.handle(ctx, next)`
+  in the application's middleware. Update generated wrappers that still import the factories.
+  Keep proof headers before body parsing and Shield.
+- Import `TransactionManager` from `/transaction` and construct it with the Lucid database.
+  Replace `transaction(db, callback)` with `manager.run(callback)` and
+  `lockRow(trx, table, id)` with `manager.lockRow(trx, table, id)`. Pass an explicit Luxon
+  timestamp to `sqlTimestamp(client, at)`, for example `DateTime.utc()`.
+- Replace `await assertUsersAdapterContract(fixture)` with
+  `await usersAdapterContract(fixture)()` from the same testing subpath. Capture helpers return
+  a class instance. Invoke `last`, `tokenFor` and `clear` on that instance.
+- Supply `logger: () => logger` or an object with an `info` method to `createLogNotifications`.
+  The application chooses the logger.
+- Rename the generated defaults `FRONTEND_URL`, `ACCOUNT_MAIL_FROM` and `ACCOUNT_SOCIAL_ORIGIN`
+  to `ACCOUNT_KIT_FRONTEND_URL`, `ACCOUNT_KIT_MAIL_FROM` and `ACCOUNT_KIT_SOCIAL_ORIGIN` in
+  environment files, schema entries and application references that use those defaults.
+  Keep explicit setup choices aligned with the names your application uses.
+- Setup and admission install read selected values from the project's environment files.
+  Pass explicit overrides with repeatable `--env=NAME=value`. For a shell-selected Lucid connection,
+  pass the variable read by `config/database.ts`, for example `--env=DB_CONNECTION=postgres`.
+  Pass `NODE_ENV` and `ENV_PATH` when selecting a profile or directory. Doctor uses the backend origin from
+  `createActionUrls`; pass `--app-url=https://api.example.test` when that setting is absent.
+- Multiple post-commit follow-up failures are represented by an ordered array in the existing
+  package exception's `cause`. Update diagnostics that read `cause.errors` to handle an array.
+  A single follow-up failure still appears directly as `cause`.
+
 ## 0.8.0 - 2026-11-25
 
 ### Changed

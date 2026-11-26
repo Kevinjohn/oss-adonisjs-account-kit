@@ -1,8 +1,8 @@
 // Validates and defaults the passwordPolicy option.
-import { E_ACCOUNT_KIT_INVALID_CONFIGURATION } from './errors.js'
-import type { AccountKitConfig, PasswordPolicy } from './types.js'
-import { MAX_PASSWORD_LENGTH, MIN_PASSWORD_LENGTH } from './password.js'
-import { freezeResolved } from './config_freeze.js'
+import { E_ACCOUNT_KIT_INVALID_CONFIGURATION } from './errors.ts'
+import type { AccountKitConfig, PasswordPolicy } from './types.ts'
+import { MAX_PASSWORD_LENGTH, MIN_PASSWORD_LENGTH } from './password.ts'
+import { freezeResolved } from './config_freeze.ts'
 
 export function resolvePasswordPolicy(
   config: Pick<AccountKitConfig, 'passwordPolicy'>

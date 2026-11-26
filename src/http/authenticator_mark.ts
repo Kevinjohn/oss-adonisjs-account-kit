@@ -1,5 +1,5 @@
 // Leaves the application's Authenticator authenticated for the guard the package just checked.
-import { E_ACCOUNT_KIT_INVALID_SESSION } from '../errors.js'
+import { E_ACCOUNT_KIT_INVALID_SESSION } from '../errors.ts'
 
 /** The slice of `ctx.auth` that records which guard authenticated the request. */
 export interface MarkableAuthenticator {

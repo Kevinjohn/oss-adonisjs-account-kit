@@ -1,12 +1,12 @@
 import { test } from '@japa/runner'
 import ts from 'typescript'
-import { generateAllyConfigSource } from '../src/setup/generated_ally_config.js'
-import { buildDefaultSetupChoices } from '../src/setup/defaults.js'
-import { addSocialDiagnostics } from '../src/setup/validate_social.js'
-import type { SetupChoices, SetupDiagnostic, SetupInspection } from '../src/setup/types.js'
+import { generateAllyConfigSource } from '../src/setup/generated_ally_config.ts'
+import { buildDefaultSetupChoices } from '../src/setup/defaults.ts'
+import { addSocialDiagnostics } from '../src/setup/validate_social.ts'
+import type { SetupChoices, SetupDiagnostic, SetupInspection } from '../src/setup/types.ts'
 
 const env = {
-  ACCOUNT_SOCIAL_ORIGIN: 'https://app.example.test',
+  ACCOUNT_KIT_SOCIAL_ORIGIN: 'https://app.example.test',
   GITHUB_CLIENT_ID: 'id',
   GITHUB_CLIENT_SECRET: 'secret',
 }
@@ -30,7 +30,7 @@ function socialChoices(): SetupChoices {
   choices.social = {
     status: 'enabled',
     providers: ['github'],
-    callbackOriginEnv: 'ACCOUNT_SOCIAL_ORIGIN',
+    callbackOriginEnv: 'ACCOUNT_KIT_SOCIAL_ORIGIN',
     callbackPath: '/account/auth/oauth/{provider}/callback',
     credentials: {
       github: { clientIdEnv: 'GITHUB_CLIENT_ID', clientSecretEnv: 'GITHUB_CLIENT_SECRET' },

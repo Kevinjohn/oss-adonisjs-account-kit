@@ -1,5 +1,5 @@
-import type { ExistingRoute, ManagedEndpointName } from '../http/routes.js'
-import type { SocialProviderName } from '../types.js'
+import type { ExistingRoute, ManagedEndpointName } from '../http/routes.ts'
+import type { SocialProviderName } from '../types.ts'
 
 export const featureNames = [
   'registration',

@@ -1,7 +1,7 @@
 import { test } from '@japa/runner'
-import { captureNotifications } from '../testing/notifications.js'
-import { useTestApp } from './helpers/app.js'
-import { insertUser, makeService } from './helpers/fakes.js'
+import { captureNotifications } from '../src/testing/notifications.ts'
+import { useTestApp } from './helpers/app.ts'
+import { insertUser, makeService } from './helpers/fakes.ts'
 
 test.group('captureNotifications', (group) => {
   const kit = useTestApp(group)

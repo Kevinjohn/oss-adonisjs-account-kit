@@ -1,6 +1,6 @@
 import { InvalidArgumentsException } from '@adonisjs/core/exceptions'
-import type { NotificationCallbacks } from './types.js'
-import type { AccountKitTranslator } from './translator.js'
+import type { NotificationCallbacks } from './types.ts'
+import type { AccountKitTranslator } from './translator.ts'
 
 export type AccountMessageKind = keyof NotificationCallbacks
 

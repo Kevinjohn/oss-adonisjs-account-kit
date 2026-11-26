@@ -5,21 +5,21 @@ import {
   E_ACCOUNT_KIT_INVALID_INPUT,
   E_ACCOUNT_KIT_INVALID_TOKEN,
   E_ACCOUNT_KIT_POST_COMMIT,
-} from '../src/errors.js'
-import { transaction } from '../src/db.js'
-import type { AccountUser } from '../src/types.js'
-import { useTestApp } from './helpers/app.js'
-import { invitationHelpers } from './helpers/invitations.js'
-import { allowAll, makeUsersAdapter } from './helpers/fakes.js'
+} from '../src/errors.ts'
+import { transaction } from '../src/db.ts'
+import type { AccountUser } from '../src/types.ts'
+import { useTestApp } from './helpers/app.ts'
+import { invitationHelpers } from './helpers/invitations.ts'
+import { allowAll, makeUsersAdapter } from './helpers/fakes.ts'
 import {
   createBarrier,
   startWithBackendId,
   waitForDatabaseLockWait,
-} from './helpers/lock_coordination.js'
-import { makeService, tokenFrom } from './helpers/fakes.js'
-import { clientChallenge, provider } from './helpers/social_identity.js'
-import { locksRows, testEngine } from './helpers/dialect.js'
-import { dbTime } from './helpers/db_time.js'
+} from './helpers/lock_coordination.ts'
+import { makeService, tokenFrom } from './helpers/fakes.ts'
+import { clientChallenge, provider } from './helpers/social_identity.ts'
+import { locksRows, testEngine } from './helpers/dialect.ts'
+import { dbTime } from './helpers/db_time.ts'
 
 test.group('invitations.accept', (group) => {
   const kit = useTestApp(group)

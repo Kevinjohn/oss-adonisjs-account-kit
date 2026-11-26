@@ -1,17 +1,17 @@
 // Social sensitive proofs: issuing and consuming short-lived reauthentication proofs.
-import { lockUser, transaction } from './db.js'
-import { consumeRows } from './consume_rows.js'
-import { revision } from './credential_revision.js'
-import { E_ACCOUNT_KIT_SOCIAL_PROOF_INVALID } from './errors.js'
-import { isSensitivePurpose } from './social_enums.js'
+import { lockUser, transaction } from './db.ts'
+import { consumeRows } from './consume_rows.ts'
+import { revision } from './credential_revision.ts'
+import { E_ACCOUNT_KIT_SOCIAL_PROOF_INVALID } from './errors.ts'
+import { isSensitivePurpose } from './social_enums.ts'
 import {
   requireAuthenticatedUser,
   calculateSocialExpiry,
   readSqlTimestamp,
   type Dependencies,
-} from './social_shared.js'
-import { generateToken, hashToken, isTokenShaped } from './tokens.js'
-import type { CurrentAccountInput, ResolvedConfig, SensitivePurpose, Trx, UserId } from './types.js'
+} from './social_shared.ts'
+import { generateToken, hashToken, isTokenShaped } from './tokens.ts'
+import type { CurrentAccountInput, ResolvedConfig, SensitivePurpose, Trx, UserId } from './types.ts'
 
 export async function consumeSocialSensitiveProof(
   trx: Trx,

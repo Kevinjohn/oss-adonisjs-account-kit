@@ -1,4 +1,4 @@
-import type { NotificationCallbacks } from '../../src/types.js'
+import type { NotificationCallbacks } from '../../src/types.ts'
 
 export type NotifyCall = { method: keyof NotificationCallbacks; args: unknown[] }
 export function makeNotify() {

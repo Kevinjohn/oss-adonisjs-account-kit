@@ -1,5 +1,5 @@
 import { test } from '@japa/runner'
-import { isUserId } from '../src/user_id.js'
+import { isUserId } from '../src/user_id.ts'
 
 test('user IDs are safe integers or nonempty strings without coercion or trimming', ({
   assert,

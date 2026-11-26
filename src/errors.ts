@@ -1,6 +1,6 @@
 import type { HttpContext } from '@adonisjs/core/http'
 import { Exception, RuntimeException } from '@adonisjs/core/exceptions'
-import type { AdmissionDecision } from './admission_decision.js'
+import type { AdmissionDecision } from './admission_decision.ts'
 
 /**
  * Base for package account-operation/request errors, with a stable `code` and HTTP `status`.

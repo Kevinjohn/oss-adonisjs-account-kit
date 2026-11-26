@@ -7,13 +7,13 @@ import {
   E_ACCOUNT_KIT_NO_PASSWORD,
   E_ACCOUNT_KIT_POST_COMMIT,
   E_ACCOUNT_KIT_THROTTLED,
-} from '../src/errors.js'
-import { passwordChangeRevision } from '../src/password_change_revision.js'
-import type { AccountUser } from '../src/types.js'
-import { useTestApp } from './helpers/app.js'
-import { makeNotify, makeUsersAdapter } from './helpers/fakes.js'
-import { credentialsFixtures } from './helpers/credentials.js'
-import { locksRows, lockNotAvailableCode } from './helpers/dialect.js'
+} from '../src/errors.ts'
+import { passwordChangeRevision } from '../src/password_change_revision.ts'
+import type { AccountUser } from '../src/types.ts'
+import { useTestApp } from './helpers/app.ts'
+import { makeNotify, makeUsersAdapter } from './helpers/fakes.ts'
+import { credentialsFixtures } from './helpers/credentials.ts'
+import { locksRows, lockNotAvailableCode } from './helpers/dialect.ts'
 test.group('emailPasswordManagement', (group) => {
   const kit = useTestApp(group)
   const { createUser, service, seedTokens } = credentialsFixtures(kit)

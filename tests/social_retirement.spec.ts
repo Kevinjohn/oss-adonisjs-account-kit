@@ -1,8 +1,8 @@
 import { test } from '@japa/runner'
-import { useTestApp } from './helpers/app.js'
-import { resetSchema } from './helpers/schema.js'
-import { makeService, makeUsersAdapter } from './helpers/fakes.js'
-import { dbTime } from './helpers/db_time.js'
+import { useTestApp } from './helpers/app.ts'
+import { resetSchema } from './helpers/schema.ts'
+import { makeService, makeUsersAdapter } from './helpers/fakes.ts'
+import { dbTime } from './helpers/db_time.ts'
 
 test.group('social provider retirement inventory', (group) => {
   const kit = useTestApp(group)

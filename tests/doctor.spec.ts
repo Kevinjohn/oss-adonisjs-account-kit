@@ -1,21 +1,21 @@
 import { test } from '@japa/runner'
-import AccountKitDoctor from '../commands/doctor.js'
-import { createActionUrls } from '../src/action_urls.js'
-import { defineConfig } from '../src/config.js'
-import { runDoctor, type DoctorInput } from '../src/doctor.js'
-import { aceKernel } from './helpers/ace_kernel.js'
-import { bootTestApp, useTestApp } from './helpers/app.js'
-import { makeConfig, makeUsersAdapter } from './helpers/fakes.js'
-import { resetSchema } from './helpers/schema.js'
-import { provider } from './helpers/social_identity.js'
-import { testEngine } from './helpers/dialect.js'
+import AccountKitDoctor from '../commands/doctor.ts'
+import { createActionUrls } from '../src/action_urls.ts'
+import { defineConfig, resolveConfig } from '../src/config.ts'
+import { runDoctor, type DoctorInput } from '../src/doctor.ts'
+import { aceKernel } from './helpers/ace_kernel.ts'
+import { bootTestApp, useTestApp } from './helpers/app.ts'
+import { makeConfig, makeUsersAdapter } from './helpers/fakes.ts'
+import { resetSchema } from './helpers/schema.ts'
+import { provider } from './helpers/social_identity.ts'
+import { testEngine } from './helpers/dialect.ts'
 
 test.group('account-kit:doctor', (group) => {
-  const kit = useTestApp(group)
+  const kit = useTestApp(group, { accountKitProvider: 'source' })
 
   function input(overrides: Partial<DoctorInput> = {}): DoctorInput {
     return {
-      config: defineConfig(makeConfig({ users: makeUsersAdapter(kit.db, kit.hash) })),
+      config: resolveConfig(makeConfig({ users: makeUsersAdapter(kit.db, kit.hash) })),
       db: kit.db,
       limiterBound: true,
       appUrl: 'https://example.test',
@@ -72,7 +72,7 @@ test.group('account-kit:doctor', (group) => {
   test('names each missing table for the enabled capabilities', async ({ assert }) => {
     try {
       await kit.db.connection().schema.dropTable('account_invitations')
-      const enabledWithoutInvitations = defineConfig(
+      const enabledWithoutInvitations = resolveConfig(
         makeConfig({
           users: makeUsersAdapter(kit.db, kit.hash),
           enabled: ['passwordReset', 'emailVerification', 'emailPasswordManagement'],
@@ -106,7 +106,7 @@ test.group('account-kit:doctor', (group) => {
   test('requires the sign-in link table even while magic links are off', async ({ assert }) => {
     try {
       await kit.db.connection().schema.dropTable('login_link_tokens')
-      const config = defineConfig(
+      const config = resolveConfig(
         makeConfig({ users: makeUsersAdapter(kit.db, kit.hash), enabled: ['passwordReset'] })
       )
       assert.deepEqual(failures(await runDoctor(input({ config }))), [
@@ -120,7 +120,7 @@ test.group('account-kit:doctor', (group) => {
   test('requires the recovery-token table another enabled flow clears', async ({ assert }) => {
     try {
       await kit.db.connection().schema.dropTable('password_reset_tokens')
-      const verificationOnly = defineConfig(
+      const verificationOnly = resolveConfig(
         makeConfig({ users: makeUsersAdapter(kit.db, kit.hash), enabled: ['emailVerification'] })
       )
       assert.deepEqual(failures(await runDoctor(input({ config: verificationOnly }))), [
@@ -134,7 +134,7 @@ test.group('account-kit:doctor', (group) => {
   test('deletion requires cleanup tables even when their capabilities are disabled', async ({
     assert,
   }) => {
-    const deletionOnly = defineConfig(
+    const deletionOnly = resolveConfig(
       makeConfig({
         users: makeUsersAdapter(kit.db, kit.hash),
         enabled: ['accountDeletion'],
@@ -161,7 +161,7 @@ test.group('account-kit:doctor', (group) => {
   test('deletion requires the session table after authentication is disabled', async ({
     assert,
   }) => {
-    const config = defineConfig(
+    const config = resolveConfig(
       makeConfig({
         users: makeUsersAdapter(kit.db, kit.hash),
         enabled: ['accountDeletion'],
@@ -180,7 +180,7 @@ test.group('account-kit:doctor', (group) => {
   test('token authentication requires its configured table without export or deletion', async ({
     assert,
   }) => {
-    const config = defineConfig(
+    const config = resolveConfig(
       makeConfig({
         users: makeUsersAdapter(kit.db, kit.hash),
         enabled: ['passwordReset'],
@@ -200,7 +200,7 @@ test.group('account-kit:doctor', (group) => {
   }) => {
     try {
       await kit.db.connection().schema.dropTable('auth_access_tokens')
-      const tokenConfig = defineConfig(
+      const tokenConfig = resolveConfig(
         makeConfig({
           users: makeUsersAdapter(kit.db, kit.hash),
           enabled: ['accountDeletion'],
@@ -214,7 +214,7 @@ test.group('account-kit:doctor', (group) => {
       assert.deepEqual(failures(await runDoctor(input({ config: tokenConfig }))), [
         'Package tables: missing custom_api_tokens',
       ])
-      const sessionConfig = defineConfig(
+      const sessionConfig = resolveConfig(
         makeConfig({
           users: makeUsersAdapter(kit.db, kit.hash),
           enabled: ['accountDeletion'],
@@ -229,7 +229,7 @@ test.group('account-kit:doctor', (group) => {
 
   // Four schema rebuilds outlast Japa's 2s default on MySQL.
   test('export requires every table it reads', async ({ assert }) => {
-    const exportOnly = defineConfig(
+    const exportOnly = resolveConfig(
       makeConfig({ users: makeUsersAdapter(kit.db, kit.hash), enabled: ['dataExport'] })
     )
     for (const table of [
@@ -262,13 +262,13 @@ test.group('account-kit:doctor', (group) => {
   }).timeout(10_000)
 
   test('names users-table columns the configuration needs', async ({ assert }) => {
-    const withLogin = defineConfig(
+    const withLogin = resolveConfig(
       makeConfig({
         users: makeUsersAdapter(kit.db, kit.hash),
         authentication: { strategy: 'session', guard: 'web' },
       })
     )
-    const withoutLogin = defineConfig(makeConfig({ users: makeUsersAdapter(kit.db, kit.hash) }))
+    const withoutLogin = resolveConfig(makeConfig({ users: makeUsersAdapter(kit.db, kit.hash) }))
     try {
       await kit.db.connection().schema.alterTable('users', (table) => {
         table.dropColumn('credentials_changed_at')
@@ -306,11 +306,11 @@ test.group('account-kit:doctor', (group) => {
           providers: { google: provider('doctor', 'person@example.test', true) },
         },
       }
-      const open = defineConfig(makeConfig({ ...options, enabled: [...options.enabled] }))
+      const open = resolveConfig(makeConfig({ ...options, enabled: [...options.enabled] }))
       assert.deepEqual(failures(await runDoctor(input({ config: open }))), [
         'Users table: users.password must allow NULL for social registration',
       ])
-      const closed = defineConfig(
+      const closed = resolveConfig(
         makeConfig({
           ...options,
           enabled: [...options.enabled],
@@ -318,7 +318,7 @@ test.group('account-kit:doctor', (group) => {
         })
       )
       assert.deepEqual(failures(await runDoctor(input({ config: closed }))), [])
-      const passwordOnly = defineConfig(
+      const passwordOnly = resolveConfig(
         makeConfig({ users: options.users, enabled: ['registration'] })
       )
       assert.deepEqual(failures(await runDoctor(input({ config: passwordOnly }))), [])
@@ -329,7 +329,7 @@ test.group('account-kit:doctor', (group) => {
 
   test('reports user metadata that cannot be resolved', async ({ assert }) => {
     const users = makeUsersAdapter(kit.db, kit.hash)
-    const config = defineConfig(
+    const config = resolveConfig(
       makeConfig({
         users: {
           ...users,
@@ -345,7 +345,7 @@ test.group('account-kit:doctor', (group) => {
   })
 
   test('sign-in requires the session registry table', async ({ assert }) => {
-    const withLogin = defineConfig(
+    const withLogin = resolveConfig(
       makeConfig({
         users: makeUsersAdapter(kit.db, kit.hash),
         authentication: { strategy: 'session', guard: 'web' },
@@ -380,10 +380,10 @@ test.group('account-kit:doctor', (group) => {
     kernel.ui.logger.error = (message) => {
       errors.push(String(message))
     }
-    const previous = process.env.APP_URL
+    let appUrl: string | undefined
     try {
-      process.env.APP_URL = 'https://example.test'
-      const absent = await kernel.exec('account-kit:doctor', [])
+      appUrl = 'https://example.test'
+      const absent = await kernel.exec('account-kit:doctor', appUrl ? [`--app-url=${appUrl}`] : [])
       assert.equal(absent.exitCode, 1)
       assert.deepEqual(errors, [
         "Users table: table absent_users does not exist. Verify the configured users table mapping. Restore absent_users from a backup or run the application's own users migration as appropriate",
@@ -395,14 +395,15 @@ test.group('account-kit:doctor', (group) => {
         table.string('password')
       })
       errors.length = 0
-      const missingColumns = await kernel.exec('account-kit:doctor', [])
+      const missingColumns = await kernel.exec(
+        'account-kit:doctor',
+        appUrl ? [`--app-url=${appUrl}`] : []
+      )
       assert.equal(missingColumns.exitCode, 1)
       assert.deepEqual(errors, [
         'Users table: absent_users is missing unverified_email, email_verified_at. Run `node ace configure @kevinjohn/adonisjs-account-kit`, then `node ace migration:run`',
       ])
     } finally {
-      if (previous === undefined) delete process.env.APP_URL
-      else process.env.APP_URL = previous
       kit.app.config.set('account_kit', undefined)
       await kit.db.connection().schema.dropTableIfExists('absent_users')
     }
@@ -412,7 +413,7 @@ test.group('account-kit:doctor', (group) => {
     assert,
   }) => {
     const app = await bootTestApp({ accountKitProvider: 'source' })
-    const previous = process.env.APP_URL
+    let appUrl: string | undefined
     try {
       const users = makeUsersAdapter(app.db, app.hash)
       const config = makeConfig({ users: undefined })
@@ -430,19 +431,17 @@ test.group('account-kit:doctor', (group) => {
       kernel.ui.logger.error = (message) => {
         errors.push(String(message))
       }
-      process.env.APP_URL = 'https://example.test'
-      const command = await kernel.exec('account-kit:doctor', [])
+      appUrl = 'https://example.test'
+      const command = await kernel.exec('account-kit:doctor', appUrl ? [`--app-url=${appUrl}`] : [])
       assert.equal(command.exitCode, 1)
       assert.match(errors.join('\n'), /table absent_users does not exist/)
     } finally {
-      if (previous === undefined) delete process.env.APP_URL
-      else process.env.APP_URL = previous
       await app.close()
     }
   })
 
   test('the Ace command prints each check and exits 1 on a failure', async ({ assert }) => {
-    const previous = process.env.APP_URL
+    let appUrl: string | undefined
     let callbackCalls = 0
     const base = makeConfig({ users: makeUsersAdapter(kit.db, kit.hash) })
     kit.app.config.set(
@@ -474,8 +473,8 @@ test.group('account-kit:doctor', (group) => {
       infos.push(String(message))
     }
     try {
-      process.env.APP_URL = 'http://localhost:3333'
-      const passing = await kernel.exec('account-kit:doctor', [])
+      appUrl = 'http://localhost:3333'
+      const passing = await kernel.exec('account-kit:doctor', appUrl ? [`--app-url=${appUrl}`] : [])
       assert.equal(passing.exitCode, 0)
       assert.lengthOf(successes, 5)
       assert.deepEqual(errors, [])
@@ -490,14 +489,12 @@ test.group('account-kit:doctor', (group) => {
       assert.equal(callbackCalls, 0)
 
       const passingInfoCount = infos.length
-      delete process.env.APP_URL
-      const failing = await kernel.exec('account-kit:doctor', [])
+      appUrl = undefined
+      const failing = await kernel.exec('account-kit:doctor', appUrl ? [`--app-url=${appUrl}`] : [])
       assert.equal(failing.exitCode, 1)
-      assert.deepEqual(errors, ['APP_URL: is not set. Set APP_URL to the public base URL'])
+      assert.deepEqual(errors, ['APP_URL: is not set. Pass --app-url with the public base URL'])
       assert.lengthOf(infos, passingInfoCount)
     } finally {
-      if (previous === undefined) delete process.env.APP_URL
-      else process.env.APP_URL = previous
       kit.app.config.set('account_kit', undefined)
     }
   })
@@ -513,12 +510,12 @@ for (const environment of ['development', 'production'] as const) {
         else process.env.NODE_ENV = previous
       }
     })
-    const kit = useTestApp(group)
+    const kit = useTestApp(group, { accountKitProvider: 'source' })
 
     test('the Ace command checks the effective backend origin when action URLs configure it', async ({
       assert,
     }) => {
-      const previous = process.env.APP_URL
+      let appUrl: string | undefined
       const base = makeConfig({ users: makeUsersAdapter(kit.db, kit.hash) })
       const { kernel } = aceKernel(kit, [AccountKitDoctor])
       const successes: string[] = []
@@ -536,7 +533,7 @@ for (const environment of ['development', 'production'] as const) {
         environment: 'development',
       } as const
       try {
-        delete process.env.APP_URL
+        appUrl = undefined
         for (const setting of ['PUBLIC_API_URL', undefined]) {
           kit.app.config.set(
             'account_kit',
@@ -545,13 +542,19 @@ for (const environment of ['development', 'production'] as const) {
               urls: createActionUrls({ ...options, backendOriginSetting: setting }),
             })
           )
-          const command = await kernel.exec('account-kit:doctor', [])
+          const command = await kernel.exec(
+            'account-kit:doctor',
+            appUrl ? [`--app-url=${appUrl}`] : []
+          )
           assert.equal(command.exitCode, 0)
           assert.include(successes, `${setting ?? 'urls.backendOrigin'}: https://api.example.test`)
           assert.deepEqual(errors, [])
         }
-        process.env.APP_URL = options.backendOrigin
-        const conventional = await kernel.exec('account-kit:doctor', [])
+        appUrl = options.backendOrigin
+        const conventional = await kernel.exec(
+          'account-kit:doctor',
+          appUrl ? [`--app-url=${appUrl}`] : []
+        )
         assert.equal(conventional.exitCode, 0)
         assert.include(successes, 'APP_URL: https://api.example.test')
         if (environment === 'production') {
@@ -561,16 +564,17 @@ for (const environment of ['development', 'production'] as const) {
             backendOriginSetting: 'PUBLIC_API_URL',
           })
           kit.app.config.set('account_kit', defineConfig({ ...base, urls }))
-          process.env.APP_URL = 'https://example.test'
-          const command = await kernel.exec('account-kit:doctor', [])
+          appUrl = 'https://example.test'
+          const command = await kernel.exec(
+            'account-kit:doctor',
+            appUrl ? [`--app-url=${appUrl}`] : []
+          )
           assert.equal(command.exitCode, 1)
           assert.deepEqual(errors, [
             'PUBLIC_API_URL: must use HTTPS in production. Use an https:// URL',
           ])
         }
       } finally {
-        if (previous === undefined) delete process.env.APP_URL
-        else process.env.APP_URL = previous
         kit.app.config.set('account_kit', undefined)
       }
     })
@@ -579,7 +583,7 @@ for (const environment of ['development', 'production'] as const) {
       assert,
     }) => {
       assert.equal(kit.app.nodeEnvironment, environment)
-      const previous = process.env.APP_URL
+      let appUrl: string | undefined
       const base = makeConfig({ users: makeUsersAdapter(kit.db, kit.hash) })
       let callbackCalls = 0
       kit.app.config.set(
@@ -639,8 +643,11 @@ for (const environment of ['development', 'production'] as const) {
           successes.length = 0
           errors.length = 0
           infos.length = 0
-          process.env.APP_URL = url
-          const command = await kernel.exec('account-kit:doctor', [])
+          appUrl = url
+          const command = await kernel.exec(
+            'account-kit:doctor',
+            appUrl ? [`--app-url=${appUrl}`] : []
+          )
           assert.equal(command.exitCode, expected === null ? 0 : 1)
           if (expected === null) {
             assert.deepEqual(errors, [])
@@ -662,8 +669,6 @@ for (const environment of ['development', 'production'] as const) {
         assert.equal(callbackCalls, 0)
         assert.isTrue(AccountKitDoctor.options.startApp)
       } finally {
-        if (previous === undefined) delete process.env.APP_URL
-        else process.env.APP_URL = previous
         kit.app.config.set('account_kit', undefined)
       }
     })

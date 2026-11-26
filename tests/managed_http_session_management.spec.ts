@@ -1,13 +1,13 @@
 import { test } from '@japa/runner'
 import { DateTime } from 'luxon'
-import { registerManagedRoutes } from '../src/http/managed.js'
-import { E_ACCOUNT_KIT_INVALID_SESSION } from '../src/errors.js'
-import type { AccountKitConfig, CurrentAccountInput, UserId } from '../src/types.js'
-import { useTestApp } from './helpers/app.js'
-import { accessTokenDefaults } from './helpers/access_tokens.js'
-import { insertUser, makeService } from './helpers/fakes.js'
-import { fakeManagedHttp, stubGuard } from './helpers/managed_http_fakes.js'
-import { dbTime } from './helpers/db_time.js'
+import { registerManagedRoutes } from '../src/http/managed.ts'
+import { E_ACCOUNT_KIT_INVALID_SESSION } from '../src/errors.ts'
+import type { AccountKitConfig, CurrentAccountInput, UserId } from '../src/types.ts'
+import { useTestApp } from './helpers/app.ts'
+import { accessTokenDefaults } from './helpers/access_tokens.ts'
+import { insertUser, makeService } from './helpers/fakes.ts'
+import { fakeManagedHttp, stubGuard } from './helpers/managed_http_fakes.ts'
+import { dbTime } from './helpers/db_time.ts'
 
 type Validator = { validate(data: unknown): Promise<unknown> }
 

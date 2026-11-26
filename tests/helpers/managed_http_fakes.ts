@@ -2,7 +2,7 @@ import type { HttpContext, Router } from '@adonisjs/core/http'
 import { RequestFactory } from '@adonisjs/core/factories/http'
 import { IncomingMessage } from 'node:http'
 import { Socket } from 'node:net'
-import type { ManagedGuard } from '../../src/http/managed.js'
+import type { ManagedGuard } from '../../src/http/managed.ts'
 
 /** A real AdonisJS request, including content negotiation, for response fixtures. */
 export function requestWithHeaders(headers: Record<string, string> = {}) {

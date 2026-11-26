@@ -1,16 +1,16 @@
 import { test } from '@japa/runner'
-import { defineConfig } from '../src/account_kit.js'
+import { resolveConfig as defineConfig } from '../src/config.ts'
 import {
   E_ACCOUNT_KIT_AUTHORIZATION,
   E_ACCOUNT_KIT_INVALID_INPUT,
   E_ACCOUNT_KIT_INVITATION_NOT_FOUND,
   E_ACCOUNT_KIT_INVALID_TOKEN,
   E_ACCOUNT_KIT_POST_COMMIT,
-} from '../src/errors.js'
-import { hashToken } from '../src/tokens.js'
-import type { AccountUser, Trx } from '../src/types.js'
-import { bootTestApp, useTestApp } from './helpers/app.js'
-import { invitationHelpers } from './helpers/invitations.js'
+} from '../src/errors.ts'
+import { hashToken } from '../src/tokens.ts'
+import type { AccountUser, Trx } from '../src/types.ts'
+import { bootTestApp, useTestApp } from './helpers/app.ts'
+import { invitationHelpers } from './helpers/invitations.ts'
 import {
   accountKit,
   allowAll,
@@ -18,10 +18,10 @@ import {
   makeNotify,
   makeUsersAdapter,
   tokenFrom,
-} from './helpers/fakes.js'
-import { faultNthCommit } from './helpers/fault_after_commit.js'
-import { resetSchema } from './helpers/schema.js'
-import { locksRows } from './helpers/dialect.js'
+} from './helpers/fakes.ts'
+import { faultNthCommit } from './helpers/fault_after_commit.ts'
+import { resetSchema } from './helpers/schema.ts'
+import { locksRows } from './helpers/dialect.ts'
 
 test.group('invitations.revoke', (group) => {
   const kit = useTestApp(group)

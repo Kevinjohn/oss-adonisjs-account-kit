@@ -1,6 +1,6 @@
 import { DateTime } from 'luxon'
 import { test } from '@japa/runner'
-import { toInvitation } from '../src/invitation_rows.js'
+import { toInvitation } from '../src/invitation_rows.ts'
 
 test.group('database row mapping', () => {
   test('maps an invitation and omits its private token hash', async ({ assert }) => {

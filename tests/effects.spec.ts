@@ -1,7 +1,7 @@
 import { test } from '@japa/runner'
-import { E_ACCOUNT_KIT_DELIVERY, E_ACCOUNT_KIT_POST_COMMIT } from '../src/errors.js'
-import { createLifecycleEffect, postCommit } from '../src/effects.js'
-import type { LifecycleEvent } from '../src/types.js'
+import { E_ACCOUNT_KIT_DELIVERY, E_ACCOUNT_KIT_POST_COMMIT } from '../src/errors.ts'
+import { createLifecycleEffect, postCommit } from '../src/effects.ts'
+import type { LifecycleEvent } from '../src/types.ts'
 
 test.group('post-commit effects', () => {
   test('attempts every delivery and reports delivery-only failure', async ({ assert }) => {
@@ -31,12 +31,10 @@ test.group('post-commit effects', () => {
     }
     assert.instanceOf(failure, E_ACCOUNT_KIT_DELIVERY)
     assert.deepEqual(events, ['one', 'two'])
-    assert.deepEqual(
-      (failure as InstanceType<typeof E_ACCOUNT_KIT_DELIVERY>).cause instanceof AggregateError
-        ? ((failure as InstanceType<typeof E_ACCOUNT_KIT_DELIVERY>).cause as AggregateError).errors
-        : [],
-      [first, second]
-    )
+    assert.deepEqual((failure as InstanceType<typeof E_ACCOUNT_KIT_DELIVERY>).cause, [
+      first,
+      second,
+    ])
   })
 
   test('an observer failure makes mixed follow-ups a committed-change error', async ({
@@ -64,13 +62,10 @@ test.group('post-commit effects', () => {
       failure = error
     }
     assert.instanceOf(failure, E_ACCOUNT_KIT_POST_COMMIT)
-    assert.deepEqual(
-      (failure as InstanceType<typeof E_ACCOUNT_KIT_POST_COMMIT>).cause instanceof AggregateError
-        ? ((failure as InstanceType<typeof E_ACCOUNT_KIT_POST_COMMIT>).cause as AggregateError)
-            .errors
-        : [],
-      [delivery, observer]
-    )
+    assert.deepEqual((failure as InstanceType<typeof E_ACCOUNT_KIT_POST_COMMIT>).cause, [
+      delivery,
+      observer,
+    ])
   })
 
   test('lifecycle wraps the event hook as an observer effect run at follow-up time', async ({

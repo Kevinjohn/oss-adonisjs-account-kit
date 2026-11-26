@@ -1,5 +1,5 @@
-import { E_ACCOUNT_KIT_INVALID_INPUT } from './errors.js'
-import type { ResolvedConfig } from './types.js'
+import { E_ACCOUNT_KIT_INVALID_INPUT } from './errors.ts'
+import type { ResolvedConfig } from './types.ts'
 
 /** Lower-cased account field names that registration data may never set. */
 export const PROTECTED_FIELDS: ReadonlySet<string> = new Set([

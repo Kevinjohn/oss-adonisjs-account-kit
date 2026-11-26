@@ -1,10 +1,10 @@
 import { test } from '@japa/runner'
-import { registerManagedRoutes } from '../src/http/managed.js'
-import { E_ACCOUNT_KIT_ADAPTER_CONTRACT } from '../src/errors.js'
-import { useTestApp } from './helpers/app.js'
-import { insertUser, makeNotify, makeService } from './helpers/fakes.js'
-import { fakeManagedHttp, stubGuard } from './helpers/managed_http_fakes.js'
-import { dbTime } from './helpers/db_time.js'
+import { registerManagedRoutes } from '../src/http/managed.ts'
+import { E_ACCOUNT_KIT_ADAPTER_CONTRACT } from '../src/errors.ts'
+import { useTestApp } from './helpers/app.ts'
+import { insertUser, makeNotify, makeService } from './helpers/fakes.ts'
+import { fakeManagedHttp, stubGuard } from './helpers/managed_http_fakes.ts'
+import { dbTime } from './helpers/db_time.ts'
 
 test.group('managed HTTP verification policy with live account state', (group) => {
   const app = useTestApp(group)

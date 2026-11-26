@@ -1,10 +1,10 @@
 import { test } from '@japa/runner'
-import { E_ACCOUNT_KIT_SOCIAL_USER_NOT_FOUND } from '../src/errors.js'
-import { useTestApp } from './helpers/app.js'
-import { insertUser, makeService } from './helpers/fakes.js'
-import type { SocialProvider } from '../src/types.js'
-import { clientChallenge, current, provider } from './helpers/social_identity.js'
-import { dbTime } from './helpers/db_time.js'
+import { E_ACCOUNT_KIT_SOCIAL_USER_NOT_FOUND } from '../src/errors.ts'
+import { useTestApp } from './helpers/app.ts'
+import { insertUser, makeService } from './helpers/fakes.ts'
+import type { SocialProvider } from '../src/types.ts'
+import { clientChallenge, current, provider } from './helpers/social_identity.ts'
+import { dbTime } from './helpers/db_time.ts'
 
 test.group('social unlink atomicity', (group) => {
   const kit = useTestApp(group)

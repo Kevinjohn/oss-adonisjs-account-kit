@@ -77,6 +77,7 @@ before `defineConfig` so only test runs load the capture:
 
 ```ts
 import app from '@adonisjs/core/services/app'
+import logger from '@adonisjs/core/services/logger'
 import { createLogNotifications } from '@kevinjohn/adonisjs-account-kit'
 
 const testMailModule = app.inTest ? await import('#tests/helpers/account_mail') : null
@@ -85,6 +86,7 @@ const testMailModule = app.inTest ? await import('#tests/helpers/account_mail') 
 notify: testMailModule
   ? testMailModule.accountMail.notify
   : createLogNotifications({
+    logger: () => logger,
       brandName: 'My App',
       environment: app.inProduction ? 'production' : 'development',
     }),

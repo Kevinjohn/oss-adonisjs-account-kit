@@ -1,9 +1,9 @@
 import type { Database } from '@adonisjs/lucid/database'
-import { actionUrlBackendOrigins, requireTrustedOrigin } from './action_urls.js'
-import { requireUserMetadata } from './db.js'
-import { packageTables } from './package_tables.js'
-import { userOwnedRows } from './user_rows.js'
-import type { Capability, ResolvedConfig } from './types.js'
+import { actionUrlBackendOrigins, requireTrustedOrigin } from './action_urls.ts'
+import { requireUserMetadata } from './db.ts'
+import { packageTables } from './package_tables.ts'
+import { userOwnedRows } from './user_rows.ts'
+import type { Capability, ResolvedConfig } from './types.ts'
 
 export interface DoctorCheck {
   name: string
@@ -56,7 +56,15 @@ function checkBackendOrigin(
   environment: DoctorInput['environment']
 ): DoctorCheck {
   if (!value)
-    return { name, ok: false, detail: 'is not set', fix: `Set ${name} to the public base URL` }
+    return {
+      name,
+      ok: false,
+      detail: 'is not set',
+      fix:
+        name === 'APP_URL'
+          ? 'Pass --app-url with the public base URL'
+          : `Set ${name} to the public base URL`,
+    }
   let url: URL
   try {
     url = new URL(value)

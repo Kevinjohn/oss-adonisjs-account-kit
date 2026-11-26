@@ -1,5 +1,5 @@
 import { test } from '@japa/runner'
-import { isDomainAllowed, extractEmailDomain } from '../src/admission/domain.js'
+import { isDomainAllowed, extractEmailDomain } from '../src/admission/domain.ts'
 
 const exact = { allowed: ['example.com'], includeSubdomains: false }
 const nested = { allowed: ['example.com'], includeSubdomains: true }

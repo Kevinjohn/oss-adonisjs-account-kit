@@ -5,10 +5,11 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { DatabaseSync } from 'node:sqlite'
 import { fileURLToPath } from 'node:url'
-import { AccountKit, defineConfig } from '../src/account_kit.js'
-import { consume, buildLimiterKey } from '../src/throttle.js'
-import { useTestApp } from './helpers/app.js'
-import { makeConfig, makeUsersAdapter } from './helpers/fakes.js'
+import { AccountKit } from '../src/account_kit.ts'
+import { resolveConfig as defineConfig } from '../src/config.ts'
+import { consume, buildLimiterKey } from '../src/throttle.ts'
+import { useTestApp } from './helpers/app.ts'
+import { makeConfig, makeUsersAdapter } from './helpers/fakes.ts'
 
 test.group('limiter privacy', (group) => {
   const kit = useTestApp(group)

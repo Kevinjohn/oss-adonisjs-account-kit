@@ -1,4 +1,4 @@
-import type { UserId, AccountUser, Invitation } from './types.js'
+import type { UserId, AccountUser, Invitation } from './types.ts'
 
 /**
  * Input for `registration.register`. `registrationData` is untrusted and goes through

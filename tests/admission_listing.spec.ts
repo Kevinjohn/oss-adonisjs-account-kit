@@ -1,11 +1,9 @@
-/* eslint-disable @unicorn/no-await-expression-member -- Keep each assertion next to the operation it inspects. */
-
 import { test } from '@japa/runner'
-import { E_ACCOUNT_KIT_AUTHORIZATION, E_ACCOUNT_KIT_INVALID_INPUT } from '../src/errors.js'
-import { useAdmissionApp } from './helpers/admission_schema.js'
-import { allowDecisions, makeAdmission, writeAdmissionRow } from './helpers/admission.js'
-import { insertUser, makeUsersAdapter } from './helpers/fakes.js'
-import { dbTime } from './helpers/db_time.js'
+import { E_ACCOUNT_KIT_AUTHORIZATION, E_ACCOUNT_KIT_INVALID_INPUT } from '../src/errors.ts'
+import { useAdmissionApp } from './helpers/admission_schema.ts'
+import { allowDecisions, makeAdmission, writeAdmissionRow } from './helpers/admission.ts'
+import { insertUser, makeUsersAdapter } from './helpers/fakes.ts'
+import { dbTime } from './helpers/db_time.ts'
 
 const approvalOnly = { approval: { required: true as const, authorize: allowDecisions } }
 
@@ -34,6 +32,7 @@ test.group('admission listing', (group) => {
     const { actor, people } = await seed()
     const { admission } = makeAdmission(kit, approvalOnly)
     const emails = async (status?: 'pending' | 'approved' | 'rejected' | 'revoked') =>
+      // eslint-disable-next-line @unicorn/no-await-expression-member -- Assert the result at the call site.
       (await admission.list({ actorId: actor.id, status })).items.map((item) => item.email)
     assert.deepEqual(await emails('pending'), [people.pending.email])
     assert.deepEqual(await emails('approved'), [actor.email, people.approved.email])

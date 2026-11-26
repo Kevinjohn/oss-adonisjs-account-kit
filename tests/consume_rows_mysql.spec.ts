@@ -1,6 +1,6 @@
 import { test } from '@japa/runner'
-import { consumeRows } from '../src/consume_rows.js'
-import type { Trx } from '../src/types.js'
+import { consumeRows } from '../src/consume_rows.ts'
+import type { Trx } from '../src/types.ts'
 
 /**
  * MySQL has no `delete ... returning`, so consumeRows finds the ids, locks those rows by primary

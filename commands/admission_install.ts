@@ -1,12 +1,13 @@
+import { environmentOverrides } from './environment_overrides.ts'
 import { readFile } from 'node:fs/promises'
 import { relative, resolve, sep } from 'node:path'
 import { BaseCommand, flags } from '@adonisjs/core/ace'
-import { buildMigrationSchema, type UserIdType } from '../src/setup/migration_definitions.js'
-import { inspectMigrationDirectory } from '../src/setup/migration_paths.js'
-import { orderMigrations } from '../src/setup/migration_order.js'
-import { readRegularFile } from '../src/setup/safe_path.js'
-import { hasRegisteredCommand } from '../src/setup/commands_inspection.js'
-import { stubsRoot } from '../stubs/main.js'
+import { buildMigrationSchema, type UserIdType } from '../src/setup/migration_definitions.ts'
+import { inspectMigrationDirectory, migrationStubPath } from '../src/setup/migration_paths.ts'
+import { orderMigrations } from '../src/setup/migration_order.ts'
+import { readRegularFile } from '../src/setup/safe_path.ts'
+import { hasRegisteredCommand } from '../src/setup/commands_inspection.ts'
+import { stubsRoot } from '../stubs/main.ts'
 
 const admissionMigration = 'admission_create_account_admissions'
 
@@ -31,6 +32,9 @@ export default class InstallAdmission extends BaseCommand {
   })
   declare migrationDirectory?: string
 
+  @flags.array({ description: 'Explicit setup environment override (NAME=value, repeatable)' })
+  declare env?: string[]
+
   async run(): Promise<void> {
     const root = resolve(this.app.makePath(''))
     let schema: ReturnType<typeof buildMigrationSchema>
@@ -45,7 +49,7 @@ export default class InstallAdmission extends BaseCommand {
         root,
         (await readRegularFile(root, relative(root, this.app.configPath('database.ts')))) ?? '',
         this.migrationDirectory,
-        process.env,
+        environmentOverrides(this.env),
         relative(root, this.app.migrationsPath()).split(sep).join('/'),
         [admissionMigration]
       )
@@ -66,7 +70,10 @@ export default class InstallAdmission extends BaseCommand {
     if (existing) this.logger.info(`Skipped ${migrationPath}`)
     else
       await codemods.makeUsingStub(stubsRoot, 'migrations/create_account_admissions.stub', {
-        migration: { ...schema, destination: resolve(root, migrationPath) },
+        migration: {
+          ...schema,
+          path: migrationStubPath(this.app.migrationsPath(), resolve(root, migrationPath)),
+        },
       })
 
     const rcContents = await readFile(this.app.makePath('adonisrc.ts'), 'utf8')
@@ -85,7 +92,7 @@ export default class InstallAdmission extends BaseCommand {
       '  1. In config/account_kit.ts, wrap onInvitationAccepted with withInvitationEvidence(...) and set onAccountDeletingTransaction: withAdmissionCleanup(...)'
     )
     this.logger.log(
-      '  2. Gate protected routes with admissionMiddleware(...), and keep the admission status route reachable'
+      '  2. Gate protected routes with AdmissionMiddleware, and keep the admission status route reachable'
     )
     this.logger.log(
       '  3. Decide who may approve in config/admission.ts (approval.authorize), then run node ace migration:run'

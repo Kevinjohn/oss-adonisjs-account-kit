@@ -1,5 +1,5 @@
 import { Kernel, ListLoader, type BaseCommand } from '@adonisjs/core/ace'
-import type { TestApp } from './app.js'
+import type { TestApp } from './app.ts'
 
 export interface AceLog {
   message: string

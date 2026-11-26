@@ -1,4 +1,4 @@
-import type { TestApp } from './app.js'
+import type { TestApp } from './app.ts'
 
 /**
  * A users table owned by another ORM: canonical columns, database defaults for everything the

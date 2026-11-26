@@ -1,14 +1,14 @@
 import { randomUUID } from 'node:crypto'
 import { DateTime } from 'luxon'
-import { requireAccountAccessDecision } from './account_access_decision.js'
-import { revision } from './credential_revision.js'
-import { lockUser, transaction, isUserEmailUniqueViolation, isUniqueViolation } from './db.js'
-import { consumeRows } from './consume_rows.js'
-import { finishCommitted, postCommit, settleCommitted } from './effects.js'
-import { emitInvitationAccepted } from './invitation_match.js'
-import { createHandoff } from './social_handoff.js'
-import { hasConfirmedAddress, isActiveAccount } from './account_projection.js'
-import { consumeSocialSensitiveProofHash, issueProof } from './social_proofs.js'
+import { requireAccountAccessDecision } from './account_access_decision.ts'
+import { revision } from './credential_revision.ts'
+import { lockUser, transaction, isUserEmailUniqueViolation, isUniqueViolation } from './db.ts'
+import { consumeRows } from './consume_rows.ts'
+import { finishCommitted, postCommit, settleCommitted } from './effects.ts'
+import { emitInvitationAccepted } from './invitation_match.ts'
+import { createHandoff } from './social_handoff.ts'
+import { hasConfirmedAddress, isActiveAccount } from './account_projection.ts'
+import { consumeSocialSensitiveProofHash, issueProof } from './social_proofs.ts'
 import {
   E_ACCOUNT_KIT_INVALID_INPUT,
   E_ACCOUNT_KIT_SOCIAL_IDENTITY_ALREADY_LINKED,
@@ -16,19 +16,19 @@ import {
   E_ACCOUNT_KIT_SOCIAL_TRANSACTION_INVALID,
   E_ACCOUNT_KIT_SOCIAL_USER_NOT_FOUND,
   E_ACCOUNT_KIT_UNVERIFIED_EMAIL,
-} from './errors.js'
-import { readTimestamp } from './timestamps.js'
-import { generateToken, hashToken, isTokenShaped } from './tokens.js'
-import { isSocialProviderName } from './social_providers.js'
+} from './errors.ts'
+import { readTimestamp } from './timestamps.ts'
+import { generateToken, hashToken, isTokenShaped } from './tokens.ts'
+import { isSocialProviderName } from './social_providers.ts'
 import {
   requireAuthenticatedUser,
   calculateSocialExpiry,
   readSqlTimestamp,
   type Dependencies,
   type SocialTransactionResult,
-} from './social_shared.js'
-import { completeActivationByHash } from './verification.js'
-import { sendSocialActivation } from './social_activation.js'
+} from './social_shared.ts'
+import { completeActivationByHash } from './verification.ts'
+import { sendSocialActivation } from './social_activation.ts'
 import type {
   SensitivePurpose,
   SocialCallbackInput,
@@ -38,15 +38,15 @@ import type {
   VerifiedSocialAuthentication,
   Trx,
   UserId,
-} from './types.js'
+} from './types.ts'
 
 import {
   requireProviderProfile,
   createAccount,
   createAssociation,
   type ProviderProfile,
-} from './social_account_creation.js'
-export { requireProviderProfile, createAccount } from './social_account_creation.js'
+} from './social_account_creation.ts'
+export { requireProviderProfile, createAccount } from './social_account_creation.ts'
 
 interface SocialTransactionRow {
   hash: string

@@ -4,12 +4,12 @@ import {
   E_ACCOUNT_KIT_ADAPTER_CONTRACT,
   E_INVALID_CREDENTIALS,
   E_ACCOUNT_KIT_INVALID_TOKEN,
-} from '../src/errors.js'
-import { deriveClientChallenge } from '../src/magic_link.js'
-import type { AccountKitConfig, UserId } from '../src/types.js'
-import { useTestApp } from './helpers/app.js'
-import { insertUser, makeService, makeUsersAdapter, tokenFrom } from './helpers/fakes.js'
-import { dbTime } from './helpers/db_time.js'
+} from '../src/errors.ts'
+import { deriveClientChallenge } from '../src/magic_link.ts'
+import type { AccountKitConfig, UserId } from '../src/types.ts'
+import { useTestApp } from './helpers/app.ts'
+import { insertUser, makeService, makeUsersAdapter, tokenFrom } from './helpers/fakes.ts'
+import { dbTime } from './helpers/db_time.ts'
 
 const verifier = 'v'.repeat(43)
 const challenge = deriveClientChallenge(verifier)

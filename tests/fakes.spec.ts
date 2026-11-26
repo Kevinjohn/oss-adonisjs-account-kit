@@ -1,7 +1,7 @@
 import { DateTime } from 'luxon'
 import { test } from '@japa/runner'
-import { useTestApp } from './helpers/app.js'
-import { makeNotify, makeUsersAdapter } from './helpers/fakes.js'
+import { useTestApp } from './helpers/app.ts'
+import { makeNotify, makeUsersAdapter } from './helpers/fakes.ts'
 test.group('test fakes', (group) => {
   const kit = useTestApp(group)
 

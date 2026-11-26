@@ -1,9 +1,9 @@
 // Validates and defaults one throttle budget option.
 import string from '@adonisjs/core/helpers/string'
-import { assertObject } from './config_assert.js'
-import { E_ACCOUNT_KIT_INVALID_CONFIGURATION } from './errors.js'
-import type { ThrottleBudget } from './types.js'
-import { freezeResolved } from './config_freeze.js'
+import { assertObject } from './config_assert.ts'
+import { E_ACCOUNT_KIT_INVALID_CONFIGURATION } from './errors.ts'
+import type { ThrottleBudget } from './types.ts'
+import { freezeResolved } from './config_freeze.ts'
 
 export function resolveThrottleBudget(
   input: Partial<ThrottleBudget> | undefined,

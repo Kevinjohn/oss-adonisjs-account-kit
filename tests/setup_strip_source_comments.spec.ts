@@ -1,5 +1,5 @@
 import { test } from '@japa/runner'
-import { stripSourceComments } from '../src/setup/strip_source_comments.js'
+import { stripSourceComments } from '../src/setup/strip_source_comments.ts'
 
 test('source inspection removes comments while preserving escaped and template literals', async ({
   assert,

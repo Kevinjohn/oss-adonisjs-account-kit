@@ -5,9 +5,12 @@ import { test } from '@japa/runner'
 
 const root = fileURLToPath(new URL('..', import.meta.url))
 /** Core source: every package directory except the admission module itself. */
-const coreDirectories = ['src', 'providers', 'commands', 'http', 'services', 'adapters', 'testing']
-/** The install command must write the admission files, so it alone may name the module. */
-const allowed = new Set(['commands/admission_install.ts'])
+const coreDirectories = ['src', 'providers', 'commands', 'http', 'services']
+/** Admission entry points may name the optional module. */
+const allowed = new Set([
+  'commands/admission_install.ts',
+  'providers/account_admission_provider.ts',
+])
 const importsAdmission = /(?:from\s+|import\s*\(\s*)['"][^'"]*\badmission(?:\/[^'"]*)?['"]/
 
 async function sources(directory: string): Promise<string[]> {

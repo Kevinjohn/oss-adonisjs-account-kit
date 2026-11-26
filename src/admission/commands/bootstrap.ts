@@ -3,13 +3,13 @@ import {
   reportOperatorOutcome,
   completeOperatorCommand,
   writeResult,
-} from '../../../commands/operator_output.js'
+} from '../../../commands/operator_output.ts'
 import {
   E_ACCOUNT_KIT_BOOTSTRAP_APPROVAL_CHANGED,
   E_ACCOUNT_KIT_INVALID_INPUT,
-} from '../../errors.js'
-import { invitationRoleLength } from '../../invitation_input.js'
-import { AccountAdmission } from '../service.js'
+} from '../../errors.ts'
+import { invitationRoleLength } from '../../invitation_input.ts'
+import { AccountAdmission } from '../service.ts'
 
 /** First administrator in one step: an operator invitation that lands its account approved. */
 export default class BootstrapAdmission extends BaseCommand {

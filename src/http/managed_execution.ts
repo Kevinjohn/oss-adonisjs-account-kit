@@ -1,10 +1,10 @@
 import type { HttpContext } from '@adonisjs/core/http'
-import type { CurrentAccount } from '../types.js'
-import { E_ACCOUNT_KIT_INVALID_SESSION } from '../errors.js'
-import { applyProofHeaders } from './proof_headers.js'
-import { logRecoveryDiagnostic, buildPublicAccountBody } from './response_helpers.js'
-import type { ManagedHandler, ManagedRoutesOptions } from './managed_types.js'
-import type { ManagedEndpointName, ManagedRoute } from './routes.js'
+import type { CurrentAccount } from '../types.ts'
+import { E_ACCOUNT_KIT_INVALID_SESSION } from '../errors.ts'
+import { applyProofHeaders } from './proof_headers.ts'
+import { logRecoveryDiagnostic, buildPublicAccountBody } from './response_helpers.ts'
+import type { ManagedHandler, ManagedRoutesOptions } from './managed_types.ts'
+import type { ManagedEndpointName, ManagedRoute } from './routes.ts'
 import { InvalidArgumentsException } from '@adonisjs/core/exceptions'
 
 function applyRouteResponseHeaders(context: HttpContext, route: ManagedRoute): void {

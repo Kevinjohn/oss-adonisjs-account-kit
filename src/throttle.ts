@@ -1,8 +1,8 @@
 import { errors } from '@adonisjs/limiter'
 import { createHmac, hkdfSync } from 'node:crypto'
 import type { LimiterService } from '@adonisjs/limiter/types'
-import { E_ACCOUNT_KIT_THROTTLED } from './errors.js'
-import type { ResolvedConfig } from './types.js'
+import { E_ACCOUNT_KIT_THROTTLED } from './errors.ts'
+import type { ResolvedConfig } from './types.ts'
 
 export async function consume(
   limiter: LimiterService,

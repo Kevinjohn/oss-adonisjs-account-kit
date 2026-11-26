@@ -1,48 +1,19 @@
+import type {
+  RegistrationColumns,
+  RegistrationContext,
+  SqlUsersAdapterOptions,
+  SqlUsersAdapter,
+} from '../types_sql_adapters.ts'
 import { InvalidArgumentsException, RuntimeException } from '@adonisjs/core/exceptions'
 import type { Database } from '@adonisjs/lucid/database'
 import type { QueryClientContract } from '@adonisjs/lucid/types/database'
-import { E_ACCOUNT_KIT_INVALID_CONFIGURATION } from '../src/errors.js'
-import { isSqlIdentifier } from '../src/sql_identifier.js'
-import { normalizeEmail } from '../src/email.js'
-import { readTimestamp, sqlTimestamp } from '../src/timestamps.js'
-import type { AccountUser, Trx, UserId, UsersAdapter, UsersAdapterMetadata } from '../src/types.js'
+import { E_ACCOUNT_KIT_INVALID_CONFIGURATION } from '../errors.ts'
+import { isSqlIdentifier } from '../sql_identifier.ts'
+import { normalizeEmail } from '../email.ts'
+import { readTimestamp, sqlTimestamp } from '../timestamps.ts'
+import type { AccountUser, Trx, UserId } from '../types.ts'
 
-export type { UsersAdapterMetadata } from '../src/types.js'
-
-/** Extra columns for the users row, keyed by physical column name. */
-export type RegistrationColumns = Record<string, unknown>
-
-export type RegistrationContext = { operation: 'create' } | { operation: 'update'; id: UserId }
-
-export interface SqlUsersAdapterOptions {
-  /** The users table. It must use the columns id, email, unverified_email, password and email_verified_at. */
-  table: string
-  /** The Lucid database; defaults to the application's `@adonisjs/lucid/services/db`. */
-  db?: Database | (() => Promise<Database>)
-  /** Defaults to the AdonisJS hash service. */
-  hashPassword?: (password: string) => Promise<string>
-  /** Defaults to the AdonisJS hash service. */
-  verifyPassword?: (hashedPassword: string, password: string) => Promise<boolean>
-  /**
-   * Validate registration data and return extra columns to write. It may not set id, email,
-   * unverified_email, password, email_verified_at, credentials_changed_at or role.
-   */
-  mapRegistrationData?: (
-    data: unknown,
-    context: RegistrationContext
-  ) => RegistrationColumns | Promise<RegistrationColumns>
-  /** Generate the id for string keys that have no database default. */
-  generateId?: () => string
-  emailConstraint?: string
-}
-
-export type SqlUsersAdapter = UsersAdapter & {
-  hashPassword: NonNullable<UsersAdapter['hashPassword']>
-  setPasswordHash: NonNullable<UsersAdapter['setPasswordHash']>
-  updateRegistrationData: NonNullable<UsersAdapter['updateRegistrationData']>
-  delete: NonNullable<UsersAdapter['delete']>
-  resolveMetadata(): Promise<UsersAdapterMetadata>
-}
+export type { UsersAdapterMetadata } from '../types.ts'
 
 const controlledColumns = new Set([
   'id',
@@ -216,3 +187,10 @@ export function createSqlUsersAdapter(options: SqlUsersAdapterOptions): SqlUsers
     },
   }
 }
+
+export type {
+  RegistrationColumns,
+  RegistrationContext,
+  SqlUsersAdapterOptions,
+  SqlUsersAdapter,
+} from '../types_sql_adapters.ts'

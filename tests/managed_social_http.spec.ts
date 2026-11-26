@@ -1,10 +1,10 @@
 import { createHash } from 'node:crypto'
 import { test } from '@japa/runner'
 import type { HttpContext } from '@adonisjs/core/http'
-import type { AccountKit } from '../src/account_kit.js'
-import type { ManagedGuard } from '../src/http/managed.js'
-import { executeManagedSocial, rememberManagedMethod } from '../src/http/social.js'
-import { sessionStore, stubGuard } from './helpers/managed_http_fakes.js'
+import type { AccountKit } from '../src/account_kit.ts'
+import type { ManagedGuard } from '../src/http/managed.ts'
+import { executeManagedSocial, rememberManagedMethod } from '../src/http/social.ts'
+import { sessionStore, stubGuard } from './helpers/managed_http_fakes.ts'
 
 type SocialAuthentication = AccountKit['socialAuthentication']
 

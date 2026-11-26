@@ -1,5 +1,5 @@
-import { isSocialProviderName } from '../social_providers.js'
-import type { ManagedRoutesOptions } from './managed_types.js'
+import { isSocialProviderName } from '../social_providers.ts'
+import type { ManagedRoutesOptions } from './managed_types.ts'
 import { InvalidArgumentsException } from '@adonisjs/core/exceptions'
 
 /** Reject managed route options that cannot work with the selected guard or providers. */

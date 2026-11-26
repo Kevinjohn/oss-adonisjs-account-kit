@@ -1,8 +1,8 @@
 import { test } from '@japa/runner'
-import { E_ACCOUNT_KIT_INVALID_INPUT } from '../src/errors.js'
-import type { UsersAdapter } from '../src/types.js'
-import { useTestApp } from './helpers/app.js'
-import { insertUser, makeService, makeUsersAdapter, tokenFrom } from './helpers/fakes.js'
+import { E_ACCOUNT_KIT_INVALID_INPUT } from '../src/errors.ts'
+import type { UsersAdapter } from '../src/types.ts'
+import { useTestApp } from './helpers/app.ts'
+import { insertUser, makeService, makeUsersAdapter, tokenFrom } from './helpers/fakes.ts'
 
 test.group('invitation management contracts', (group) => {
   const kit = useTestApp(group)

@@ -1,5 +1,5 @@
 import { test } from '@japa/runner'
-import { assertObject } from '../src/config_assert.js'
+import { assertObject } from '../src/config_assert.ts'
 
 test.group('config section guard', () => {
   test('accepts objects and rejects other values with one message', ({ assert }) => {

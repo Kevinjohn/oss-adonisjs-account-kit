@@ -1,16 +1,16 @@
 // Social handoff codes: issuing a one-time code after a social callback and redeeming it for a credential.
-import { requireAccountAccessDecision } from './account_access_decision.js'
-import { sqlTimestamp } from './timestamps.js'
-import { establishCredential } from './credential_issuance.js'
+import { requireAccountAccessDecision } from './account_access_decision.ts'
+import { sqlTimestamp } from './timestamps.ts'
+import { establishCredential } from './credential_issuance.ts'
 import { DateTime } from 'luxon'
-import { revision } from './credential_revision.js'
-import { buildAccountProjection } from './account_projection.js'
-import { lockUser, transaction } from './db.js'
-import { consumeRows } from './consume_rows.js'
-import { isClientVerifier, verifierMatches } from './client_challenge.js'
-import { E_ACCOUNT_KIT_SOCIAL_TRANSACTION_INVALID } from './errors.js'
-import { listEnabledSocialProviders, readSqlTimestamp, type Dependencies } from './social_shared.js'
-import { generateToken, hashToken, isTokenShaped } from './tokens.js'
+import { revision } from './credential_revision.ts'
+import { buildAccountProjection } from './account_projection.ts'
+import { lockUser, transaction } from './db.ts'
+import { consumeRows } from './consume_rows.ts'
+import { isClientVerifier, verifierMatches } from './client_challenge.ts'
+import { E_ACCOUNT_KIT_SOCIAL_TRANSACTION_INVALID } from './errors.ts'
+import { listEnabledSocialProviders, readSqlTimestamp, type Dependencies } from './social_shared.ts'
+import { generateToken, hashToken, isTokenShaped } from './tokens.ts'
 import type {
   AuthenticationGuard,
   CurrentAccount,
@@ -18,7 +18,7 @@ import type {
   SocialProviderName,
   Trx,
   UserId,
-} from './types.js'
+} from './types.ts'
 
 export async function createHandoff(
   trx: Trx,
@@ -57,6 +57,7 @@ async function getUsableHandoffProvider(
     : null
 }
 
+/** @throws {AggregateError} If work and its transaction or credential cleanup both fail, or multiple cleanup steps fail. */
 export async function redeemSocialHandoff<Credential>(
   deps: Dependencies,
   input: {

@@ -1,6 +1,6 @@
 import { test } from '@japa/runner'
-import { planSetup } from '../src/setup/plan.js'
-import { withFixture } from './helpers/setup_prerequisites.js'
+import { planSetup } from '../src/setup/plan.ts'
+import { withFixture } from './helpers/setup_prerequisites.ts'
 
 test.group('setup dependency prerequisites', () => {
   test('setup requires an explicitly installed supported TypeScript parser', async ({ assert }) => {

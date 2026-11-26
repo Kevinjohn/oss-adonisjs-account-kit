@@ -1,19 +1,19 @@
+import AdmissionMiddleware from '../src/admission/middleware.ts'
 import { test } from '@japa/runner'
 import {
   E_ACCOUNT_KIT_ADMISSION_REQUIRED,
   E_ACCOUNT_KIT_INVALID_SESSION,
   E_ACCOUNT_KIT_UNVERIFIED_EMAIL,
-} from '../src/errors.js'
-import { admissionMiddleware } from '../src/admission/middleware.js'
-import { advanceCredentialRevision } from '../src/credential_revision.js'
-import { transaction } from '../src/db.js'
-import { accountErrorResponse } from '../src/error_response.js'
-import type { AuthenticationConfig, CurrentAccountInput, Trx, UserId } from '../src/types.js'
-import { useAdmissionApp } from './helpers/admission_schema.js'
-import { allowDecisions, makeAdmission, writeAdmissionRow } from './helpers/admission.js'
-import { insertUser, makeUsersAdapter, unwrapId } from './helpers/fakes.js'
-import type { TestApp } from './helpers/app.js'
-import { accessTokenDefaults } from './helpers/access_tokens.js'
+} from '../src/errors.ts'
+import { advanceCredentialRevision } from '../src/credential_revision.ts'
+import { transaction } from '../src/db.ts'
+import { accountErrorResponse } from '../src/error_response.ts'
+import type { AuthenticationConfig, CurrentAccountInput, Trx, UserId } from '../src/types.ts'
+import { useAdmissionApp } from './helpers/admission_schema.ts'
+import { allowDecisions, makeAdmission, writeAdmissionRow } from './helpers/admission.ts'
+import { insertUser, makeUsersAdapter, unwrapId } from './helpers/fakes.ts'
+import type { TestApp } from './helpers/app.ts'
+import { accessTokenDefaults } from './helpers/access_tokens.ts'
 
 const approvalOnly = { approval: { required: true as const, authorize: allowDecisions } }
 
@@ -163,21 +163,21 @@ test.group('admission gate', (group) => {
         current: async () => input,
       }
       let reached = 0
-      const handler = admissionMiddleware({ admission: async () => admission, guard })
+      const handler = new AdmissionMiddleware({ admission: async () => admission, guard })
       await assert.rejects(
-        () => handler({} as never, async () => reached++),
+        () => handler.handle({} as never, async () => reached++),
         E_ACCOUNT_KIT_ADMISSION_REQUIRED
       )
       await writeAdmissionRow(kit, person.id, { approval: 'approved' })
-      await handler({} as never, async () => reached++)
+      await handler.handle({} as never, async () => reached++)
       assert.equal(reached, 1)
 
-      const wrongGuard = admissionMiddleware({
+      const wrongGuard = new AdmissionMiddleware({
         admission: async () => admission,
         guard: { ...guard, name: 'other' },
       })
       await assert.rejects(
-        () => wrongGuard({} as never, async () => reached++),
+        () => wrongGuard.handle({} as never, async () => reached++),
         /configured existing authentication guard/
       )
       assert.equal(reached, 1)
@@ -198,17 +198,21 @@ test.group('admission gate', (group) => {
     let reached = false
     await assert.rejects(
       () =>
-        admissionMiddleware({ admission: async () => admission, guard })({} as never, async () => {
-          reached = true
-        }),
+        new AdmissionMiddleware({ admission: async () => admission, guard }).handle(
+          {} as never,
+          async () => {
+            reached = true
+          }
+        ),
       E_ACCOUNT_KIT_UNVERIFIED_EMAIL
     )
-    await admissionMiddleware({ admission: async () => admission, guard, active: false })(
-      {} as never,
-      async () => {
-        reached = true
-      }
-    )
+    await new AdmissionMiddleware({
+      admission: async () => admission,
+      guard,
+      active: false,
+    }).handle({} as never, async () => {
+      reached = true
+    })
     assert.isTrue(reached)
   })
 })

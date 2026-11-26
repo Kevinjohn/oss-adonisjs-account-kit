@@ -4,14 +4,14 @@ As an application developer, I want to require admission before protected applic
 
 **Status:** Current when admission is installed and app applies middleware
 **Access:** Host chooses guarded routes and keeps pre-admission status/sign-out routes reachable.
-**Entry:** Host applies `admissionMiddleware` or calls `admission.require` in its own middleware/controller.
+**Entry:** Host applies `AdmissionMiddleware` or calls `admission.require` in its own middleware/controller.
 **Documentation:** [admission.md](../docs/guide/admission.md)
 **Source:** [`src/admission/middleware.ts`](../src/admission/middleware.ts)
 **Coverage:** [`tests/admission_gate.spec.ts`](../tests/admission_gate.spec.ts)
 
 ## Acceptance criteria
 
-- `admissionMiddleware({ admission, guard, active? })` resolves admission, checks the selected guard's name and strategy, and passes the credential evidence from `guard.current(context)` to `require`. The managed session and access-token adapters both authenticate and make the selected guard available to downstream application code.
+- `new AdmissionMiddleware({ admission, guard, active? })` resolves admission, checks the selected guard's name and strategy, and passes the credential evidence from `guard.current(context)` to `require`. The managed session and access-token adapters both authenticate and make the selected guard available to downstream application code.
 - `AccountAdmission.require(input, { active? } = {})` evaluates current credentials and admission as in [US-ACCOUNT-56](US-ACCOUNT-56-read-current-admission-status.md). It then refuses an inactive account unless `active: false`, and refuses any unmet enabled requirement with `E_ACCOUNT_KIT_ADMISSION_REQUIRED` carrying the decision. A direct caller receives `{ account, decision }`; middleware continues to the host handler.
 
 ## User flow
@@ -37,7 +37,7 @@ The runnable API example traces the controller and middleware entry in its [admi
 
 ```mermaid
 flowchart TD
- A["admissionMiddleware resolves admission and calls kit.managedHttp.assertGuard"] --> B{"Guard matches configured name and strategy?"}
+ A["AdmissionMiddleware resolves admission and calls kit.managedHttp.assertGuard"] --> B{"Guard matches configured name and strategy?"}
  B -->|No| X["Throw guard configuration error"]
  B -->|Yes| C{"Which guard.current implementation did the host supply?"}
  C -->|Package session adapter| D["Authenticate selected guard, mark auth and read revision and optional handle"]

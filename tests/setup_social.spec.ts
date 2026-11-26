@@ -1,11 +1,11 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { test } from '@japa/runner'
-import { inspectSetup } from '../src/setup/inspect.js'
-import { planSetup } from '../src/setup/plan.js'
-import { applySetup } from '../src/setup/apply.js'
-import { generateAllyConfigSource } from '../src/setup/generated_ally_config.js'
-import { fixture, registerSetupTeardown } from './helpers/setup_project_fixture.js'
+import { inspectSetup } from '../src/setup/inspect.ts'
+import { planSetup } from '../src/setup/plan.ts'
+import { applySetup } from '../src/setup/apply.ts'
+import { generateAllyConfigSource } from '../src/setup/generated_ally_config.ts'
+import { fixture, registerSetupTeardown } from './helpers/setup_project_fixture.ts'
 
 /** The severity of the diagnostic on `field`; retirement must block with `error`. */
 const blocking = (
@@ -31,7 +31,7 @@ test.group('setup social providers', (group) => {
     choices.social = {
       status: 'enabled',
       providers: ['github'],
-      callbackOriginEnv: 'ACCOUNT_SOCIAL_ORIGIN',
+      callbackOriginEnv: 'ACCOUNT_KIT_SOCIAL_ORIGIN',
       callbackPath: '/account/auth/oauth/{provider}/callback',
       credentials: {
         github: { clientIdEnv: 'GITHUB_CLIENT_ID', clientSecretEnv: 'GITHUB_CLIENT_SECRET' },
@@ -128,7 +128,7 @@ test.group('setup social providers', (group) => {
     choices.social = {
       status: 'enabled',
       providers: ['github'],
-      callbackOriginEnv: 'ACCOUNT_SOCIAL_ORIGIN',
+      callbackOriginEnv: 'ACCOUNT_KIT_SOCIAL_ORIGIN',
       callbackPath: '/account/auth/oauth/{provider}/callback',
       credentials: {
         github: { clientIdEnv: 'GITHUB_CLIENT_ID', clientSecretEnv: 'GITHUB_CLIENT_SECRET' },
@@ -198,7 +198,7 @@ test.group('setup social providers', (group) => {
     choices.social = {
       status: 'enabled',
       providers: ['github'],
-      callbackOriginEnv: 'ACCOUNT_SOCIAL_ORIGIN',
+      callbackOriginEnv: 'ACCOUNT_KIT_SOCIAL_ORIGIN',
       callbackPath: '/account/auth/oauth/{provider}/callback',
       credentials: {
         github: { clientIdEnv: 'GITHUB_CLIENT_ID', clientSecretEnv: 'GITHUB_CLIENT_SECRET' },
@@ -270,7 +270,7 @@ test.group('setup social providers', (group) => {
       choices.social = {
         status: 'enabled',
         providers: ['github'],
-        callbackOriginEnv: 'ACCOUNT_SOCIAL_ORIGIN',
+        callbackOriginEnv: 'ACCOUNT_KIT_SOCIAL_ORIGIN',
         callbackPath: '/account/auth/oauth/{provider}/callback',
         credentials: {
           github: { clientIdEnv: 'GITHUB_CLIENT_ID', clientSecretEnv: 'GITHUB_CLIENT_SECRET' },
@@ -307,7 +307,7 @@ test.group('setup social providers', (group) => {
       assert.include(inertHeaders, 'export default class AccountKitProofHeadersMiddleware')
       assert.include(inertHeaders, `strategy: "${strategy}"`)
       assert.include(inertHeaders, 'except: ["auth.oauth.redirect"]')
-      assert.include(inertHeaders, 'return applyProofHeaders(ctx, next)')
+      assert.include(inertHeaders, 'return applyProofHeaders.handle(ctx, next)')
       assert.isFalse(
         inert.diagnostics.some(({ severity }) => severity === 'error'),
         JSON.stringify(inert.diagnostics)
@@ -354,7 +354,7 @@ test.group('setup social providers', (group) => {
     previous.social = {
       status: 'enabled',
       providers: ['google', 'github'],
-      callbackOriginEnv: 'ACCOUNT_SOCIAL_ORIGIN',
+      callbackOriginEnv: 'ACCOUNT_KIT_SOCIAL_ORIGIN',
       callbackPath: '/account/auth/oauth/{provider}/callback',
       credentials: {
         google: { clientIdEnv: 'GOOGLE_CLIENT_ID', clientSecretEnv: 'GOOGLE_CLIENT_SECRET' },

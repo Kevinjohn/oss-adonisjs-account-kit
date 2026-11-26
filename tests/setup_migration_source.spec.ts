@@ -1,6 +1,6 @@
 import { test } from '@japa/runner'
-import { migrationContent, requireMigrationTemplatePath } from '../src/setup/migration_source.js'
-import { buildMigrationSchema } from '../src/setup/migration_definitions.js'
+import { migrationContent, requireMigrationTemplatePath } from '../src/setup/migration_source.ts'
+import { buildMigrationSchema } from '../src/setup/migration_definitions.ts'
 
 test.group('setup migration templates', () => {
   test('renders a template with the selected users table and id columns', async ({ assert }) => {

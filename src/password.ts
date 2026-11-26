@@ -1,4 +1,4 @@
-import type { PasswordPolicy } from './types.js'
+import type { PasswordPolicy } from './types.ts'
 
 export const MIN_PASSWORD_LENGTH = 8
 export const MAX_PASSWORD_LENGTH = 256

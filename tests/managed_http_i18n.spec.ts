@@ -1,16 +1,16 @@
 import { readFile } from 'node:fs/promises'
 import { test } from '@japa/runner'
 import type { HttpContext } from '@adonisjs/core/http'
-import type { AccountKit } from '../src/account_kit.js'
+import type { AccountKit } from '../src/account_kit.ts'
 import {
   E_ACCOUNT_KIT_EMAIL_ALREADY_REGISTERED,
   E_ACCOUNT_KIT_INVITATION_MANAGEMENT_DENIED,
   E_ACCOUNT_KIT_THROTTLED,
-} from '../src/errors.js'
-import { accountErrorResponse } from '../src/error_response.js'
-import { registerManagedRoutes } from '../src/http/managed.js'
-import { mapManagedErrorResponse } from '../src/http/responses.js'
-import { fakeManagedHttp } from './helpers/managed_http_fakes.js'
+} from '../src/errors.ts'
+import { accountErrorResponse } from '../src/error_response.ts'
+import { registerManagedRoutes } from '../src/http/managed.ts'
+import { mapManagedErrorResponse } from '../src/http/responses.ts'
+import { fakeManagedHttp } from './helpers/managed_http_fakes.ts'
 
 const french: Record<string, string> = {
   'errors.E_ACCOUNT_KIT_THROTTLED': 'Trop de requêtes.',

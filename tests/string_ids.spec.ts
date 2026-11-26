@@ -1,10 +1,10 @@
 import { randomUUID } from 'node:crypto'
 import { DateTime } from 'luxon'
 import { test } from '@japa/runner'
-import { defineConfig } from '../src/account_kit.js'
-import { E_ACCOUNT_KIT_SESSION_NOT_FOUND } from '../src/errors.js'
-import type { AccountKitConfig, UsersAdapter } from '../src/types.js'
-import { bootTestApp } from './helpers/app.js'
+import { resolveConfig as defineConfig } from '../src/config.ts'
+import { E_ACCOUNT_KIT_SESSION_NOT_FOUND } from '../src/errors.ts'
+import type { AccountKitConfig, UsersAdapter } from '../src/types.ts'
+import { bootTestApp } from './helpers/app.ts'
 import {
   accountKit,
   makeConfig,
@@ -13,10 +13,10 @@ import {
   makeUsersAdapter,
   tokenFrom,
   unwrapId,
-} from './helpers/fakes.js'
-import { accessTokenDefaults } from './helpers/access_tokens.js'
-import { resetSchema } from './helpers/schema.js'
-import { dbTime } from './helpers/db_time.js'
+} from './helpers/fakes.ts'
+import { accessTokenDefaults } from './helpers/access_tokens.ts'
+import { resetSchema } from './helpers/schema.ts'
+import { dbTime } from './helpers/db_time.ts'
 test('account workflows support string user IDs with matching application-owned foreign keys', async ({
   assert,
 }) => {

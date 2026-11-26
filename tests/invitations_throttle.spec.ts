@@ -1,14 +1,15 @@
 import { test } from '@japa/runner'
 import { configProvider } from '@adonisjs/core'
 import { LimiterManager, stores } from '@adonisjs/limiter'
-import { AccountKit, defineConfig } from '../src/account_kit.js'
-import { accountErrorResponse } from '../src/error_response.js'
+import { AccountKit } from '../src/account_kit.ts'
+import { resolveConfig as defineConfig } from '../src/config.ts'
+import { accountErrorResponse } from '../src/error_response.ts'
 import {
   E_ACCOUNT_KIT_INVITATION_MANAGEMENT_DENIED,
   E_ACCOUNT_KIT_INVITATION_NOT_FOUND,
   E_ACCOUNT_KIT_THROTTLED,
-} from '../src/errors.js'
-import { bootTestApp, useTestApp } from './helpers/app.js'
+} from '../src/errors.ts'
+import { bootTestApp, useTestApp } from './helpers/app.ts'
 import {
   allowAll,
   insertUser,
@@ -16,9 +17,9 @@ import {
   makeService,
   makeUsersAdapter,
   tokenFrom,
-} from './helpers/fakes.js'
-import { resetSchema } from './helpers/schema.js'
-import { locksRows } from './helpers/dialect.js'
+} from './helpers/fakes.ts'
+import { resetSchema } from './helpers/schema.ts'
+import { locksRows } from './helpers/dialect.ts'
 
 test.group('invitation budgets', (group) => {
   const kit = useTestApp(group)

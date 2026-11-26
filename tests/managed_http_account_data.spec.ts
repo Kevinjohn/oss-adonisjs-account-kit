@@ -1,11 +1,11 @@
 import { test } from '@japa/runner'
-import { registerManagedRoutes } from '../src/http/managed.js'
-import type { AccountKitConfig, AccountUser, CurrentAccountInput, Trx } from '../src/types.js'
-import { useTestApp } from './helpers/app.js'
-import { accessTokenDefaults } from './helpers/access_tokens.js'
-import { insertUser, makeService } from './helpers/fakes.js'
-import { fakeManagedHttp, stubGuard } from './helpers/managed_http_fakes.js'
-import { seedAccountRows } from './helpers/account_rows.js'
+import { registerManagedRoutes } from '../src/http/managed.ts'
+import type { AccountKitConfig, AccountUser, CurrentAccountInput, Trx } from '../src/types.ts'
+import { useTestApp } from './helpers/app.ts'
+import { accessTokenDefaults } from './helpers/access_tokens.ts'
+import { insertUser, makeService } from './helpers/fakes.ts'
+import { fakeManagedHttp, stubGuard } from './helpers/managed_http_fakes.ts'
+import { seedAccountRows } from './helpers/account_rows.ts'
 
 type Validator = { validate(data: unknown): Promise<unknown> }
 

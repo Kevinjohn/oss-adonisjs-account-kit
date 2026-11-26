@@ -1,6 +1,6 @@
-import type { AccountKitConfig, AccountUser, Invitation, Trx } from '../../src/types.js'
-import { allowAll } from './authorizers.js'
-import { makeNotify } from './notifications.js'
+import type { AccountKitConfig, AccountUser, Invitation, Trx } from '../../src/types.ts'
+import { allowAll } from './authorizers.ts'
+import { makeNotify } from './notifications.ts'
 
 export function makeConfig(
   overrides: Pick<AccountKitConfig, 'users'> & Partial<Omit<AccountKitConfig, 'users'>>

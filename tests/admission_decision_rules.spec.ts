@@ -1,11 +1,11 @@
 import { DateTime } from 'luxon'
 import { test } from '@japa/runner'
-import { defineAdmission } from '../src/admission/config.js'
-import { evaluateAdmission } from '../src/admission/decision.js'
-import type { AdmissionRow } from '../src/admission/rows.js'
-import type { AdmissionConfig } from '../src/admission/types.js'
-import type { AccountUser } from '../src/types.js'
-import { allowDecisions } from './helpers/admission.js'
+import { defineConfig } from '../src/admission/config.ts'
+import { evaluateAdmission } from '../src/admission/decision.ts'
+import type { AdmissionRow } from '../src/admission/rows.ts'
+import type { AdmissionConfig } from '../src/admission/types.ts'
+import type { AccountUser } from '../src/types.ts'
+import { allowDecisions } from './helpers/admission.ts'
 
 type Requirement = 'domain' | 'invitation' | 'approval'
 const requirementConfig: Record<Requirement, AdmissionConfig> = {
@@ -58,7 +58,7 @@ const unmet: Record<Requirement, { user: AccountUser; row: AdmissionRow | null }
 test.group('admission decision rules', () => {
   test('admits only when every enabled requirement is met, in each combination', ({ assert }) => {
     for (const enabled of combinations) {
-      const config = defineAdmission(Object.assign({}, ...enabled.map((r) => requirementConfig[r])))
+      const config = defineConfig(Object.assign({}, ...enabled.map((r) => requirementConfig[r])))
       const met = evaluateAdmission(config, user(), row())
       assert.isTrue(met.admitted, enabled.join('+'))
       assert.sameMembers(Object.keys(met.requirements), enabled)
@@ -73,7 +73,7 @@ test.group('admission decision rules', () => {
   })
 
   test('reports the approval state and whether it was requested', ({ assert }) => {
-    const config = defineAdmission(requirementConfig.approval)
+    const config = defineConfig(requirementConfig.approval)
     assert.deepEqual(evaluateAdmission(config, user(), null).requirements.approval, {
       met: false,
       status: 'pending',
@@ -94,7 +94,7 @@ test.group('admission decision rules', () => {
   test('reports an unconfirmed address as unverified and an outside one as not allowed', ({
     assert,
   }) => {
-    const config = defineAdmission(requirementConfig.domain)
+    const config = defineConfig(requirementConfig.domain)
     const legacy = user({ emailVerifiedAt: null, unverifiedEmail: null })
     assert.deepEqual(evaluateAdmission(config, legacy, null).requirements.domain, {
       met: false,

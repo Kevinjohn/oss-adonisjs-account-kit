@@ -1,11 +1,11 @@
 import { performance } from 'node:perf_hooks'
 import { test } from '@japa/runner'
-import { transaction } from '../src/db.js'
-import { E_ACCOUNT_KIT_POST_COMMIT } from '../src/errors.js'
-import { bootTestApp, useTestApp } from './helpers/app.js'
-import { resetSchema } from './helpers/schema.js'
-import { locksRows } from './helpers/dialect.js'
-import { dbTime } from './helpers/db_time.js'
+import { transaction } from '../src/db.ts'
+import { E_ACCOUNT_KIT_POST_COMMIT } from '../src/errors.ts'
+import { bootTestApp, useTestApp } from './helpers/app.ts'
+import { resetSchema } from './helpers/schema.ts'
+import { locksRows } from './helpers/dialect.ts'
+import { dbTime } from './helpers/db_time.ts'
 
 test.group('managed transaction wrapper', (group) => {
   const kit = useTestApp(group)

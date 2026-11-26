@@ -1,6 +1,6 @@
 import { InvalidArgumentsException } from '@adonisjs/core/exceptions'
 // Interactive setup questionnaire: turns prompt answers into SetupChoices.
-import { buildDefaultSetupChoices } from './defaults.js'
+import { buildDefaultSetupChoices } from './defaults.ts'
 import {
   featureNames,
   guardStrategies,
@@ -12,11 +12,11 @@ import {
   userAdapters,
   userIdTypes,
   type SetupChoices,
-} from './types.js'
-import { collectSocialChoices } from './prompts_social.js'
-import { emailDestinations, hasEmailFlow } from './mail_flow.js'
-import { planSelectedManagedRoutes } from './shared.js'
-import { requireSetupChoices } from './parse.js'
+} from './types.ts'
+import { collectSocialChoices } from './prompts_social.ts'
+import { emailDestinations, hasEmailFlow } from './mail_flow.ts'
+import { planSelectedManagedRoutes } from './shared.ts'
+import { requireSetupChoices } from './parse.ts'
 
 function list(value: string): string[] {
   return value
@@ -244,10 +244,10 @@ export async function collectSetupChoices(
     if (choices.mail.integration === 'adonisjs-mail') {
       choices.mail.senderEnv =
         (await ask(
-          `Mail sender environment name (${choices.mail.senderEnv ?? 'ACCOUNT_MAIL_FROM'})`
+          `Mail sender environment name (${choices.mail.senderEnv ?? 'ACCOUNT_KIT_MAIL_FROM'})`
         )) ||
         choices.mail.senderEnv ||
-        'ACCOUNT_MAIL_FROM'
+        'ACCOUNT_KIT_MAIL_FROM'
       choices.mail.transportEnv =
         (await ask(
           `Mail transport environment name (${choices.mail.transportEnv ?? 'MAIL_MAILER'})`

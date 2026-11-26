@@ -1,6 +1,6 @@
 import { RuntimeException } from '@adonisjs/core/exceptions'
-import type { SetupDiagnostic, SetupFileChange, SetupInspection } from './types.js'
-import { stripSourceComments } from './strip_source_comments.js'
+import type { SetupDiagnostic, SetupFileChange, SetupInspection } from './types.ts'
+import { stripSourceComments } from './strip_source_comments.ts'
 import {
   getDefaultImportName,
   hasUnsafeObjectEntries,
@@ -9,9 +9,9 @@ import {
   extractLazyImportPath,
   callArray,
   type SetupSource,
-} from './ts_source.js'
+} from './ts_source.ts'
 import type * as TypeScript from 'typescript'
-import { addSetupDiagnostic } from './shared.js'
+import { addSetupDiagnostic } from './shared.ts'
 
 export function isSafeKernelService(
   source: SetupSource,

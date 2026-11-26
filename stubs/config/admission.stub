@@ -1,7 +1,7 @@
 {{{ exports({ to: app.configPath('admission.ts') }) }}}
-import { defineAdmission } from '@kevinjohn/adonisjs-account-kit/admission'
+import { defineConfig } from '@kevinjohn/adonisjs-account-kit/admission'
 
-export default defineAdmission({
+export default defineConfig({
   /**
    * Admit only confirmed addresses on these domains. Omit to disable.
    */

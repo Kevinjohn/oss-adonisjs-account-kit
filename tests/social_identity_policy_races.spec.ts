@@ -1,20 +1,20 @@
 import { test } from '@japa/runner'
-import { useTestApp } from './helpers/app.js'
-import { insertUser, makeService } from './helpers/fakes.js'
-import { clientChallenge, provider, current } from './helpers/social_identity.js'
-import { dbTime } from './helpers/db_time.js'
+import { useTestApp } from './helpers/app.ts'
+import { insertUser, makeService } from './helpers/fakes.ts'
+import { clientChallenge, provider, current } from './helpers/social_identity.ts'
+import { dbTime } from './helpers/db_time.ts'
 import {
   E_ACCOUNT_KIT_SOCIAL_LAST_LOGIN_METHOD,
   E_ACCOUNT_KIT_INVALID_SESSION,
-} from '../src/errors.js'
-import { readIsoTimestamp } from '../src/timestamps.js'
-import { locksRows } from './helpers/dialect.js'
+} from '../src/errors.ts'
+import { readIsoTimestamp } from '../src/timestamps.ts'
+import { locksRows } from './helpers/dialect.ts'
 import {
   assertUserLockIsHeld,
   createBarrier,
   startWithBackendId,
   waitForDatabaseLockWait,
-} from './helpers/lock_coordination.js'
+} from './helpers/lock_coordination.ts'
 
 test.group('social policy and method races', (group) => {
   const kit = useTestApp(group)

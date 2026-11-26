@@ -1,7 +1,7 @@
 import { test } from '@japa/runner'
-import { useTestApp } from './helpers/app.js'
-import { locksRows } from './helpers/dialect.js'
-import { dbTime } from './helpers/db_time.js'
+import { useTestApp } from './helpers/app.ts'
+import { locksRows } from './helpers/dialect.ts'
+import { dbTime } from './helpers/db_time.ts'
 test.group('test application', (group) => {
   const testApp = useTestApp(group)
 

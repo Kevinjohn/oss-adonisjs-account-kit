@@ -1,8 +1,8 @@
 import { readFile } from 'node:fs/promises'
 import { test } from '@japa/runner'
-import { generateManagedOpenApi } from '../src/http/openapi.js'
-import { planManagedRoutes, type ManagedCapability } from '../src/http/routes.js'
-import type { SocialProviderName } from '../src/types.js'
+import { generateManagedOpenApi } from '../src/http/openapi.ts'
+import { planManagedRoutes, type ManagedCapability } from '../src/http/routes.ts'
+import type { SocialProviderName } from '../src/types.ts'
 
 const directory = new URL('./fixtures/openapi/', import.meta.url)
 

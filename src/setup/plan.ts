@@ -1,40 +1,40 @@
-import { migrationNames, buildMigrationSchema } from './migration_definitions.js'
-import { orderMigrations } from './migration_order.js'
-import { defaultMigrationDirectory } from './migration_paths.js'
-import type { SetupChoices, SetupFileChange, SetupInspection, SetupPlan } from './types.js'
-import { requireSetupChoices } from './parse.js'
-import { parseSetupSource } from './ts_source.js'
-import { hasEmailFlow, planSelectedManagedRoutes, addSetupDiagnostic, envName } from './shared.js'
-import { collectSetupDiagnostics } from './validate.js'
+import { migrationNames, buildMigrationSchema } from './migration_definitions.ts'
+import { orderMigrations } from './migration_order.ts'
+import { defaultMigrationDirectory } from './migration_paths.ts'
+import type { SetupChoices, SetupFileChange, SetupInspection, SetupPlan } from './types.ts'
+import { requireSetupChoices } from './parse.ts'
+import { parseSetupSource } from './ts_source.ts'
+import { hasEmailFlow, planSelectedManagedRoutes, addSetupDiagnostic, envName } from './shared.ts'
+import { collectSetupDiagnostics } from './validate.ts'
 import {
   generateEnvironmentTemplate,
   migrationContent,
   requireMigrationTemplatePath,
   addChange,
   recordOwnedChange,
-} from './changes.js'
+} from './changes.ts'
 import {
   readRetainedSetupChoices,
   generateAllyConfigSource,
   generateAccountConfigSource,
-} from './generated_sources.js'
-import { planManagedFiles } from './plan_managed_files.js'
+} from './generated_sources.ts'
+import { planManagedFiles } from './plan_managed_files.ts'
 import {
   planRouteImport,
   planArrayImports,
   planRouterMiddleware,
   planServerProofMiddleware,
-} from './source_edits.js'
-import { planSessionConfigIntegration } from './plan_session_config.js'
-import { planUserModel } from './plan_user_model.js'
-import { planSession } from './plan_session.js'
-import { planMail } from './plan_mail.js'
-import { planDependencies } from './plan_dependencies.js'
-import { planLimiter } from './plan_limiter.js'
-import { planSummary } from './plan_summary.js'
-import { resolveSelectedEnvironmentValue } from './selected_environment.js'
-import { E_ACCOUNT_KIT_INDIRECT_ENVIRONMENT_VALUE } from '../errors.js'
-import type { SelectedSetupOrigins } from './diagnostics.js'
+} from './source_edits.ts'
+import { planSessionConfigIntegration } from './plan_session_config.ts'
+import { planUserModel } from './plan_user_model.ts'
+import { planSession } from './plan_session.ts'
+import { planMail } from './plan_mail.ts'
+import { planDependencies } from './plan_dependencies.ts'
+import { planLimiter } from './plan_limiter.ts'
+import { planSummary } from './plan_summary.ts'
+import { resolveSelectedEnvironmentValue } from './selected_environment.ts'
+import { E_ACCOUNT_KIT_INDIRECT_ENVIRONMENT_VALUE } from '../errors.ts'
+import type { SelectedSetupOrigins } from './diagnostics.ts'
 
 export async function planSetup(
   choices: SetupChoices,
@@ -46,12 +46,12 @@ export async function planSetup(
     retirementImpact?: SetupPlan['retirementImpact']
     retirementMaintenanceWindow?: boolean
     runtimeInventoryUnavailable?: boolean
-    /** Deployment values read for readiness and callback URLs; defaults to `process.env`. */
+    /** Deployment values read for readiness and callback URLs. */
     env?: NodeJS.ProcessEnv
   } = {}
 ): Promise<SetupPlan> {
   choices = requireSetupChoices(choices)
-  const env = options.env ?? process.env
+  const env = options.env ?? {}
   const selectedOrigins: SelectedSetupOrigins = { values: {}, errors: {} }
   const originNames = new Set<string>()
   if (hasEmailFlow(choices)) {

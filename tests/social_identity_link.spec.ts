@@ -1,10 +1,10 @@
 import { test } from '@japa/runner'
-import { advanceCredentialRevision } from '../src/credential_revision.js'
-import { transaction } from '../src/db.js'
-import { consumeSocialSensitiveProof } from '../src/social_identity.js'
-import { useTestApp } from './helpers/app.js'
-import { insertUser, makeService } from './helpers/fakes.js'
-import { clientChallenge, current, provider } from './helpers/social_identity.js'
+import { advanceCredentialRevision } from '../src/credential_revision.ts'
+import { transaction } from '../src/db.ts'
+import { consumeSocialSensitiveProof } from '../src/social_identity.ts'
+import { useTestApp } from './helpers/app.ts'
+import { insertUser, makeService } from './helpers/fakes.ts'
+import { clientChallenge, current, provider } from './helpers/social_identity.ts'
 
 test.group('social link and proof binding atomicity', (group) => {
   const kit = useTestApp(group)

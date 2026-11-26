@@ -1,6 +1,6 @@
-import type { SetupChoices, SetupInspection } from './types.js'
-import { requireSetupChoices } from './parse.js'
-import { listManagedExclusions } from './shared.js'
+import type { SetupChoices, SetupInspection } from './types.ts'
+import { requireSetupChoices } from './parse.ts'
+import { listManagedExclusions } from './shared.ts'
 
 export function generateManagedRoutesSource(choices: SetupChoices): string {
   const social =

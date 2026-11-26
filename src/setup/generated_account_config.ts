@@ -1,6 +1,6 @@
-import type { SetupChoices } from './types.js'
-import { hasEmailFlow } from './shared.js'
-import { requiredEnvHelperLines } from './generated_env_helpers.js'
+import type { SetupChoices } from './types.ts'
+import { hasEmailFlow } from './shared.ts'
+import { requiredEnvHelperLines } from './generated_env_helpers.ts'
 
 export function generateAccountConfigSource(
   choices: SetupChoices,

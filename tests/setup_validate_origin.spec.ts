@@ -1,6 +1,6 @@
 import { test } from '@japa/runner'
-import { addOriginDiagnostics } from '../src/setup/diagnostics.js'
-import type { SetupDiagnostic } from '../src/setup/types.js'
+import { addOriginDiagnostics } from '../src/setup/diagnostics.ts'
+import type { SetupDiagnostic } from '../src/setup/types.ts'
 
 function check(variable: string, value: string | undefined, production = false) {
   const diagnostics: SetupDiagnostic[] = []

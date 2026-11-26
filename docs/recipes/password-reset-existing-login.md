@@ -79,7 +79,7 @@ import './account_kit_routes.js'
 ```
 
 The request, proof inspection and completion routes are public; do not place this mount inside the
-starter's `auth` route group. Wrap `managedProofHeadersMiddleware` in a default-exported AdonisJS
+starter's `auth` route group. Wrap `ManagedProofHeadersMiddleware` in a default-exported AdonisJS
 middleware class and register it in the early server stack before the body parser. Use the same
 `/account-kit` prefix and `['passwordReset']` selection, so malformed proof requests also get
 `Cache-Control: no-store` and `Referrer-Policy: no-referrer`:
@@ -88,9 +88,9 @@ middleware class and register it in the early server stack before the body parse
 // app/middleware/account_kit_proof_headers_middleware.ts
 import type { HttpContext } from '@adonisjs/core/http'
 import type { NextFn } from '@adonisjs/core/types/http'
-import { managedProofHeadersMiddleware } from '@kevinjohn/adonisjs-account-kit/http'
+import ManagedProofHeadersMiddleware from '@kevinjohn/adonisjs-account-kit/middleware/proof_headers'
 
-const proofHeaders = managedProofHeadersMiddleware({
+const proofHeaders = new ManagedProofHeadersMiddleware({
   prefix: '/account-kit',
   strategy: 'access_tokens',
   enabled: ['passwordReset'],
@@ -98,7 +98,7 @@ const proofHeaders = managedProofHeadersMiddleware({
 
 export default class AccountKitProofHeadersMiddleware {
   handle(ctx: HttpContext, next: NextFn) {
-    return proofHeaders(ctx, next)
+    return proofHeaders.handle(ctx, next)
   }
 }
 ```

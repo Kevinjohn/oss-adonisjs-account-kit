@@ -1,8 +1,8 @@
 // Decides whether a matching email token was issued recently enough to suppress a resend.
 import { DateTime } from 'luxon'
 import type { Database } from '@adonisjs/lucid/database'
-import { readTimestamp, sqlTimestamp } from './timestamps.js'
-import { hashToken } from './tokens.js'
+import { readTimestamp, sqlTimestamp } from './timestamps.ts'
+import { hashToken } from './tokens.ts'
 
 /** A matching, unexpired token younger than this is reused instead of reissued. */
 export const RESEND_WINDOW = { minutes: 1 }

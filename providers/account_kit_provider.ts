@@ -1,12 +1,12 @@
 import { RuntimeException } from '@adonisjs/core/exceptions'
 import type { ApplicationService } from '@adonisjs/core/types'
-import { AccountKit } from '../src/account_kit.js'
-import { AccountKitCallbackRegistry } from '../src/callback_registry.js'
-import { resolveAccountKitConfig } from '../src/config_resolution.js'
+import { AccountKit } from '../src/account_kit.ts'
+import { AccountKitCallbackRegistry } from '../src/account_kit_callback_registry.ts'
+import { resolveAccountKitConfig } from '../src/config_resolution.ts'
 
 declare module '@adonisjs/core/types' {
   interface ContainerBindings {
-    'account_kit': AccountKit
+    'account_kit.manager': AccountKit
     'account_kit.callbacks': AccountKitCallbackRegistry
   }
 }
@@ -17,7 +17,7 @@ export default class AccountKitProvider {
   register(): void {
     this.app.container.singleton(AccountKitCallbackRegistry, () => new AccountKitCallbackRegistry())
     this.app.container.alias('account_kit.callbacks', AccountKitCallbackRegistry)
-    this.app.container.singleton(AccountKit, async (resolver) => {
+    this.app.container.singleton('account_kit.manager', async (resolver) => {
       const db = await resolver.make('lucid.db')
       const limiter = await resolver.make('limiter.manager')
       const config = await resolveAccountKitConfig(this.app)
@@ -28,6 +28,6 @@ export default class AccountKitProvider {
       }
       return new AccountKit({ config, db, limiter })
     })
-    this.app.container.alias('account_kit', AccountKit)
+    this.app.container.singleton(AccountKit, (resolver) => resolver.make('account_kit.manager'))
   }
 }

@@ -1,12 +1,12 @@
 // Validates `config/admission.ts` at boot.
-import { E_ACCOUNT_KIT_INVALID_CONFIGURATION } from '../errors.js'
-import { isDomainName } from './domain.js'
+import { E_ACCOUNT_KIT_INVALID_CONFIGURATION } from '../errors.ts'
+import { isDomainName } from './domain.ts'
 import type {
   AdmissionAuthorizeCallbacks,
   AdmissionCallbacks,
   AdmissionConfig,
   ResolvedAdmissionConfig,
-} from './types.js'
+} from './types.ts'
 
 const admissionInputs = new WeakMap<ResolvedAdmissionConfig, AdmissionConfig>()
 
@@ -24,20 +24,20 @@ function fail(field: string, message: string): never {
  *
  * @example
  * ```ts
- * import { defineAdmission } from '@kevinjohn/adonisjs-account-kit/admission'
+ * import { defineConfig } from '@kevinjohn/adonisjs-account-kit/admission'
  *
- * export default defineAdmission({ invitation: { required: true } })
+ * export default defineConfig({ invitation: { required: true } })
  * ```
  */
-export function defineAdmission(config: AdmissionConfig): ResolvedAdmissionConfig {
+export function defineConfig(config: AdmissionConfig): ResolvedAdmissionConfig {
   const resolved = checkAdmission(config, true)
   admissionInputs.set(resolved, config)
   return resolved
 }
 
 /**
- * The admission config merged with the registered callbacks, with every `defineAdmission` check
- * run on the result. A config `defineAdmission` did not build is used as it is.
+ * The admission config merged with the registered callbacks, with every `defineConfig` check
+ * run on the result. A config `defineConfig` did not build is used as it is.
  */
 export function resolveAdmissionConfig(
   config: ResolvedAdmissionConfig,

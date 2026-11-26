@@ -1,8 +1,8 @@
 import { test } from '@japa/runner'
-import { useTestApp } from './helpers/app.js'
-import { insertUser, makeService } from './helpers/fakes.js'
-import { clientChallenge, provider, current } from './helpers/social_identity.js'
-import { dbTime } from './helpers/db_time.js'
+import { useTestApp } from './helpers/app.ts'
+import { insertUser, makeService } from './helpers/fakes.ts'
+import { clientChallenge, provider, current } from './helpers/social_identity.ts'
+import { dbTime } from './helpers/db_time.ts'
 
 test.group('social continuation and handoff', (group) => {
   const kit = useTestApp(group)

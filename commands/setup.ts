@@ -1,15 +1,16 @@
+import { environmentOverrides } from './environment_overrides.ts'
 import { InvalidArgumentsException } from '@adonisjs/core/exceptions'
 import { readFile } from 'node:fs/promises'
 import { resolve } from 'node:path'
 import { BaseCommand, flags } from '@adonisjs/core/ace'
-import { inspectSetup } from '../src/setup/inspect.js'
-import { planSetup } from '../src/setup/plan.js'
-import { applySetup } from '../src/setup/apply.js'
-import type { SetupChoices, SetupInspection } from '../src/setup/types.js'
-import { collectSetupChoices } from '../src/setup/prompts.js'
-import { requireSetupChoices } from '../src/setup/parse.js'
-import type RetirementImpact from './retirement_impact.js'
-import { writeWarning } from './operator_output.js'
+import { inspectSetup } from '../src/setup/inspect.ts'
+import { planSetup } from '../src/setup/plan.ts'
+import { applySetup } from '../src/setup/apply.ts'
+import type { SetupChoices, SetupInspection } from '../src/setup/types.ts'
+import { collectSetupChoices } from '../src/setup/prompts.ts'
+import { requireSetupChoices } from '../src/setup/parse.ts'
+import type RetirementImpact from './retirement_impact.ts'
+import { writeWarning } from './operator_output.ts'
 
 /** No prompt path is reachable from --input or --check. */
 export default class SetupAccountKit extends BaseCommand {
@@ -98,9 +99,12 @@ export default class SetupAccountKit extends BaseCommand {
     }
   }
 
+  @flags.array({ description: 'Explicit setup environment override (NAME=value, repeatable)' })
+  declare env?: string[]
+
   async run(): Promise<void> {
     const root = this.app.makePath('')
-    const env = { ...process.env }
+    const env = environmentOverrides(this.env)
     let invalidSavedChoices = false
     const state = await inspectSetup(root, {
       migrationDirectory: this.migrationDirectory,

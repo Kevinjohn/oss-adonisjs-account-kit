@@ -1,35 +1,10 @@
+import { DateTime } from 'luxon'
+import type { PruneInput, PruneCounts } from './types_maintenance.ts'
 import { InvalidArgumentsException } from '@adonisjs/core/exceptions'
-import { sqlTimestamp } from './timestamps.js'
+import { sqlTimestamp } from './timestamps.ts'
 import type { Database } from '@adonisjs/lucid/database'
-import { countDeletedRowsFromResult } from './consume_rows.js'
-import { packageTables, type PackageTable } from './package_tables.js'
-
-/**
- * Options for `maintenance.prune`: rows per batch, the most batches to run, and `dryRun` to count
- * without deleting.
- */
-export interface PruneInput {
-  /** Rows deleted per batch. Default 100. */
-  batchSize?: number
-  /** The most batches in one run, shared across all eight tables. Default 100.
-   * Use at least eight on sustained-load schedules so each nonempty table receives a turn.
-   * Each invocation starts at the first table again. */
-  maxBatches?: number
-  /** Count expired rows without deleting them. */
-  dryRun?: boolean
-}
-
-/** How many expired rows `maintenance.prune` deleted, or would delete, per table. */
-export interface PruneCounts {
-  recovery: number
-  invitations: number
-  emailVerifications: number
-  socialTransactions: number
-  socialSensitiveProofs: number
-  socialHandoffCodes: number
-  loginLinks: number
-  sessions: number
-}
+import { countDeletedRowsFromResult } from './consume_rows.ts'
+import { packageTables, type PackageTable } from './package_tables.ts'
 
 const TABLES: Array<[keyof PruneCounts, PackageTable]> = [
   ['recovery', packageTables.passwordResetTokens],
@@ -56,7 +31,7 @@ export async function pruneExpiredWithScanStatus(db: Database, input: PruneInput
   const maxBatches = input.maxBatches ?? 100
   if (!Number.isSafeInteger(maxBatches) || maxBatches < 1 || maxBatches > 1000)
     throw new InvalidArgumentsException('maxBatches must be an integer from 1 to 1000')
-  const cutoff = sqlTimestamp(db)
+  const cutoff = sqlTimestamp(db, DateTime.utc())
   const counts = Object.fromEntries(TABLES.map(([key]) => [key, 0])) as unknown as PruneCounts
   const cursorsByTable = new Map<PackageTable, number>()
   const done = new Set<PackageTable>()
@@ -98,3 +73,5 @@ export async function pruneExpiredWithScanStatus(db: Database, input: PruneInput
   }))
   return { counts, scans }
 }
+
+export type { PruneInput, PruneCounts } from './types_maintenance.ts'

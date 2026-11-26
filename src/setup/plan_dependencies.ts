@@ -1,6 +1,6 @@
 // Setup planning phase: selected package presence and version range diagnostics.
-import type { SetupChoices, SetupInspection, SetupDiagnostic } from './types.js'
-import { hasEmailFlow, addSetupDiagnostic } from './shared.js'
+import type { SetupChoices, SetupInspection, SetupDiagnostic } from './types.ts'
+import { hasEmailFlow, addSetupDiagnostic } from './shared.ts'
 
 type SupportedRange = {
   /** Without a readable installed version the package is skipped unless this says otherwise. */

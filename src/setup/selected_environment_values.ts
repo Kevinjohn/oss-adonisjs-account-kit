@@ -2,21 +2,21 @@ import { RuntimeException } from '@adonisjs/core/exceptions'
 import {
   E_ACCOUNT_KIT_INDIRECT_ENVIRONMENT_VALUE,
   E_ACCOUNT_KIT_SELECTED_ENVIRONMENT_VALUE,
-} from '../errors.js'
+} from '../errors.ts'
 import { createReadStream } from 'node:fs'
 import { lstat } from 'node:fs/promises'
 import { join, relative, resolve } from 'node:path'
 import { createInterface } from 'node:readline'
 import { parseEnv } from 'node:util'
-import { envName } from './diagnostics.js'
-import { requireSafeSetupPath } from './safe_path.js'
+import { envName } from './diagnostics.ts'
+import { requireSafeSetupPath } from './safe_path.ts'
 
 /** Node's `parseEnv` treats no character as an escape: the next matching quote closes the value. */
 function hasClosingQuote(text: string, quote: string): boolean {
   return text.includes(quote)
 }
 
-/** Match AdonisJS EnvLoader precedence without changing global process.env to select a profile. */
+/** Match AdonisJS EnvLoader precedence without changing global environment to select a profile. */
 function listDotenvPaths(root: string, env: NodeJS.ProcessEnv): string[] {
   const base = resolve(root, env.ENV_PATH || '')
   const mode = env.NODE_ENV
@@ -106,7 +106,7 @@ async function resolveEnvironmentValue(
 export function resolveSelectedEnvironment(
   root: string,
   variable: string,
-  env: NodeJS.ProcessEnv = process.env
+  env: NodeJS.ProcessEnv = {}
 ): Promise<string | null> {
   return resolveEnvironmentValue(
     root,
@@ -121,7 +121,7 @@ export function resolveSelectedEnvironment(
 export function resolveSelectedEnvironmentValue(
   root: string,
   variable: string,
-  env: NodeJS.ProcessEnv = process.env
+  env: NodeJS.ProcessEnv = {}
 ): Promise<string | null> {
   return resolveEnvironmentValue(root, variable, env, (value) => value !== null, 'a direct value')
 }

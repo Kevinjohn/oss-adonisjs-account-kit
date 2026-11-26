@@ -1,7 +1,7 @@
 import { test } from '@japa/runner'
-import { AccountKit, defineConfig } from '../src/account_kit.js'
-import { bootTestApp, useTestApp } from './helpers/app.js'
-import { makeConfig, makeUsersAdapter } from './helpers/fakes.js'
+import { AccountKit, defineConfig } from '../src/account_kit.ts'
+import { bootTestApp, useTestApp } from './helpers/app.ts'
+import { makeConfig, makeUsersAdapter } from './helpers/fakes.ts'
 test.group('account kit provider', (group) => {
   const kit = useTestApp(group, { accountKitProvider: 'source' })
 
@@ -23,7 +23,7 @@ test.group('account kit provider', (group) => {
   })
 
   test('resolves the account_kit alias to the class-bound singleton', async ({ assert }) => {
-    const aliased = await kit.app.container.make('account_kit')
+    const aliased = await kit.app.container.make('account_kit.manager')
     assert.equal(aliased, await kit.app.container.make(AccountKit))
   })
 

@@ -1,5 +1,5 @@
 import { test } from '@japa/runner'
-import { clearRows } from './helpers/test_rows.js'
+import { clearRows } from './helpers/test_rows.ts'
 
 interface FakeOptions {
   previousChecks?: number

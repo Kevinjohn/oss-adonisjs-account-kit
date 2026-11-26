@@ -1,7 +1,7 @@
 // Validates the socialAuthentication option and its configured providers.
-import { E_ACCOUNT_KIT_INVALID_CONFIGURATION } from './errors.js'
-import { isSocialProviderName } from './social_providers.js'
-import type { AccountKitConfig, Capability, SocialProviderName } from './types.js'
+import { E_ACCOUNT_KIT_INVALID_CONFIGURATION } from './errors.ts'
+import { isSocialProviderName } from './social_providers.ts'
+import type { AccountKitConfig, Capability, SocialProviderName } from './types.ts'
 
 export function assertSocialAuthenticationConfig(
   config: AccountKitConfig,

@@ -1,7 +1,7 @@
 import { fileURLToPath } from 'node:url'
 import { test } from '@japa/runner'
 import { format, resolveConfig } from 'prettier'
-import { bootTestApp } from './helpers/app.js'
+import { bootTestApp } from './helpers/app.ts'
 
 const stubsRoot = fileURLToPath(new URL('../stubs', import.meta.url))
 // This repository and new AdonisJS apps both use @adonisjs/prettier-config.

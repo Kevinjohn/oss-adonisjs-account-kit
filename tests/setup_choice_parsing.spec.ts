@@ -1,6 +1,6 @@
 import { test } from '@japa/runner'
-import { buildDefaultSetupChoices } from '../src/setup/defaults.js'
-import { requireSetupChoices } from '../src/setup/parse.js'
+import { buildDefaultSetupChoices } from '../src/setup/defaults.ts'
+import { requireSetupChoices } from '../src/setup/parse.ts'
 
 test.group('setup choice parsing', () => {
   test('standard defaults require explicit invitation and social opt-in', ({ assert }) => {

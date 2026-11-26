@@ -1,6 +1,6 @@
 // Single source of truth for social flow intents and sensitive-action purposes.
 // Kept apart from social_providers.ts: that file is about who the provider is, this one about what the flow is for.
-import type { SensitivePurpose, SocialIntent } from './types.js'
+import type { SensitivePurpose, SocialIntent } from './types.ts'
 
 /** Every social flow intent. */
 export const socialIntents = ['login', 'link', 'reauth', 'confirm'] as const

@@ -1,14 +1,13 @@
-/* eslint-disable @unicorn/no-await-expression-member -- Inspect database results directly in focused registration assertions. */
 import { test } from '@japa/runner'
 import {
   E_ACCOUNT_KIT_UNVERIFIED_EMAIL,
   E_ACCOUNT_KIT_INVALID_INPUT,
   E_INVALID_CREDENTIALS,
   E_ACCOUNT_KIT_INVALID_SESSION,
-} from '../src/errors.js'
-import { useTestApp } from './helpers/app.js'
-import { accessTokenDefaults } from './helpers/access_tokens.js'
-import { makeService, tokenFrom } from './helpers/fakes.js'
+} from '../src/errors.ts'
+import { useTestApp } from './helpers/app.ts'
+import { accessTokenDefaults } from './helpers/access_tokens.ts'
+import { makeService, tokenFrom } from './helpers/fakes.ts'
 
 test.group('registration', (group) => {
   const kit = useTestApp(group)
@@ -36,6 +35,7 @@ test.group('registration', (group) => {
       () => service.account.emailVerification.complete({ token } as never),
       E_ACCOUNT_KIT_INVALID_INPUT
     )
+    // eslint-disable-next-line @unicorn/no-await-expression-member -- Assert the result at the call site.
     assert.equal((await kit.db.from('email_verification_tokens')).length, 1)
     await service.account.emailVerification.complete({ token, password: 'VictimPassword123' })
     assert.deepEqual(calls, ['revoke'])

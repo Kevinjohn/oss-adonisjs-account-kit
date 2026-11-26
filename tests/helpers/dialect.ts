@@ -1,4 +1,4 @@
-import { testClient } from './test_connection.js'
+import { testClient } from './test_connection.ts'
 
 /** The database engine under test, from `DB_CLIENT`. */
 export const testEngine = ({ 'pg': 'pg', 'mysql2': 'mysql', 'better-sqlite3': 'sqlite' } as const)[

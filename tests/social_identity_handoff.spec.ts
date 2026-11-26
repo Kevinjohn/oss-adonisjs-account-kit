@@ -3,13 +3,13 @@ import { test } from '@japa/runner'
 import {
   E_ACCOUNT_KIT_ADAPTER_CONTRACT,
   E_ACCOUNT_KIT_SOCIAL_TRANSACTION_INVALID,
-} from '../src/errors.js'
-import { dbTime } from './helpers/db_time.js'
-import { advanceCredentialRevision } from '../src/credential_revision.js'
-import { transaction } from '../src/db.js'
-import { useTestApp } from './helpers/app.js'
-import { insertUser, makeService } from './helpers/fakes.js'
-import { verifier, clientChallenge, provider, current } from './helpers/social_identity.js'
+} from '../src/errors.ts'
+import { dbTime } from './helpers/db_time.ts'
+import { advanceCredentialRevision } from '../src/credential_revision.ts'
+import { transaction } from '../src/db.ts'
+import { useTestApp } from './helpers/app.ts'
+import { insertUser, makeService } from './helpers/fakes.ts'
+import { verifier, clientChallenge, provider, current } from './helpers/social_identity.ts'
 
 test.group('social continuation and handoff', (group) => {
   const kit = useTestApp(group)

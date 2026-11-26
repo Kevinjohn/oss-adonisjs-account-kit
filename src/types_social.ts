@@ -1,6 +1,6 @@
-import type { socialProviderNames } from './social_providers.js'
-import type { sensitivePurposes, socialIntents } from './social_enums.js'
-import type { AccountUser, UserId, CurrentAccountInput, Trx } from './types.js'
+import type { socialProviderNames } from './social_providers.ts'
+import type { sensitivePurposes, socialIntents } from './social_enums.ts'
+import type { AccountUser, UserId, CurrentAccountInput, Trx } from './types.ts'
 
 /** A supported social provider: `google` or `github`. */
 export type SocialProviderName = (typeof socialProviderNames)[number]

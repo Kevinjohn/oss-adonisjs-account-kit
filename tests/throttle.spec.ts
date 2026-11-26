@@ -1,7 +1,7 @@
 import { test } from '@japa/runner'
-import { E_ACCOUNT_KIT_THROTTLED } from '../src/errors.js'
-import { consume, buildLimiterKey } from '../src/throttle.js'
-import { useTestApp } from './helpers/app.js'
+import { E_ACCOUNT_KIT_THROTTLED } from '../src/errors.ts'
+import { consume, buildLimiterKey } from '../src/throttle.ts'
+import { useTestApp } from './helpers/app.ts'
 test.group('operation throttling', (group) => {
   const kit = useTestApp(group)
 

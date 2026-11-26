@@ -1,9 +1,9 @@
 // Evaluates the enabled admission requirements for one user and their admission row.
-import type { AccountUser } from '../types.js'
-import { hasConfirmedAddress } from '../account_projection.js'
-import { isDomainAllowed, extractEmailDomain } from './domain.js'
-import type { AdmissionRow } from './rows.js'
-import type { AdmissionDecision, ResolvedAdmissionConfig } from './types.js'
+import type { AccountUser } from '../types.ts'
+import { hasConfirmedAddress } from '../account_projection.ts'
+import { isDomainAllowed, extractEmailDomain } from './domain.ts'
+import type { AdmissionRow } from './rows.ts'
+import type { AdmissionDecision, ResolvedAdmissionConfig } from './types.ts'
 
 /** Every enabled requirement against the stored state. Nothing is cached. */
 export function evaluateAdmission(

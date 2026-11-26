@@ -1,6 +1,6 @@
 // Coordinates two database connections around a row lock in tests.
-import type { TestApp } from './app.js'
-import { lockNotAvailableCode, locksRows, testEngine } from './dialect.js'
+import type { TestApp } from './app.ts'
+import { lockNotAvailableCode, locksRows, testEngine } from './dialect.ts'
 
 export async function assertUserLockIsHeld(
   kit: TestApp,

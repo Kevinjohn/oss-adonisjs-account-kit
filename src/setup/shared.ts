@@ -1,9 +1,9 @@
-export { emailDestinations, hasEmailFlow, nativeMailTransports } from './mail_flow.js'
-export { listManagedExclusions, planSelectedManagedRoutes } from './managed_routes.js'
+export { emailDestinations, hasEmailFlow, nativeMailTransports } from './mail_flow.ts'
+export { listManagedExclusions, planSelectedManagedRoutes } from './managed_routes.ts'
 export {
   addSetupDiagnostic,
   envName,
   routePrefix,
   sqlName,
   addOriginDiagnostics,
-} from './diagnostics.js'
+} from './diagnostics.ts'

@@ -22,7 +22,7 @@ import {
   E_ACCOUNT_KIT_THROTTLED,
   E_ACCOUNT_KIT_UNSUPPORTED_CONFIG_SHAPE,
   E_ACCOUNT_KIT_UNSUPPORTED_PROVIDERS_CONFIGURATION,
-} from '../src/errors.js'
+} from '../src/errors.ts'
 
 test.group('account kit errors', () => {
   test('inspection denial has one generic public identity without an authorization cause', ({

@@ -1,9 +1,9 @@
 import { spawnSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 import { test } from '@japa/runner'
-import * as commandLoader from '../commands/main.js'
-import { defineCommands, type AccountKitCommandName } from '../src/define_commands.js'
-import { E_ACCOUNT_KIT_INVALID_CONFIGURATION } from '../src/errors.js'
+import * as commandLoader from '../commands/main.ts'
+import { defineCommands, type AccountKitCommandName } from '../src/define_commands.ts'
+import { E_ACCOUNT_KIT_INVALID_CONFIGURATION } from '../src/errors.ts'
 
 const names = (commands: { commandName: string }[]) =>
   commands.map((command) => command.commandName).sort()

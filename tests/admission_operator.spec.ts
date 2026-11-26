@@ -1,16 +1,14 @@
-/* eslint-disable @unicorn/no-await-expression-member -- Keep each assertion next to the operation it inspects. */
-
 import { test } from '@japa/runner'
 import {
   E_ACCOUNT_KIT_ADMISSION_DECISION,
   E_ACCOUNT_KIT_CAPABILITY_DISABLED,
   E_ACCOUNT_KIT_INVALID_INPUT,
   E_ACCOUNT_KIT_USER_NOT_FOUND,
-} from '../src/errors.js'
-import type { AdmissionEvent } from '../src/admission/types.js'
-import { useAdmissionApp } from './helpers/admission_schema.js'
-import { allRequirements, makeAdmission } from './helpers/admission.js'
-import { insertUser } from './helpers/fakes.js'
+} from '../src/errors.ts'
+import type { AdmissionEvent } from '../src/admission/types.ts'
+import { useAdmissionApp } from './helpers/admission_schema.ts'
+import { allRequirements, makeAdmission } from './helpers/admission.ts'
+import { insertUser } from './helpers/fakes.ts'
 
 test.group('admission operator', (group) => {
   const kit = useAdmissionApp(group)
@@ -32,6 +30,7 @@ test.group('admission operator', (group) => {
       E_ACCOUNT_KIT_ADMISSION_DECISION
     )
     assert.equal(
+      // eslint-disable-next-line @unicorn/no-await-expression-member -- Assert the result at the call site.
       (await admission.operator.revoke({ email: person.email })).approval?.status,
       'revoked'
     )
@@ -87,6 +86,7 @@ test.group('admission operator', (group) => {
     )
     const other = await insertUser(kit, { email: 'other@example.test' })
     assert.isNull(
+      // eslint-disable-next-line @unicorn/no-await-expression-member -- Assert the result at the call site.
       (await admission.operator.grantInvitation({ email: other.email })).invitation!.role
     )
   })

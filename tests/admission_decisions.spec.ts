@@ -1,5 +1,3 @@
-/* eslint-disable @unicorn/no-await-expression-member -- Keep each assertion next to the operation it inspects. */
-
 import { test } from '@japa/runner'
 import {
   E_ACCOUNT_KIT_ADMISSION_DECISION,
@@ -8,17 +6,17 @@ import {
   E_ACCOUNT_KIT_INVALID_INPUT,
   E_ACCOUNT_KIT_POST_COMMIT,
   E_ACCOUNT_KIT_USER_NOT_FOUND,
-} from '../src/errors.js'
-import type { AdmissionEvent } from '../src/admission/types.js'
-import { deriveClientChallenge } from '../src/magic_link.js'
-import type { AccountUser } from '../src/types.js'
-import { useAdmissionApp } from './helpers/admission_schema.js'
-import { allowDecisions, makeAdmission, writeAdmissionRow } from './helpers/admission.js'
-import { credentialsFixtures } from './helpers/credentials.js'
-import { locksRows } from './helpers/dialect.js'
-import { insertUser, makeNotify, tokenFrom } from './helpers/fakes.js'
-import { startWithBackendId, waitForDatabaseLockWait } from './helpers/lock_coordination.js'
-import { clientChallenge, provider } from './helpers/social_identity.js'
+} from '../src/errors.ts'
+import type { AdmissionEvent } from '../src/admission/types.ts'
+import { deriveClientChallenge } from '../src/magic_link.ts'
+import type { AccountUser } from '../src/types.ts'
+import { useAdmissionApp } from './helpers/admission_schema.ts'
+import { allowDecisions, makeAdmission, writeAdmissionRow } from './helpers/admission.ts'
+import { credentialsFixtures } from './helpers/credentials.ts'
+import { locksRows } from './helpers/dialect.ts'
+import { insertUser, makeNotify, tokenFrom } from './helpers/fakes.ts'
+import { startWithBackendId, waitForDatabaseLockWait } from './helpers/lock_coordination.ts'
+import { clientChallenge, provider } from './helpers/social_identity.ts'
 
 const approvalOnly = { approval: { required: true as const, authorize: allowDecisions } }
 
@@ -32,6 +30,7 @@ test.group('admission decisions', (group) => {
     return user
   }
   const status = async (user: AccountUser) =>
+    // eslint-disable-next-line @unicorn/no-await-expression-member -- Assert the result at the call site.
     (await kit.db.from('account_admissions').where('user_id', user.id).first())?.approval_status ??
     null
 
@@ -60,6 +59,7 @@ test.group('admission decisions', (group) => {
       E_ACCOUNT_KIT_ADMISSION_DECISION
     )
     assert.equal(
+      // eslint-disable-next-line @unicorn/no-await-expression-member -- Assert the result at the call site.
       (await admission.revoke({ actorId: actor.id, userId: subject.id })).approval?.status,
       'revoked'
     )
@@ -68,6 +68,7 @@ test.group('admission decisions', (group) => {
       E_ACCOUNT_KIT_ADMISSION_DECISION
     )
     assert.equal(
+      // eslint-disable-next-line @unicorn/no-await-expression-member -- Assert the result at the call site.
       (await admission.approve({ actorId: actor.id, userId: subject.id })).approval?.status,
       'approved'
     )
@@ -78,6 +79,7 @@ test.group('admission decisions', (group) => {
       E_ACCOUNT_KIT_ADMISSION_DECISION
     )
     assert.equal(
+      // eslint-disable-next-line @unicorn/no-await-expression-member -- Assert the result at the call site.
       (await admission.reject({ actorId: actor.id, userId: fresh.id })).approval?.status,
       'rejected'
     )
@@ -394,6 +396,7 @@ test.group('admission decisions', (group) => {
     const linked = await account.socialAuthentication.callback({ state: again.state, callback: {} })
     assert.equal(linked.status, 'linked')
     assert.equal(
+      // eslint-disable-next-line @unicorn/no-await-expression-member -- Assert the result at the call site.
       (await kit.db.from('account_admissions').where('user_id', social).first()).approval_status,
       'rejected'
     )

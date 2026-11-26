@@ -1,20 +1,20 @@
 import { test } from '@japa/runner'
 import { DateTime } from 'luxon'
-import { E_ACCOUNT_KIT_INVALID_SESSION } from '../src/errors.js'
-import { readIsoTimestamp } from '../src/timestamps.js'
-import type { CurrentAccountInput, UserId } from '../src/types.js'
-import { useTestApp } from './helpers/app.js'
-import { accessTokenDefaults } from './helpers/access_tokens.js'
-import { dbTime } from './helpers/db_time.js'
-import { locksRows } from './helpers/dialect.js'
-import { insertUser, makeService } from './helpers/fakes.js'
+import { E_ACCOUNT_KIT_INVALID_SESSION } from '../src/errors.ts'
+import { readIsoTimestamp } from '../src/timestamps.ts'
+import type { CurrentAccountInput, UserId } from '../src/types.ts'
+import { useTestApp } from './helpers/app.ts'
+import { accessTokenDefaults } from './helpers/access_tokens.ts'
+import { dbTime } from './helpers/db_time.ts'
+import { locksRows } from './helpers/dialect.ts'
+import { insertUser, makeService } from './helpers/fakes.ts'
 import {
   assertUserLockIsHeld,
   createBarrier,
   startWithBackendId,
   waitForBlockedBy,
   waitForDatabaseLockWait,
-} from './helpers/lock_coordination.js'
+} from './helpers/lock_coordination.ts'
 
 const sessionGuard = (events: string[] = []) => ({
   strategy: 'session' as const,

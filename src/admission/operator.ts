@@ -1,24 +1,25 @@
+import { DateTime } from 'luxon'
 // Shell-trusted admission changes for Ace commands: no actor, no `authorize`, no throttle.
 import { randomUUID } from 'node:crypto'
-import { lockUser, transaction } from '../db.js'
-import { isEmailShaped, normalizeEmail } from '../email.js'
+import { lockUser, transaction } from '../db.ts'
+import { isEmailShaped, normalizeEmail } from '../email.ts'
 import {
   E_ACCOUNT_KIT_ADMISSION_DECISION,
   E_ACCOUNT_KIT_INVALID_INPUT,
   E_ACCOUNT_KIT_USER_NOT_FOUND,
-} from '../errors.js'
-import { sqlTimestamp } from '../timestamps.js'
-import type { AccountUser } from '../types.js'
-import { requireApproval, requireInvitationRequirement } from './capability.js'
+} from '../errors.ts'
+import { sqlTimestamp } from '../timestamps.ts'
+import type { AccountUser } from '../types.ts'
+import { requireApproval, requireInvitationRequirement } from './capability.ts'
 import {
   applyTransition,
   approvalStatusByTransition,
   type AdmissionTransition,
-} from './decisions.js'
-import { withAdmissionEvent } from './events.js'
-import { readAdmissionRow, toAdmissionRecord, upsertAdmissionRow } from './rows.js'
-import type { AdmissionContext } from './service.js'
-import type { AdmissionRecord } from './types.js'
+} from './decisions.ts'
+import { withAdmissionEvent } from './events.ts'
+import { readAdmissionRow, toAdmissionRecord, upsertAdmissionRow } from './rows.ts'
+import type { AdmissionContext } from './service.ts'
+import type { AdmissionRecord } from './types.ts'
 
 /** Lock and load the account an operator names by email, or `E_ACCOUNT_KIT_USER_NOT_FOUND`. */
 async function lockSubject(
@@ -81,7 +82,7 @@ export async function grantOperatorInvitation(
       const existing = await readAdmissionRow(trx, subject.id)
       if (existing && existing.invitation_recorded_at !== null)
         throw new E_ACCOUNT_KIT_ADMISSION_DECISION('Invitation evidence is already recorded')
-      const now = sqlTimestamp(trx)
+      const now = sqlTimestamp(trx, DateTime.utc())
       const row = await upsertAdmissionRow(
         trx,
         subject.id,

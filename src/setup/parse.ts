@@ -1,8 +1,8 @@
 import { InvalidArgumentsException } from '@adonisjs/core/exceptions'
-import { guardStrategies, registrationPolicies, setupModes, type SetupChoices } from './types.js'
+import { guardStrategies, registrationPolicies, setupModes, type SetupChoices } from './types.ts'
 import { DateTime } from 'luxon'
-import { expiresAt } from '../ttl.js'
-import { socialProviderNames } from '../social_providers.js'
+import { expiresAt } from '../ttl.ts'
+import { socialProviderNames } from '../social_providers.ts'
 
 function record(
   input: unknown,

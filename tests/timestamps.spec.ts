@@ -1,6 +1,6 @@
 import { test } from '@japa/runner'
 import { DateTime } from 'luxon'
-import { readIsoTimestamp, sqlTimestamp } from '../src/timestamps.js'
+import { readIsoTimestamp, sqlTimestamp } from '../src/timestamps.ts'
 
 const engine = (name: string) => ({ dialect: { name } })
 
@@ -15,7 +15,7 @@ test.group('SQL timestamps', () => {
   test('reads the dialect from a database and defaults to now', ({ assert }) => {
     const database = { connection: () => engine('mysql') }
     const before = DateTime.utc().startOf('second')
-    const value = DateTime.fromSQL(sqlTimestamp(database), { zone: 'utc' })
+    const value = DateTime.fromSQL(sqlTimestamp(database, DateTime.utc()), { zone: 'utc' })
     assert.isTrue(value.isValid)
     assert.isAtLeast(value.toMillis(), before.toMillis())
   })

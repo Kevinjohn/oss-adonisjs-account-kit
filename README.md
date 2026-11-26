@@ -28,8 +28,11 @@ transactions that are easy to get wrong.
 
 ## Install
 
-Requires Node.js 24+, AdonisJS 7 with Lucid, and `@adonisjs/limiter`. Install the archive from
-[GitHub releases](https://github.com/Kevinjohn/oss-adonisjs-account-kit/releases):
+Requires Node.js 24+, AdonisJS 7 with Lucid, and `@adonisjs/limiter`. For a registry package,
+AdonisJS combines installation and configuration with
+`node ace add @kevinjohn/adonisjs-account-kit --package-manager=pnpm`. Account Kit pre-releases are
+GitHub archives. Use these installation steps and then choose a configuration path.
+[GitHub releases](https://github.com/Kevinjohn/oss-adonisjs-account-kit/releases)
 
 ```sh
 node ace add @adonisjs/limiter
@@ -46,6 +49,13 @@ Choose an integration path before configuring the package or running its migrati
   node ace migration:run
   node ace account-kit:doctor
   ```
+
+## What configure adds
+
+`node ace configure @kevinjohn/adonisjs-account-kit` writes `config/account_kit.ts`, creates the
+package migrations, registers the provider and Ace commands in `adonisrc.ts`, and adds validation
+for `APP_URL` and `ACCOUNT_KIT_FRONTEND_URL` in `start/env.ts`. Configure preserves existing files
+and registrations when rerun.
 
 ### Dynamic providers
 
@@ -81,7 +91,16 @@ node ace configure @kevinjohn/adonisjs-account-kit --provider-registered
 This flag confirms that you registered the provider yourself. Configure then preserves the dynamic
 provider expression and completes the remaining setup. Running it again is safe.
 
-## Session guard
+## Configuration
+
+Edit `config/account_kit.ts` to select capabilities and supply the users adapter, action URLs,
+notifications and policy callbacks. Set `APP_URL` to the backend origin. Set
+`ACCOUNT_KIT_FRONTEND_URL` if links should open a separate frontend. The [configuration guide](docs/guide/core-api.md)
+describes each setting.
+
+## Usage
+
+### Session guard
 
 `accountKitSessionGuard({ provider })` from `@kevinjohn/adonisjs-account-kit/auth` is an AdonisJS
 Auth session guard for `config/auth.ts` that authenticates through Account Kit, so `auth.user` is
@@ -89,7 +108,7 @@ the signed-in model and the Auth Japa plugin's `loginAs(user)` works in tests (r
 `sessionApiClient` and `authApiClient`). `createManagedGuard` stays available. See
 [the session guard guide](docs/guide/authentication.md#account-kit-session-guard).
 
-## Registering callbacks from a provider
+### Registering callbacks from a provider
 
 `config/account_kit.ts` and `config/admission.ts` may leave out the callbacks that call
 application code. Register them from an application provider instead, listed in `adonisrc.ts`
@@ -149,11 +168,7 @@ both the config file and the registry, a second `register` call, or a call after
 first resolved throws `E_ACCOUNT_KIT_INVALID_CONFIGURATION`. A config file that passes every callback keeps
 working with nothing registered.
 
-## User stories
-
-See the [user story catalogue](user-stories/README.md) for source-reviewed account journeys, opt-in capabilities and operator surfaces.
-
-## Quick example
+### Quick example
 
 A forgot-password action. The [getting started tutorial](docs/guide/getting-started.md) adds
 validation, error mapping and the reset action.
@@ -217,6 +232,10 @@ This table describes configured CI coverage, not the result of a pending workflo
 | Built exports and setup        | SQLite leg after build          | —                                                                                  |
 | Packed consumers               | —                               | Fresh/latest, minimum, and service-only on SQLite and PostgreSQL 16                |
 | MySQL 8.4                      | —                               | Experimental                                                                       |
+
+## User stories
+
+See the [user story catalogue](user-stories/README.md) for source-reviewed account journeys, opt-in capabilities and operator surfaces.
 
 ## Documentation
 

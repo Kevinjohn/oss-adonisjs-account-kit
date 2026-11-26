@@ -2,7 +2,7 @@ import { test } from '@japa/runner'
 import {
   takeCorrectionRevision,
   rememberCorrectionRevision,
-} from '../src/profile_correction_revision.js'
+} from '../src/profile_correction_revision.ts'
 
 test.group('profile correction revision', () => {
   test('is read once, so an object returned again later carries none', ({ assert }) => {

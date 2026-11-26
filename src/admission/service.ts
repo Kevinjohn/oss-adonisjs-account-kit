@@ -1,14 +1,14 @@
 // The admission service: evaluates admission and gates protected application routes.
 import type { Database } from '@adonisjs/lucid/database'
-import type { AccountKit } from '../account_kit.js'
-import { requireCurrentAccountInTransaction } from '../authentication.js'
-import { transaction } from '../db.js'
-import { normalizeEmail } from '../email.js'
+import type { AccountKit } from '../account_kit.ts'
+import { requireCurrentAccountInTransaction } from '../authentication.ts'
+import { transaction } from '../db.ts'
+import { normalizeEmail } from '../email.ts'
 import {
   E_ACCOUNT_KIT_ADMISSION_REQUIRED,
   E_ACCOUNT_KIT_INVALID_SESSION,
   E_ACCOUNT_KIT_UNVERIFIED_EMAIL,
-} from '../errors.js'
+} from '../errors.ts'
 import type {
   AccountUser,
   OperatorInviteResult,
@@ -17,21 +17,21 @@ import type {
   ResolvedConfig,
   Trx,
   UserId,
-} from '../types.js'
-import { evaluateAdmission } from './decision.js'
-import { isDomainAllowed, extractEmailDomain } from './domain.js'
-import { readAdmissionRow, toAdmissionRecord } from './rows.js'
+} from '../types.ts'
+import { evaluateAdmission } from './decision.ts'
+import { isDomainAllowed, extractEmailDomain } from './domain.ts'
+import { readAdmissionRow, toAdmissionRecord } from './rows.ts'
 import type {
   AdmissionApprovalStatus,
   AdmissionDecision,
   AdmissionRecord,
   ResolvedAdmissionConfig,
-} from './types.js'
-import { requestAdmission } from './request.js'
-import { decideAdmission } from './decisions.js'
-import { paginateAdmissions, type AdmissionPage } from './listing.js'
-import { applyOperatorDecision, grantOperatorInvitation } from './operator.js'
-import { cancelBootstrap, bootstrapOperatorInvitation } from './bootstrap.js'
+} from './types.ts'
+import { requestAdmission } from './request.ts'
+import { decideAdmission } from './decisions.ts'
+import { paginateAdmissions, type AdmissionPage } from './listing.ts'
+import { applyOperatorDecision, grantOperatorInvitation } from './operator.ts'
+import { cancelBootstrap, bootstrapOperatorInvitation } from './bootstrap.ts'
 
 /** The dependencies the admission service is built from; the provider supplies them. */
 export interface AdmissionDependencies {
@@ -62,12 +62,12 @@ export type AdmissionContext = Omit<AdmissionDependencies, 'kit'>
 export class AccountAdmission {
   /** The account service this module works with. */
   readonly kit: AccountKit
-  protected readonly deps: AdmissionContext
+  readonly #deps: AdmissionContext
 
   constructor(deps: AdmissionDependencies) {
     const { kit, ...rest } = deps
     this.kit = kit
-    this.deps = rest
+    this.#deps = rest
   }
 
   /**
@@ -79,7 +79,7 @@ export class AccountAdmission {
    * ```
    */
   async decide(user: AccountUser, trx: Trx): Promise<AdmissionDecision> {
-    return evaluateAdmission(this.deps.config, user, await readAdmissionRow(trx, user.id))
+    return evaluateAdmission(this.#deps.config, user, await readAdmissionRow(trx, user.id))
   }
 
   /**
@@ -94,13 +94,13 @@ export class AccountAdmission {
   current(
     input: CurrentAccountInput
   ): Promise<{ account: CurrentAccount; decision: AdmissionDecision }> {
-    return transaction(this.deps.db, async (trx) => {
+    return transaction(this.#deps.db, async (trx) => {
       const account = await requireCurrentAccountInTransaction(
-        { config: this.deps.accountConfig },
+        { config: this.#deps.accountConfig },
         input,
         trx
       )
-      const user = await this.deps.accountConfig.users.findById(input.userId, trx)
+      const user = await this.#deps.accountConfig.users.findById(input.userId, trx)
       if (!user) throw new E_ACCOUNT_KIT_INVALID_SESSION()
       return { account, decision: await this.decide(user, trx) }
     })
@@ -136,10 +136,10 @@ export class AccountAdmission {
    * ```
    */
   async isAdmitted(userId: UserId, trx?: Trx): Promise<boolean> {
-    const user = await this.deps.accountConfig.users.findById(userId, trx)
+    const user = await this.#deps.accountConfig.users.findById(userId, trx)
     if (!user) return false
-    const row = await readAdmissionRow(trx ?? this.deps.db.connection(), user.id)
-    return evaluateAdmission(this.deps.config, user, row).admitted
+    const row = await readAdmissionRow(trx ?? this.#deps.db.connection(), user.id)
+    return evaluateAdmission(this.#deps.config, user, row).admitted
   }
 
   /**
@@ -153,9 +153,9 @@ export class AccountAdmission {
    * ```
    */
   async record(userId: UserId, trx?: Trx): Promise<AdmissionRecord | null> {
-    const user = await this.deps.accountConfig.users.findById(userId, trx)
+    const user = await this.#deps.accountConfig.users.findById(userId, trx)
     if (!user) return null
-    const row = await readAdmissionRow(trx ?? this.deps.db.connection(), user.id)
+    const row = await readAdmissionRow(trx ?? this.#deps.db.connection(), user.id)
     return row ? toAdmissionRecord(row, user.email) : null
   }
 
@@ -169,7 +169,7 @@ export class AccountAdmission {
    * ```
    */
   eligibleDomain(email: string): boolean {
-    const rule = this.deps.config.domain
+    const rule = this.#deps.config.domain
     if (!rule) return true
     if (typeof email !== 'string') return false
     const domain = extractEmailDomain(normalizeEmail(email))
@@ -186,7 +186,7 @@ export class AccountAdmission {
    * ```
    */
   request(input: CurrentAccountInput): Promise<AdmissionRecord> {
-    return requestAdmission(this.deps, input)
+    return requestAdmission(this.#deps, input)
   }
 
   /**
@@ -198,7 +198,7 @@ export class AccountAdmission {
    * ```
    */
   approve(input: { actorId: UserId; userId: UserId }): Promise<AdmissionRecord> {
-    return decideAdmission(this.deps, input, 'approve')
+    return decideAdmission(this.#deps, input, 'approve')
   }
 
   /**
@@ -210,7 +210,7 @@ export class AccountAdmission {
    * ```
    */
   reject(input: { actorId: UserId; userId: UserId }): Promise<AdmissionRecord> {
-    return decideAdmission(this.deps, input, 'reject')
+    return decideAdmission(this.#deps, input, 'reject')
   }
 
   /**
@@ -222,7 +222,7 @@ export class AccountAdmission {
    * ```
    */
   revoke(input: { actorId: UserId; userId: UserId }): Promise<AdmissionRecord> {
-    return decideAdmission(this.deps, input, 'revoke')
+    return decideAdmission(this.#deps, input, 'revoke')
   }
 
   /**
@@ -239,7 +239,7 @@ export class AccountAdmission {
     cursor?: string
     limit?: number
   }): Promise<AdmissionPage> {
-    return paginateAdmissions(this.deps, input)
+    return paginateAdmissions(this.#deps, input)
   }
 
   /**
@@ -257,7 +257,7 @@ export class AccountAdmission {
        * ```
        */
       approve: (input: { email: string }): Promise<AdmissionRecord> =>
-        applyOperatorDecision(this.deps, input, 'approve'),
+        applyOperatorDecision(this.#deps, input, 'approve'),
       /**
        * Revoke admission from the operator console.
        *
@@ -267,7 +267,7 @@ export class AccountAdmission {
        * ```
        */
       revoke: (input: { email: string }): Promise<AdmissionRecord> =>
-        applyOperatorDecision(this.deps, input, 'revoke'),
+        applyOperatorDecision(this.#deps, input, 'revoke'),
       /**
        * Record operator-provided invitation evidence.
        *
@@ -277,7 +277,7 @@ export class AccountAdmission {
        * ```
        */
       grantInvitation: (input: { email: string; role?: string }): Promise<AdmissionRecord> =>
-        grantOperatorInvitation(this.deps, input),
+        grantOperatorInvitation(this.#deps, input),
       /**
        * Issues an operator invitation and an approval waiting for the account it creates; that
        * account lands admitted once its invitation evidence is recorded.
@@ -288,7 +288,7 @@ export class AccountAdmission {
        * ```
        */
       bootstrap: (input: { email: string; role: string }): Promise<OperatorInviteResult> =>
-        bootstrapOperatorInvitation(this.deps, input),
+        bootstrapOperatorInvitation(this.#deps, input),
       /**
        * Deletes the waiting approval for `email`; returns whether there was one.
        *
@@ -298,7 +298,7 @@ export class AccountAdmission {
        * ```
        */
       cancelBootstrap: (input: { email: string }): Promise<boolean> =>
-        cancelBootstrap(this.deps, input.email),
+        cancelBootstrap(this.#deps, input.email),
     }
   }
 }

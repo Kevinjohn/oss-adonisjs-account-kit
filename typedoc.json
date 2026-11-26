@@ -4,8 +4,8 @@
     "index.ts",
     "http/main.ts",
     "transaction/main.ts",
-    "testing/adapter_contract.ts",
-    "testing/notifications.ts"
+    "src/testing/adapter_contract.ts",
+    "src/testing/notifications.ts"
   ],
   "out": "docs/reference/api",
   "plugin": ["typedoc-plugin-markdown"],

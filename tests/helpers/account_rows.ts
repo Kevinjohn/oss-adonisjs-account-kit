@@ -1,12 +1,12 @@
 import { DateTime } from 'luxon'
-import { dbTime } from './db_time.js'
-import { accessTokenDefaults } from './access_tokens.js'
-import { issueProof } from '../../src/social_proofs.js'
-import { transaction } from '../../src/transaction.js'
-import type { ResolvedConfig, SensitivePurpose, UserId } from '../../src/types.js'
-import type { TestApp } from './app.js'
-import { unwrapId } from './users_adapter.js'
-import { userTables } from './schema.js'
+import { dbTime } from './db_time.ts'
+import { accessTokenDefaults } from './access_tokens.ts'
+import { issueProof } from '../../src/social_proofs.ts'
+import { transaction } from '../../src/transaction.ts'
+import type { ResolvedConfig, SensitivePurpose, UserId } from '../../src/types.ts'
+import type { TestApp } from './app.ts'
+import { unwrapId } from './users_adapter.ts'
+import { userTables } from './schema.ts'
 
 export { userTables }
 

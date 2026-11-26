@@ -16,7 +16,7 @@ import type {
   SocialAuthenticationConfig,
   AuthenticationConfig,
   ResolvedAuthenticationConfig,
-} from './types.js'
+} from './types.ts'
 
 /** The configuration passed to `defineConfig` in `config/account_kit.ts`. */
 export interface AccountKitConfig {

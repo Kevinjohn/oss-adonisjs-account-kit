@@ -16,7 +16,7 @@ You need:
   ```
 
 - A stable `APP_KEY` of at least 32 characters and `APP_URL=http://localhost:3333` in `.env`. Set
-  `FRONTEND_URL` as well when account pages live on another origin; links use `APP_URL` without it.
+  `ACCOUNT_KIT_FRONTEND_URL` as well when account pages live on another origin; links use `APP_URL` without it.
   Production action links require a public HTTPS origin. Configure trusted proxies before using
   `request.ip()` as the rate-limit client identity.
 
@@ -67,6 +67,7 @@ print messages to the log. In `config/account_kit.ts`, import two helpers:
 
 ```ts
 import app from '@adonisjs/core/services/app'
+import logger from '@adonisjs/core/services/logger'
 import { createLogNotifications } from '@kevinjohn/adonisjs-account-kit'
 ```
 
@@ -75,6 +76,7 @@ factory above `defineConfig`. The new block uses `createLogNotifications`:
 
 ```ts
 notify: createLogNotifications({
+  logger: () => logger,
   brandName: 'My App',
   environment: app.inProduction ? 'production' : 'development',
 }),
@@ -234,8 +236,8 @@ router.post('account/recovery/:token', [PasswordResetsController, 'complete'])
 ```
 
 The paths match the `urls.passwordReset` destination in the generated config, which produces
-links of the form `APP_URL/account/recovery/<token>`, or `FRONTEND_URL/account/recovery/<token>`
-when `FRONTEND_URL` is set. In a real application that link points at
+links of the form `APP_URL/account/recovery/<token>`, or `ACCOUNT_KIT_FRONTEND_URL/account/recovery/<token>`
+when `ACCOUNT_KIT_FRONTEND_URL` is set. In a real application that link points at
 your frontend page, which then posts the new password to the API. The request endpoint has a
 distinct path, so a completion POST without a token segment has no matching route and returns
 AdonisJS's ordinary 404. Redact proof-bearing URL paths

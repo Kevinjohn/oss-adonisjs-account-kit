@@ -1,9 +1,9 @@
 import { test } from '@japa/runner'
-import type { AdmissionEvent } from '../src/admission/types.js'
-import { E_ACCOUNT_KIT_INVALID_SESSION, E_ACCOUNT_KIT_UNVERIFIED_EMAIL } from '../src/errors.js'
-import { useAdmissionApp } from './helpers/admission_schema.js'
-import { allowDecisions, makeAdmission, writeAdmissionRow } from './helpers/admission.js'
-import { insertUser } from './helpers/fakes.js'
+import type { AdmissionEvent } from '../src/admission/types.ts'
+import { E_ACCOUNT_KIT_INVALID_SESSION, E_ACCOUNT_KIT_UNVERIFIED_EMAIL } from '../src/errors.ts'
+import { useAdmissionApp } from './helpers/admission_schema.ts'
+import { allowDecisions, makeAdmission, writeAdmissionRow } from './helpers/admission.ts'
+import { insertUser } from './helpers/fakes.ts'
 
 const authentication = { strategy: 'session' as const, guard: 'web' }
 

@@ -1,8 +1,8 @@
 import { test } from '@japa/runner'
-import { E_ACCOUNT_KIT_INVALID_INPUT } from '../src/errors.js'
-import { useTestApp } from './helpers/app.js'
-import { insertUser, makeService, makeUsersAdapter } from './helpers/fakes.js'
-import { dbTime } from './helpers/db_time.js'
+import { E_ACCOUNT_KIT_INVALID_INPUT } from '../src/errors.ts'
+import { useTestApp } from './helpers/app.ts'
+import { insertUser, makeService, makeUsersAdapter } from './helpers/fakes.ts'
+import { dbTime } from './helpers/db_time.ts'
 
 test.group('invitation management contracts', (group) => {
   const kit = useTestApp(group)

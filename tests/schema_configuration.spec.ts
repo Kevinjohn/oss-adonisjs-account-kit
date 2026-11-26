@@ -1,3 +1,4 @@
+import { migrationStubPath } from '../src/setup/migration_paths.ts'
 import { symlink, writeFile } from 'node:fs/promises'
 import { randomUUID } from 'node:crypto'
 import { join } from 'node:path'
@@ -6,12 +7,12 @@ import { test } from '@japa/runner'
 import { MigrationRunner } from '@adonisjs/lucid/migration'
 import { BaseModel, beforeCreate, column } from '@adonisjs/lucid/orm'
 import type { DateTime } from 'luxon'
-import { migrationNames, migrationSchema, type UserIdType } from '../configure.js'
-import { createLucidAdapter } from '../adapters/lucid.js'
-import { transaction } from '../src/db.js'
-import { bootTestApp } from './helpers/app.js'
-import { locksRows, testEngine } from './helpers/dialect.js'
-import { dropPackageTables, packageTables } from './helpers/schema.js'
+import { migrationNames, migrationSchema, type UserIdType } from '../configure.ts'
+import { createLucidAdapter } from '../src/adapters/lucid.ts'
+import { transaction } from '../src/db.ts'
+import { bootTestApp } from './helpers/app.ts'
+import { locksRows, testEngine } from './helpers/dialect.ts'
+import { dropPackageTables, packageTables } from './helpers/schema.ts'
 
 const idTypes: UserIdType[] = ['integer', 'string', 'uuid']
 const reservedUsersTable: Record<UserIdType, string> = {
@@ -65,17 +66,18 @@ for (const userIdType of idTypes) {
       const stubs = await kit.app.stubs.create()
       const timestamp = Date.now()
       for (const [index, name] of migrationNames.entries()) {
+        const destination = join(
+          kit.migrationDirectory,
+          `${timestamp + index}_account_kit_${name}.ts`
+        )
         const stub = await stubs.build(`migrations/${name}.stub`, { source: stubsRoot })
         const prepared = await stub.prepare({
           migration: {
             ...migrationSchema(usersTable, userIdType),
-            destination: join(
-              kit.migrationDirectory,
-              `${timestamp + index}_account_kit_${name}.ts`
-            ),
+            path: migrationStubPath(kit.app.migrationsPath(), destination),
           },
         })
-        await writeFile(prepared.destination, prepared.contents)
+        await writeFile(destination, prepared.contents)
       }
 
       const up = new MigrationRunner(kit.db, kit.app, { direction: 'up' })

@@ -1,8 +1,8 @@
 import { test } from '@japa/runner'
-import { defineConfig } from '../src/config.js'
-import type { AccountKitConfig } from '../src/types.js'
-import { useTestApp } from './helpers/app.js'
-import { makeConfig, makeUsersAdapter } from './helpers/fakes.js'
+import { resolveConfig as defineConfig } from '../src/config.ts'
+import type { AccountKitConfig } from '../src/types.ts'
+import { useTestApp } from './helpers/app.ts'
+import { makeConfig, makeUsersAdapter } from './helpers/fakes.ts'
 
 test.group('session management config', (group) => {
   const kit = useTestApp(group)

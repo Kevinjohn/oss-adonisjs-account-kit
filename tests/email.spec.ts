@@ -1,5 +1,5 @@
 import { test } from '@japa/runner'
-import { isEmailShaped, normalizeEmail } from '../src/email.js'
+import { isEmailShaped, normalizeEmail } from '../src/email.ts'
 
 test.group('email helpers', () => {
   test('trims and lowercases addresses', async ({ assert }) => {

@@ -1,5 +1,5 @@
 import { test } from '@japa/runner'
-import { readInspectionRevision } from '../src/account_access_inspection.js'
+import { readInspectionRevision } from '../src/account_access_inspection.ts'
 
 for (const [name, row] of [
   ['absent row', undefined],

@@ -54,7 +54,7 @@ callback that evaluates the real restricted-account policy. Invitation routes ad
 The application supplies mail delivery through the configured `notify` callbacks and constructs
 proof URLs through `urls`. Use an HTTPS application URL in production and configure trusted proxy
 addresses before deriving client keys from request IPs. Account Kit does not install or configure a
-mail transport, queue, outbox, or background worker. Setup uses `FRONTEND_URL` as the conventional
+mail transport, queue, outbox, or background worker. Setup uses `ACCOUNT_KIT_FRONTEND_URL` as the conventional
 trusted frontend origin environment-variable name; a custom name can be selected. Production
 backend and frontend origins must both resolve to HTTPS.
 

@@ -1,9 +1,9 @@
 import type { HttpContext } from '@adonisjs/core/http'
-import type { E_ACCOUNT_KIT } from '../errors.js'
-import type { AccountKitTranslator } from '../translator.js'
-import { mapManagedErrorResponse, type ManagedErrorResponse } from '../error_response.js'
+import type { E_ACCOUNT_KIT } from '../errors.ts'
+import type { AccountKitTranslator } from '../translator.ts'
+import { mapManagedErrorResponse, type ManagedErrorResponse } from '../error_response.ts'
 
-export { buildProofHeaders } from './proof_headers.js'
+export { buildProofHeaders } from './proof_headers.ts'
 
 export {
   mapManagedErrorResponse,
@@ -11,7 +11,7 @@ export {
   negotiateRequest,
   type ManagedErrorResponse,
   type ManagedMessage,
-} from '../error_response.js'
+} from '../error_response.ts'
 
 export function applyMappedHeaders(context: HttpContext, mapped: ManagedErrorResponse): void {
   for (const [name, value] of Object.entries(mapped.headers)) {

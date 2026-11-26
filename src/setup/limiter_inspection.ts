@@ -6,8 +6,8 @@ import {
   getImportedBindingName,
   parseSetupSource,
   inspectTopLevelConfig,
-} from './ts_source.js'
-import { resolveEnvironmentNameFromGetter } from './selected_environment.js'
+} from './ts_source.ts'
+import { resolveEnvironmentNameFromGetter } from './selected_environment.ts'
 
 export async function inspectLimiterConfiguration(
   text: string,

@@ -1,9 +1,10 @@
 import { test } from '@japa/runner'
 import { LimiterResponse, errors } from '@adonisjs/limiter'
-import { AccountKit, defineConfig } from '../src/account_kit.js'
-import { useTestApp } from './helpers/app.js'
-import { insertUser, makeConfig, makeService } from './helpers/fakes.js'
-import { makeUsersAdapter } from './helpers/users_adapter.js'
+import { AccountKit } from '../src/account_kit.ts'
+import { resolveConfig as defineConfig } from '../src/config.ts'
+import { useTestApp } from './helpers/app.ts'
+import { insertUser, makeConfig, makeService } from './helpers/fakes.ts'
+import { makeUsersAdapter } from './helpers/users_adapter.ts'
 
 const sessionGuard = (events: string[] = []) => ({
   strategy: 'session' as const,

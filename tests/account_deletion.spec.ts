@@ -1,7 +1,7 @@
 import { test } from '@japa/runner'
-import { createLucidAdapter } from '../adapters/lucid.js'
-import SoftDeletingUser from './fixtures/soft_deleting_user.js'
-import { defineConfig } from '../src/config.js'
+import { createLucidAdapter } from '../src/adapters/lucid.ts'
+import SoftDeletingUser from './fixtures/soft_deleting_user.ts'
+import { resolveConfig as defineConfig } from '../src/config.ts'
 import {
   E_ACCOUNT_KIT_CAPABILITY_DISABLED,
   E_ACCOUNT_KIT_DELIVERY,
@@ -9,24 +9,24 @@ import {
   E_ACCOUNT_KIT_POST_COMMIT,
   E_ACCOUNT_KIT_SOCIAL_PROOF_INVALID,
   E_ACCOUNT_KIT_THROTTLED,
-} from '../src/errors.js'
-import type { AccountKitConfig, AccountUser, LifecycleEvent, Trx } from '../src/types.js'
-import { useTestApp } from './helpers/app.js'
+} from '../src/errors.ts'
+import type { AccountKitConfig, AccountUser, LifecycleEvent, Trx } from '../src/types.ts'
+import { useTestApp } from './helpers/app.ts'
 import {
   accountKit,
   insertUser,
   makeConfig,
   makeService,
   makeUsersAdapter,
-} from './helpers/fakes.js'
+} from './helpers/fakes.ts'
 import {
   issueRecentProof,
   seedAccountRows,
   userRowCounts,
   userTables,
-} from './helpers/account_rows.js'
-import { resetSchema } from './helpers/schema.js'
-import { provider } from './helpers/social_identity.js'
+} from './helpers/account_rows.ts'
+import { resetSchema } from './helpers/schema.ts'
+import { provider } from './helpers/social_identity.ts'
 
 const none = Object.fromEntries(userTables.map(([table]) => [table, 0]))
 

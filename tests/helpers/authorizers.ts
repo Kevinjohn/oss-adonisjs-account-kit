@@ -1,4 +1,4 @@
-import type { AuthorizationCallbacks } from '../../src/types.js'
+import type { AuthorizationCallbacks } from '../../src/types.ts'
 
 const authorize = (value: boolean): AuthorizationCallbacks => ({
   invite: async () => value,

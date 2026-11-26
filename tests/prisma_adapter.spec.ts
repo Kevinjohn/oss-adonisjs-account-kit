@@ -1,10 +1,10 @@
 import { test } from '@japa/runner'
-import { createPrismaAdapter, type PrismaModelDefinition } from '../adapters/prisma.js'
-import { E_ACCOUNT_KIT_INVALID_CONFIGURATION } from '../src/errors.js'
-import { assertUsersAdapterContract } from '../testing/adapter_contract.js'
-import { useTestApp } from './helpers/app.js'
-import { createAppUsersTable } from './helpers/app_users_table.js'
-import { contractFixture, fakeHash } from './helpers/adapter_contract_fixture.js'
+import { createPrismaAdapter, type PrismaModelDefinition } from '../src/adapters/prisma.ts'
+import { E_ACCOUNT_KIT_INVALID_CONFIGURATION } from '../src/errors.ts'
+import { usersAdapterContract } from '../src/testing/adapter_contract.ts'
+import { useTestApp } from './helpers/app.ts'
+import { createAppUsersTable } from './helpers/app_users_table.ts'
+import { contractFixture, fakeHash } from './helpers/adapter_contract_fixture.ts'
 
 /** The DMMF shape of `model AppUser { ... @@map("app_users") }` with `@map` on each column. */
 const appUser: PrismaModelDefinition = {
@@ -42,12 +42,12 @@ test.group('Prisma users adapter', (group) => {
       mapRegistrationData: (data) => ({ full_name: (data as { fullName: string }).fullName }),
     })
     assert.deepEqual(await adapter.resolveMetadata(), { table: 'app_users', primaryKey: 'id' })
-    await assertUsersAdapterContract(
+    await usersAdapterContract(
       contractFixture(kit, adapter, {
         table: 'app_users',
         registrationData: { fullName: 'Prisma User' },
       })
-    )
+    )()
   })
 
   test('an unmapped model uses its name as the table', async ({ assert }) => {

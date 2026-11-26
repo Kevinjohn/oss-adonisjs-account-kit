@@ -1,6 +1,6 @@
 import { DateTime } from 'luxon'
 import { test } from '@japa/runner'
-import { defineConfig } from '../src/account_kit.js'
+import { resolveConfig as defineConfig } from '../src/config.ts'
 import {
   E_ACCOUNT_KIT_AUTHORIZATION,
   E_ACCOUNT_KIT_DELIVERY,
@@ -8,10 +8,10 @@ import {
   E_ACCOUNT_KIT_INVALID_INPUT,
   E_ACCOUNT_KIT_INVITATION_PENDING,
   E_ACCOUNT_KIT_POST_COMMIT,
-} from '../src/errors.js'
-import { hashToken } from '../src/tokens.js'
-import { useTestApp } from './helpers/app.js'
-import { invitationHelpers } from './helpers/invitations.js'
+} from '../src/errors.ts'
+import { hashToken } from '../src/tokens.ts'
+import { useTestApp } from './helpers/app.ts'
+import { invitationHelpers } from './helpers/invitations.ts'
 import {
   accountKit,
   allowAll,
@@ -19,13 +19,13 @@ import {
   makeNotify,
   makeUsersAdapter,
   tokenFrom,
-} from './helpers/fakes.js'
-import { faultAfterCommit } from './helpers/fault_after_commit.js'
-import { dbTime } from './helpers/db_time.js'
-import { createSqlUsersAdapter } from '../adapters/sql.js'
-import { fakeHash } from './helpers/adapter_contract_fixture.js'
-import { locksRows, testEngine } from './helpers/dialect.js'
-import { startWithBackendId, waitForDatabaseLockWait } from './helpers/lock_coordination.js'
+} from './helpers/fakes.ts'
+import { faultAfterCommit } from './helpers/fault_after_commit.ts'
+import { dbTime } from './helpers/db_time.ts'
+import { createSqlUsersAdapter } from '../src/adapters/sql.ts'
+import { fakeHash } from './helpers/adapter_contract_fixture.ts'
+import { locksRows, testEngine } from './helpers/dialect.ts'
+import { startWithBackendId, waitForDatabaseLockWait } from './helpers/lock_coordination.ts'
 
 test.group('invitations.send', (group) => {
   const kit = useTestApp(group)

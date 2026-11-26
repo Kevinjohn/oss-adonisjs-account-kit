@@ -1,5 +1,5 @@
-import type { JsonSchema } from './openapi_types.js'
-import { closed, constant, ref, string } from './openapi_primitives.js'
+import type { JsonSchema } from './openapi_types.ts'
+import { closed, constant, ref, string } from './openapi_primitives.ts'
 
 /** Shared component schemas; `IssuedAccount`, `Account` and `SocialProvider` are added per document. */
 export function buildSharedSchemas(): Record<string, JsonSchema> {

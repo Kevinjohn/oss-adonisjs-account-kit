@@ -22,9 +22,9 @@ never imports it, so an application that does not install it is unchanged.
 `config/admission.ts`:
 
 ```ts
-import { defineAdmission } from '@kevinjohn/adonisjs-account-kit/admission'
+import { defineConfig } from '@kevinjohn/adonisjs-account-kit/admission'
 
-export default defineAdmission({
+export default defineConfig({
   domain: { allowed: ['example.com'], includeSubdomains: false }, // omit to disable
   invitation: { required: true }, // omit to disable
   approval: {
@@ -39,7 +39,7 @@ export default defineAdmission({
 })
 ```
 
-`defineAdmission` fails at boot when:
+`defineConfig` fails at boot when:
 
 - none of `domain`, `invitation` and `approval` is present. To turn admission off, do not install
   the module;
@@ -167,20 +167,21 @@ The decision names only the enabled requirements:
 
 ### Gating routes
 
-For application-owned routes, `admissionMiddleware` checks the selected guard, the credential and
+For application-owned routes, `AdmissionMiddleware` checks the selected guard, the credential and
 admission before the route runs:
 
 ```ts
 import router from '@adonisjs/core/services/router'
 import app from '@adonisjs/core/services/app'
-import { AccountAdmission, admissionMiddleware } from '@kevinjohn/adonisjs-account-kit/admission'
+import { AccountAdmission } from '@kevinjohn/adonisjs-account-kit/admission'
+import AdmissionMiddleware from '@kevinjohn/adonisjs-account-kit/middleware/admission'
 
-const admitted = admissionMiddleware({
+const admitted = new AdmissionMiddleware({
   admission: () => app.container.make(AccountAdmission),
   guard, // the createManagedGuard(...) adapter the managed routes use
 })
 
-router.get('/reports', [ReportsController, 'index']).use(admitted)
+router.get('/reports', [ReportsController, 'index']).use(admitted.handle.bind(admitted))
 ```
 
 Pass `active: false` to skip the activation check. Without `createManagedGuard`, call
@@ -190,7 +191,7 @@ routes cannot carry this middleware; they stay the limited surface.
 After the middleware, `ctx.auth.user`, `ctx.auth.isAuthenticated` and `ctx.auth.getUserOrFail()`
 answer for the selected guard, as they do after `middleware.auth({ guards: [name] })`, so the
 default Bouncer initialiser and application code see the signed-in user without a second
-`auth` middleware. `managedAccountMiddleware` does the same.
+`auth` middleware. `ManagedAccountMiddleware` does the same.
 
 ### Errors
 
@@ -252,6 +253,10 @@ opaque and checked; a forged one is `E_ACCOUNT_KIT_INVALID_INPUT`.
 | `account-kit:admission:revoke <email>`                                                   | Operator revocation.                                                                                                                            |
 | `account-kit:admission:grant-invitation <email> [--role]`                                | Records operator invitation evidence for an existing account; refused when evidence exists. `--role` is stored only; it grants nothing.         |
 | `account-kit:admission:bootstrap <email> --role <role>`                                  | Issues an operator invitation, prints its link and writes an approval for the account it creates. `--cancel` deletes that approval instead.     |
+
+If `config/database.ts` selects its Lucid connection from a value supplied only in the shell,
+pass it to install explicitly, for example `--env=DB_CONNECTION=postgres`. Install accepts the same
+[environment overrides as guided setup](setup.md#environment-overrides).
 
 The runtime commands write one JSON result line to stdout when an operation returns a result.
 A thrown runtime failure leaves the original error on Ace's `command.error`, reports one safe

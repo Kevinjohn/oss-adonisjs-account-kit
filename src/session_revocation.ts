@@ -1,6 +1,6 @@
 // Records whether an already committed revocation affected the current session, even when a
 // follow-up throws. It does not infer whether a server committed after a lost client response.
-import { isCommittedFailure } from './errors.js'
+import { isCommittedFailure } from './errors.ts'
 
 const revocationOutcomesByError = new WeakMap<Error, { current: boolean }>()
 

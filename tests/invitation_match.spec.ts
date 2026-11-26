@@ -1,13 +1,11 @@
-/* eslint-disable @unicorn/no-await-expression-member -- Keep each assertion next to the operation it inspects. */
-
 import { DateTime } from 'luxon'
 import { test } from '@japa/runner'
-import { E_ACCOUNT_KIT_INVALID_TOKEN } from '../src/errors.js'
-import type { AccountKitConfig, LifecycleEvent } from '../src/types.js'
-import { useTestApp } from './helpers/app.js'
-import { dbTime } from './helpers/db_time.js'
-import { insertUser, makeService, tokenFrom } from './helpers/fakes.js'
-import { clientChallenge, provider } from './helpers/social_identity.js'
+import { E_ACCOUNT_KIT_INVALID_TOKEN } from '../src/errors.ts'
+import type { AccountKitConfig, LifecycleEvent } from '../src/types.ts'
+import { useTestApp } from './helpers/app.ts'
+import { dbTime } from './helpers/db_time.ts'
+import { insertUser, makeService, tokenFrom } from './helpers/fakes.ts'
+import { clientChallenge, provider } from './helpers/social_identity.ts'
 
 test.group('invitation match', (group) => {
   const kit = useTestApp(group)
@@ -48,6 +46,7 @@ test.group('invitation match', (group) => {
         if (event.type === 'invitation.accepted')
           // After commit: the consume is visible outside the transaction.
           assert(
+            // eslint-disable-next-line @unicorn/no-await-expression-member -- Assert the result at the call site.
             (await kit.db.from('account_invitations').where('id', event.invitationId)).length === 0
           )
         events.push(event)
@@ -88,6 +87,7 @@ test.group('invitation match', (group) => {
     await kit.db.from('users').delete()
   }
 
+  // eslint-disable-next-line @unicorn/no-await-expression-member -- Assert the result at the call site.
   const invitationCount = async () => (await kit.db.from('account_invitations')).length
   const accepted = (events: LifecycleEvent[]) =>
     events.filter((event) => event.type === 'invitation.accepted')
@@ -127,6 +127,7 @@ test.group('invitation match', (group) => {
   }) => {
     const other = setup({ email: 'other@example.test', verified: true })
     await invite(other)
+    // eslint-disable-next-line @unicorn/no-await-expression-member -- Assert the result at the call site.
     check.equal((await socialSignIn(other)).status, 'new')
     check.lengthOf(other.accepted, 0)
     check.equal(await invitationCount(), 1)
@@ -137,6 +138,7 @@ test.group('invitation match', (group) => {
     await kit.db
       .from('account_invitations')
       .update({ expires_at: dbTime(kit, DateTime.utc().minus({ minutes: 1 })) })
+    // eslint-disable-next-line @unicorn/no-await-expression-member -- Assert the result at the call site.
     check.equal((await socialSignIn(expired)).status, 'new')
     check.lengthOf(expired.accepted, 0)
     check.equal(await invitationCount(), 1)
@@ -263,6 +265,7 @@ test.group('invitation match', (group) => {
 
     const confirmed = setup({ email: 'person@example.test', verified: false })
     await invite(confirmed)
+    // eslint-disable-next-line @unicorn/no-await-expression-member -- Assert the result at the call site.
     check.equal((await socialSignIn(confirmed)).status, 'new')
     const confirm = await confirmed.account.socialAuthentication.beginConfirmation({
       provider: 'google',
@@ -306,6 +309,7 @@ test.group('invitation match', (group) => {
       { email: 'person@example.test', verified: true },
       { enabled: ['socialAuthentication', 'emailVerification'], onInvitationAccepted: undefined }
     )
+    // eslint-disable-next-line @unicorn/no-await-expression-member -- Assert the result at the call site.
     check.equal((await socialSignIn(disabled)).status, 'new')
     check.equal(await invitationCount(), 1)
   })

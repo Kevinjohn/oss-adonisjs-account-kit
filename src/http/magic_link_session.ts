@@ -1,7 +1,7 @@
 /** Constant-size browser binding shared by outstanding managed magic links. */
-import { isClientVerifier } from '../client_challenge.js'
-import { generateVerifierAndChallenge } from './pkce_verifier.js'
-import type { SessionStore } from './session_access.js'
+import { isClientVerifier } from '../client_challenge.ts'
+import { generateVerifierAndChallenge } from './pkce_verifier.ts'
+import type { SessionStore } from './session_access.ts'
 
 const key = 'accountKit.magicLink.verifier'
 type Binding = { verifier: string; outstanding: number; expiresAt: number }

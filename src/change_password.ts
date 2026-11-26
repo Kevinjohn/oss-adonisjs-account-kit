@@ -1,16 +1,16 @@
 // Password change: confirms the actor, sets the new password and ends older credentials.
 import { randomUUID } from 'node:crypto'
-import { invalidateChangedCredentials, revision } from './credential_revision.js'
-import { transaction } from './db.js'
-import { finishCommitted, createLifecycleEffect, postCommit, settleCommitted } from './effects.js'
-import { E_ACCOUNT_KIT_INVALID_INPUT } from './errors.js'
-import { isPasswordAllowed } from './password.js'
-import { rememberPasswordChangeRevision } from './password_change_revision.js'
-import { preparePassword, storePassword } from './password_hashing.js'
-import { clearRecoveryTokens } from './credential_cleanup.js'
-import { confirmActor, requireUser } from './actor_confirmation.js'
-import type { ChangePasswordInput } from './types.js'
-import type { ServiceDependencies } from './service_dependencies.js'
+import { invalidateChangedCredentials, revision } from './credential_revision.ts'
+import { transaction } from './db.ts'
+import { finishCommitted, createLifecycleEffect, postCommit, settleCommitted } from './effects.ts'
+import { E_ACCOUNT_KIT_INVALID_INPUT } from './errors.ts'
+import { isPasswordAllowed } from './password.ts'
+import { rememberPasswordChangeRevision } from './password_change_revision.ts'
+import { preparePassword, storePassword } from './password_hashing.ts'
+import { clearRecoveryTokens } from './credential_cleanup.ts'
+import { confirmActor, requireUser } from './actor_confirmation.ts'
+import type { ChangePasswordInput } from './types.ts'
+import type { ServiceDependencies } from './service_dependencies.ts'
 
 export async function changePassword(
   deps: ServiceDependencies,

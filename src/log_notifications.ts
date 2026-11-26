@@ -1,34 +1,7 @@
+import type { LogNotificationOptions } from './types_log_notifications.ts'
 import { InvalidArgumentsException } from '@adonisjs/core/exceptions'
-import { createMailNotifications } from './notifications.js'
-import type { NotificationCallbacks } from './types.js'
-
-/** Anything with an `info` method, such as the AdonisJS logger. */
-export type MessageLogger = {
-  /** Write one informational line. */
-  info(message: string): void
-}
-
-/**
- * Options for `createLogNotifications`, which prints account emails to the log in development and
- * test.
- */
-export interface LogNotificationOptions {
-  /**
-   * Defaults to the AdonisJS logger service, resolved when a message is sent. Config files load
-   * before that service exists, so pass a function rather than the service itself.
-   */
-  logger?: MessageLogger | (() => MessageLogger)
-  brandName: string
-  /** Refuses production: logged messages contain live action links. */
-  environment: 'development' | 'test' | 'production'
-}
-
-async function resolveLogger(option: LogNotificationOptions['logger']): Promise<MessageLogger> {
-  if (typeof option === 'function') return option()
-  if (option) return option
-  const { default: logger } = await import('@adonisjs/core/services/logger')
-  return logger
-}
+import { createMailNotifications } from './notifications.ts'
+import type { NotificationCallbacks } from './types.ts'
 
 /**
  * Development notifications that print each rendered account message, action link included,
@@ -36,14 +9,17 @@ async function resolveLogger(option: LogNotificationOptions['logger']): Promise<
  *
  * @example
  * ```ts
+ * import logger from '@adonisjs/core/services/logger'
  * import { createLogNotifications } from '@kevinjohn/adonisjs-account-kit'
  *
- * const notify = createLogNotifications({ brandName: 'Example Studio', environment: 'development' })
+ * const notify = createLogNotifications({ logger: () => logger, brandName: 'Example Studio', environment: 'development' })
  * ```
  */
 export function createLogNotifications(options: LogNotificationOptions): NotificationCallbacks {
   if (options.environment === 'production')
     throw new InvalidArgumentsException('account_kit: log notifications are for development only')
+  if (!options.logger)
+    throw new InvalidArgumentsException('account_kit: log notifications require a logger')
   return createMailNotifications({
     from: 'account-kit@localhost',
     brandName: options.brandName,
@@ -58,7 +34,7 @@ export function createLogNotifications(options: LogNotificationOptions): Notific
           text: (value: string) => ((fields.text = value), message),
         }
         callback(message)
-        const logger = await resolveLogger(options.logger)
+        const logger = typeof options.logger === 'function' ? options.logger() : options.logger
         logger.info(
           `[account-kit] mail to ${fields.to}: ${fields.subject}\n${fields.text.trimEnd()}`
         )
@@ -66,3 +42,5 @@ export function createLogNotifications(options: LogNotificationOptions): Notific
     },
   })
 }
+
+export type { MessageLogger, LogNotificationOptions } from './types_log_notifications.ts'

@@ -1,15 +1,15 @@
 import { test } from '@japa/runner'
-import { defineConfig } from '../src/account_kit.js'
+import { resolveConfig as defineConfig } from '../src/config.ts'
 import {
   isUserEmailUniqueViolation,
   lockUser,
   transaction,
   requireUserMetadata,
-} from '../src/db.js'
-import type { UsersAdapterMetadata } from '../src/types.js'
-import { useTestApp } from './helpers/app.js'
-import { makeConfig, makeUsersAdapter } from './helpers/fakes.js'
-import { lockNotAvailableCode, locksRows } from './helpers/dialect.js'
+} from '../src/db.ts'
+import type { UsersAdapterMetadata } from '../src/types.ts'
+import { useTestApp } from './helpers/app.ts'
+import { makeConfig, makeUsersAdapter } from './helpers/fakes.ts'
+import { lockNotAvailableCode, locksRows } from './helpers/dialect.ts'
 
 test.group('database user helpers', (group) => {
   const kit = useTestApp(group)

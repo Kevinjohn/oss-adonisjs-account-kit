@@ -1,7 +1,7 @@
 import { test } from '@japa/runner'
-import { defineConfig } from '../src/account_kit.js'
-import { useTestApp } from './helpers/app.js'
-import { makeConfig, makeUsersAdapter } from './helpers/fakes.js'
+import { resolveConfig as defineConfig } from '../src/config.ts'
+import { useTestApp } from './helpers/app.ts'
+import { makeConfig, makeUsersAdapter } from './helpers/fakes.ts'
 
 test.group('password policy configuration', (group) => {
   const kit = useTestApp(group)

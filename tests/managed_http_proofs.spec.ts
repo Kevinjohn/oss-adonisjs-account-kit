@@ -1,7 +1,7 @@
 import { test } from '@japa/runner'
-import { AccountKit } from '../src/account_kit.js'
-import { registerManagedRoutes } from '../src/http/managed.js'
-import { fakeManagedHttp, stubGuard } from './helpers/managed_http_fakes.js'
+import { AccountKit } from '../src/account_kit.ts'
+import { registerManagedRoutes } from '../src/http/managed.ts'
+import { fakeManagedHttp, stubGuard } from './helpers/managed_http_fakes.ts'
 
 test.group('managed HTTP dispatch', () => {
   test('GET proof inspection stays read-only and sets both protective headers', async ({

@@ -1,6 +1,6 @@
 // Delivers admission events to `onAdmissionEvent` after commit.
-import { finishCommitted, postCommit, settleCommitted } from '../effects.js'
-import type { AdmissionEvent, ResolvedAdmissionConfig } from './types.js'
+import { finishCommitted, postCommit, settleCommitted } from '../effects.ts'
+import type { AdmissionEvent, ResolvedAdmissionConfig } from './types.ts'
 
 /**
  * Await a committed admission transaction, then report `event` (when there is one). A failing hook

@@ -1,5 +1,5 @@
 import { test } from '@japa/runner'
-import { exportFault } from '../src/account_export.js'
+import { exportFault } from '../src/account_export.ts'
 import {
   E_ACCOUNT_KIT_CAPABILITY_DISABLED,
   E_ACCOUNT_KIT_IDENTITY_NOT_CONFIRMED,
@@ -7,15 +7,15 @@ import {
   E_ACCOUNT_KIT_POST_COMMIT,
   E_ACCOUNT_KIT_SOCIAL_PROOF_INVALID,
   E_ACCOUNT_KIT_THROTTLED,
-} from '../src/errors.js'
-import type { AccountKitConfig, AccountUser, Trx } from '../src/types.js'
-import { useTestApp } from './helpers/app.js'
-import { accessTokenDefaults } from './helpers/access_tokens.js'
-import { dbTime } from './helpers/db_time.js'
-import { testEngine } from './helpers/dialect.js'
-import { insertUser, makeService } from './helpers/fakes.js'
-import { issueRecentProof, past, seedAccountRows, soon } from './helpers/account_rows.js'
-import { provider } from './helpers/social_identity.js'
+} from '../src/errors.ts'
+import type { AccountKitConfig, AccountUser, Trx } from '../src/types.ts'
+import { useTestApp } from './helpers/app.ts'
+import { accessTokenDefaults } from './helpers/access_tokens.ts'
+import { dbTime } from './helpers/db_time.ts'
+import { testEngine } from './helpers/dialect.ts'
+import { insertUser, makeService } from './helpers/fakes.ts'
+import { issueRecentProof, past, seedAccountRows, soon } from './helpers/account_rows.ts'
+import { provider } from './helpers/social_identity.ts'
 
 const socialConfig: Partial<AccountKitConfig> = {
   enabled: ['dataExport', 'socialAuthentication', 'emailVerification'],

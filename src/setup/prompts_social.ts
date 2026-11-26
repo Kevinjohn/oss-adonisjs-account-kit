@@ -1,7 +1,7 @@
 import { InvalidArgumentsException } from '@adonisjs/core/exceptions'
-import { isSocialProviderName } from '../social_providers.js'
-import type { SocialProviderName } from '../types.js'
-import type { GuardStrategy, SetupChoices } from './types.js'
+import { isSocialProviderName } from '../social_providers.ts'
+import type { SocialProviderName } from '../types.ts'
+import type { GuardStrategy, SetupChoices } from './types.ts'
 
 /** Keep the social sign-in questions and their saved-choice behavior together. */
 export async function collectSocialChoices(
@@ -45,10 +45,10 @@ export async function collectSocialChoices(
     }
     choices.social.callbackOriginEnv =
       (await ask(
-        `Social callback origin environment name (${previous?.callbackOriginEnv ?? 'ACCOUNT_SOCIAL_ORIGIN'})`
+        `Social callback origin environment name (${previous?.callbackOriginEnv ?? 'ACCOUNT_KIT_SOCIAL_ORIGIN'})`
       )) ||
       previous?.callbackOriginEnv ||
-      'ACCOUNT_SOCIAL_ORIGIN'
+      'ACCOUNT_KIT_SOCIAL_ORIGIN'
     const strategy = choices.authentication?.strategy
     // A saved session path embeds the route prefix, so keep it only while both are unchanged.
     const savedCallbackPath =

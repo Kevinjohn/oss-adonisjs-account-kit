@@ -1,5 +1,5 @@
 import env from '#start/env'
-import { defineAdmission } from '@kevinjohn/adonisjs-account-kit/admission'
+import { defineConfig } from '@kevinjohn/adonisjs-account-kit/admission'
 import { admissionAuthorize } from '#services/account_kit_authorization'
 
 // Comma-separated, for example `example.com,example.org`; unset leaves the domain requirement off.
@@ -8,7 +8,7 @@ const domains = (env.get('ACCOUNT_KIT_ADMISSION_DOMAINS') ?? '')
   .map((domain) => domain.trim())
   .filter(Boolean)
 
-export default defineAdmission({
+export default defineConfig({
   ...(domains.length > 0 ? { domain: { allowed: domains } } : {}),
   invitation: { required: true },
   approval: { required: true, authorize: admissionAuthorize },

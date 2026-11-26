@@ -1,12 +1,12 @@
 import { ListLoader } from '@adonisjs/core/ace'
-import PruneAccountKit from './prune.js'
-import SetupAccountKit from './setup.js'
-import RetirementImpact from './retirement_impact.js'
-import AccountKitDoctor from './doctor.js'
-import InviteAccount from './invite.js'
-import ResetLink from './reset_link.js'
-import ManagedOpenApi from './openapi.js'
-import InstallAdmission from './admission_install.js'
+import PruneAccountKit from './prune.ts'
+import SetupAccountKit from './setup.ts'
+import RetirementImpact from './retirement_impact.ts'
+import AccountKitDoctor from './doctor.ts'
+import InviteAccount from './invite.ts'
+import ResetLink from './reset_link.ts'
+import ManagedOpenApi from './openapi.ts'
+import InstallAdmission from './admission_install.ts'
 
 const loader = new ListLoader([
   PruneAccountKit,

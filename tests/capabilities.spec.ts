@@ -1,10 +1,11 @@
 import { test } from '@japa/runner'
-import { AccountKit, defineConfig } from '../src/account_kit.js'
-import { E_ACCOUNT_KIT_CAPABILITY_DISABLED } from '../src/errors.js'
-import { capabilities, capabilityRegistry, defaultCapabilities } from '../src/capabilities.js'
-import type { Capability } from '../src/types.js'
-import { useTestApp } from './helpers/app.js'
-import { makeConfig, makeUsersAdapter } from './helpers/fakes.js'
+import { AccountKit } from '../src/account_kit.ts'
+import { resolveConfig as defineConfig } from '../src/config.ts'
+import { E_ACCOUNT_KIT_CAPABILITY_DISABLED } from '../src/errors.ts'
+import { capabilities, capabilityRegistry, defaultCapabilities } from '../src/capabilities.ts'
+import type { Capability } from '../src/types.ts'
+import { useTestApp } from './helpers/app.ts'
+import { makeConfig, makeUsersAdapter } from './helpers/fakes.ts'
 
 test.group('capability configuration', (group) => {
   const kit = useTestApp(group)

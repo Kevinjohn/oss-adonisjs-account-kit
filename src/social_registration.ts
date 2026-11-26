@@ -1,23 +1,23 @@
 import { randomUUID } from 'node:crypto'
-import { transaction, isUserEmailUniqueViolation } from './db.js'
-import { finishCommitted, postCommit, settleCommitted } from './effects.js'
-import { emitInvitationAccepted } from './invitation_match.js'
-import { isEmailShaped } from './email.js'
-import { createHandoff } from './social_handoff.js'
+import { transaction, isUserEmailUniqueViolation } from './db.ts'
+import { finishCommitted, postCommit, settleCommitted } from './effects.ts'
+import { emitInvitationAccepted } from './invitation_match.ts'
+import { isEmailShaped } from './email.ts'
+import { createHandoff } from './social_handoff.ts'
 import {
   E_ACCOUNT_KIT_SOCIAL_EMAIL_MISSING,
   E_ACCOUNT_KIT_SOCIAL_IDENTITY_ALREADY_LINKED,
   E_ACCOUNT_KIT_SOCIAL_TRANSACTION_INVALID,
-} from './errors.js'
-import { sendSocialActivation } from './social_activation.js'
-import { consumeState, isIdentityConflict } from './social_callback.js'
-import { requireProviderProfile, createAccount } from './social_account_creation.js'
+} from './errors.ts'
+import { sendSocialActivation } from './social_activation.ts'
+import { consumeState, isIdentityConflict } from './social_callback.ts'
+import { requireProviderProfile, createAccount } from './social_account_creation.ts'
 import {
   listEnabledSocialProviders,
   type Dependencies,
   type SocialTransactionResult,
-} from './social_shared.js'
-import type { SocialCallbackResult, SocialProviderName, Trx } from './types.js'
+} from './social_shared.ts'
+import type { SocialCallbackResult, SocialProviderName, Trx } from './types.ts'
 
 export async function completeRegistration(
   deps: Dependencies,

@@ -1,9 +1,9 @@
 import { test } from '@japa/runner'
 import { DateTime } from 'luxon'
-import { dbTime } from './helpers/db_time.js'
-import { useTestApp } from './helpers/app.js'
-import { insertUser, makeService } from './helpers/fakes.js'
-import { clientChallenge, provider } from './helpers/social_identity.js'
+import { dbTime } from './helpers/db_time.ts'
+import { useTestApp } from './helpers/app.ts'
+import { insertUser, makeService } from './helpers/fakes.ts'
+import { clientChallenge, provider } from './helpers/social_identity.ts'
 
 test.group('social identity services', (group) => {
   const kit = useTestApp(group)

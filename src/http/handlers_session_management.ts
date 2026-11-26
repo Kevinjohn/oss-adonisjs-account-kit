@@ -1,9 +1,9 @@
 /** Managed handlers for session management: list sign-ins, revoke one, others, or all. */
-import { isCommittedFailure } from '../errors.js'
-import { getRevocationOutcome } from '../session_revocation.js'
-import type { ManagedEndpointName } from './routes.js'
-import type { ManagedHandler } from './managed_types.js'
-import { endSessionAfterCommit } from './session_end.js'
+import { isCommittedFailure } from '../errors.ts'
+import { getRevocationOutcome } from '../session_revocation.ts'
+import type { ManagedEndpointName } from './routes.ts'
+import type { ManagedHandler } from './managed_types.ts'
+import { endSessionAfterCommit } from './session_end.ts'
 
 export const sessionManagementHandlers = {
   'account.sessions.list': async ({ context, kit, accountInput }) =>

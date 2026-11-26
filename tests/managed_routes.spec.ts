@@ -1,7 +1,7 @@
 import { test } from '@japa/runner'
-import { E_ACCOUNT_KIT_INVALID_INPUT } from '../src/errors.js'
-import { managedHandlers, type ManagedHandler } from '../src/http/managed.js'
-import { planManagedRoutes, type ManagedEndpointName } from '../src/http/routes.js'
+import { E_ACCOUNT_KIT_INVALID_INPUT } from '../src/errors.ts'
+import { managedHandlers, type ManagedHandler } from '../src/http/managed.ts'
+import { planManagedRoutes, type ManagedEndpointName } from '../src/http/routes.ts'
 
 test.group('managed route plan', () => {
   test('only password change and invitation management need an active account', ({ assert }) => {

@@ -86,6 +86,7 @@ export async function runFresh(candidate: string, runName: string) {
       'node',
       'ace',
       'account-kit:admission:install',
+      `--env=DB_CONNECTION=${env.DB_CONNECTION}`,
       '--users-table',
       usersTable,
       '--user-id-type',

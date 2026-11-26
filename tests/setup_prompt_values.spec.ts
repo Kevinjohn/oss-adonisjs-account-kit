@@ -1,9 +1,9 @@
 import { test } from '@japa/runner'
-import { buildDefaultSetupChoices } from '../src/setup/defaults.js'
-import { requireSetupChoices } from '../src/setup/parse.js'
-import { collectSetupChoices } from '../src/setup/prompts.js'
-import type { SetupChoices } from '../src/setup/types.js'
-import { interactive } from './helpers/interactive_choices.js'
+import { buildDefaultSetupChoices } from '../src/setup/defaults.ts'
+import { requireSetupChoices } from '../src/setup/parse.ts'
+import { collectSetupChoices } from '../src/setup/prompts.ts'
+import type { SetupChoices } from '../src/setup/types.ts'
+import { interactive } from './helpers/interactive_choices.ts'
 
 async function collectWithTrace(answers: Record<string, string>) {
   const questions: string[] = []
@@ -126,8 +126,8 @@ test.group('setup prompt values', () => {
     assert.equal(defaults.policy.registration, 'open')
     assert.deepEqual(defaults.features, buildDefaultSetupChoices().features)
     assert.isTrue(defaults.policy.verificationRequired)
-    assert.equal(defaults.mail.frontendOriginEnv, 'FRONTEND_URL')
-    assert.equal(buildDefaultSetupChoices().mail.frontendOriginEnv, 'FRONTEND_URL')
+    assert.equal(defaults.mail.frontendOriginEnv, 'ACCOUNT_KIT_FRONTEND_URL')
+    assert.equal(buildDefaultSetupChoices().mail.frontendOriginEnv, 'ACCOUNT_KIT_FRONTEND_URL')
   })
 
   test('interactive and JSON choices both reject unknown mode and registration', async ({

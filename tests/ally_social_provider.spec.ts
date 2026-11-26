@@ -1,5 +1,5 @@
 import { test } from '@japa/runner'
-import { createAllySocialProvider } from '../index.js'
+import { createAllySocialProvider } from '../index.ts'
 
 test.group('Ally social provider mapping', () => {
   for (const state of ['verified', 'unverified', 'unsupported'] as const) {

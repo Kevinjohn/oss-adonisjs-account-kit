@@ -1,5 +1,5 @@
 // Email domain rules: which domains configuration accepts and whether an address matches one.
-import { isEmailShaped } from '../email.js'
+import { isEmailShaped } from '../email.ts'
 
 const label = /^[a-z0-9]([a-z0-9-]*[a-z0-9])?$/
 

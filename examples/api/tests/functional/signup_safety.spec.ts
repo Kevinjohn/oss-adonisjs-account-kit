@@ -1,3 +1,5 @@
+import { configProvider } from '@adonisjs/core'
+import type { ResolvedConfig } from '@kevinjohn/adonisjs-account-kit/types'
 import { randomUUID } from 'node:crypto'
 import { test } from '@japa/runner'
 import limiter from '@adonisjs/limiter/services/main'
@@ -183,13 +185,14 @@ test.group('Signup safety', (group) => {
     client,
     assert,
   }) => {
-    assert.equal(accountKitConfig.passwordPolicy.minLength, referencePasswordLimits.minLength)
-    assert.equal(accountKitConfig.passwordPolicy.maxLength, referencePasswordLimits.maxLength)
-    assert.isFalse(accountKitConfig.passwordPolicy.letters)
-    assert.isFalse(accountKitConfig.passwordPolicy.mixedCase)
-    assert.isFalse(accountKitConfig.passwordPolicy.numbers)
-    assert.isFalse(accountKitConfig.passwordPolicy.symbols)
-    assert.equal(accountKitConfig.passwordPolicy.minScore, 0)
+    const config = (await configProvider.resolve<ResolvedConfig>(app, accountKitConfig))!
+    assert.equal(config.passwordPolicy.minLength, referencePasswordLimits.minLength)
+    assert.equal(config.passwordPolicy.maxLength, referencePasswordLimits.maxLength)
+    assert.isFalse(config.passwordPolicy.letters)
+    assert.isFalse(config.passwordPolicy.mixedCase)
+    assert.isFalse(config.passwordPolicy.numbers)
+    assert.isFalse(config.passwordPolicy.symbols)
+    assert.equal(config.passwordPolicy.minScore, 0)
     assert.deepEqual(referencePasswordLimits, { minLength: 8, maxLength: 256 })
     await limiter.clear(['memory'])
     const password = 'LongPassword123!'.padEnd(256, 'x')

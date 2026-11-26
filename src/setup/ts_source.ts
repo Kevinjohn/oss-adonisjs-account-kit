@@ -1,5 +1,5 @@
 import { RuntimeException } from '@adonisjs/core/exceptions'
-import { E_ACCOUNT_KIT_INVALID_SETUP_SOURCE } from '../errors.js'
+import { E_ACCOUNT_KIT_INVALID_SETUP_SOURCE } from '../errors.ts'
 import type * as TypeScript from 'typescript'
 
 export type SetupSource = { ts: typeof TypeScript; file: TypeScript.SourceFile; text: string }

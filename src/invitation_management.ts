@@ -1,22 +1,22 @@
 import { DateTime } from 'luxon'
-import { readIsoTimestamp, sqlTimestamp } from './timestamps.js'
+import { readIsoTimestamp, sqlTimestamp } from './timestamps.ts'
 import { randomUUID } from 'node:crypto'
-import { lockRow, lockUser, transaction } from './db.js'
-import { finishCommitted, createLifecycleEffect, postCommit, settleCommitted } from './effects.js'
+import { lockRow, lockUser, transaction } from './db.ts'
+import { finishCommitted, createLifecycleEffect, postCommit, settleCommitted } from './effects.ts'
 import {
   E_ACCOUNT_KIT_EMAIL_ALREADY_REGISTERED,
   E_ACCOUNT_KIT_AUTHORIZATION,
   E_ACCOUNT_KIT_INVALID_INPUT,
   E_ACCOUNT_KIT_INVITATION_NOT_FOUND,
   E_ACCOUNT_KIT_INVITATION_MANAGEMENT_DENIED,
-} from './errors.js'
-import { invitationPageSize } from './invitation_input.js'
-import { toInvitation } from './invitation_rows.js'
-import { normalizeScope, encodeScopeColumn } from './invitation_scope.js'
-import { requireUser } from './actor_confirmation.js'
-import { generateToken, hashToken } from './tokens.js'
-import { expiresAt } from './ttl.js'
-import { decodeKeysetCursor, encodeKeysetCursor } from './keyset_cursor.js'
+} from './errors.ts'
+import { invitationPageSize } from './invitation_input.ts'
+import { toInvitation } from './invitation_rows.ts'
+import { normalizeScope, encodeScopeColumn } from './invitation_scope.ts'
+import { requireUser } from './actor_confirmation.ts'
+import { generateToken, hashToken } from './tokens.ts'
+import { expiresAt } from './ttl.ts'
+import { decodeKeysetCursor, encodeKeysetCursor } from './keyset_cursor.ts'
 import type {
   Invitation,
   InvitationPage,
@@ -26,8 +26,8 @@ import type {
   InvitationsRevokeInput,
   ResolvedConfig,
   Trx,
-} from './types.js'
-import type { ServiceDependencies } from './service_dependencies.js'
+} from './types.ts'
+import type { ServiceDependencies } from './service_dependencies.ts'
 
 function requireInvitationId(value: unknown): asserts value is number {
   if (!Number.isSafeInteger(value) || (value as number) <= 0)
@@ -177,7 +177,9 @@ export async function paginateInvitations(
   const context = scope === undefined ? {} : { scope }
   if ((await deps.config.authorize.listInvitations(actor, context)) !== true)
     throw new E_ACCOUNT_KIT_AUTHORIZATION()
-  const query = deps.db.from('account_invitations').where('expires_at', '>', sqlTimestamp(deps.db))
+  const query = deps.db
+    .from('account_invitations')
+    .where('expires_at', '>', sqlTimestamp(deps.db, DateTime.utc()))
   if (scope !== undefined) query.where('scope', encodeScopeColumn(scope))
   query
     .orderBy('created_at', 'asc')

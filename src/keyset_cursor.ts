@@ -1,6 +1,6 @@
 // Encodes and decodes the opaque `[createdAt, id]` cursor for paging admission and invitation listings.
 import { DateTime } from 'luxon'
-import { E_ACCOUNT_KIT_INVALID_INPUT } from './errors.js'
+import { E_ACCOUNT_KIT_INVALID_INPUT } from './errors.ts'
 
 const MAX_KEYSET_CURSOR_LENGTH = 512
 

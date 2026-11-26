@@ -1,6 +1,6 @@
 import { test } from '@japa/runner'
-import { defineConfig } from '../src/config.js'
-import { makeConfig } from './helpers/fakes.js'
+import { resolveConfig as defineConfig } from '../src/config.ts'
+import { makeConfig } from './helpers/fakes.ts'
 
 const users = {
   findByEmail: async () => null,

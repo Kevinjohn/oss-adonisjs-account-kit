@@ -1,7 +1,7 @@
 import { test } from '@japa/runner'
-import { isUniqueViolation, extractMysqlDuplicateKey } from '../src/db.js'
-import { useTestApp } from './helpers/app.js'
-import { resetSchema } from './helpers/schema.js'
+import { isUniqueViolation, extractMysqlDuplicateKey } from '../src/db.ts'
+import { useTestApp } from './helpers/app.ts'
+import { resetSchema } from './helpers/schema.ts'
 
 test.group('database helper error recognition', (group) => {
   const kit = useTestApp(group)

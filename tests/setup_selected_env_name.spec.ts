@@ -2,13 +2,13 @@ import { mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { test } from '@japa/runner'
-import { resolveEnvironmentNameFromGetter } from '../src/setup/selected_environment.js'
+import { resolveEnvironmentNameFromGetter } from '../src/setup/selected_environment.ts'
 import {
   inspectDefaultExportExpression,
   getDefaultImportName,
   parseSetupSource,
-} from '../src/setup/ts_source.js'
-import { clearSelectorEnv } from './helpers/selector_env.js'
+} from '../src/setup/ts_source.ts'
+import { clearSelectorEnv } from './helpers/selector_env.ts'
 
 async function select(root: string, expression: string, variable?: string, extra = '') {
   const source = await parseSetupSource(

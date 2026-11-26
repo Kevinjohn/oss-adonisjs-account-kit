@@ -1,11 +1,11 @@
 import { DateTime } from 'luxon'
 import { test } from '@japa/runner'
-import { E_ACCOUNT_KIT_AUTHORIZATION, E_ACCOUNT_KIT_INVALID_INPUT } from '../src/errors.js'
-import { hashToken } from '../src/tokens.js'
-import { useTestApp } from './helpers/app.js'
-import { invitationHelpers } from './helpers/invitations.js'
-import { allowAll, tokenFrom } from './helpers/fakes.js'
-import { dbTime } from './helpers/db_time.js'
+import { E_ACCOUNT_KIT_AUTHORIZATION, E_ACCOUNT_KIT_INVALID_INPUT } from '../src/errors.ts'
+import { hashToken } from '../src/tokens.ts'
+import { useTestApp } from './helpers/app.ts'
+import { invitationHelpers } from './helpers/invitations.ts'
+import { allowAll, tokenFrom } from './helpers/fakes.ts'
+import { dbTime } from './helpers/db_time.ts'
 
 test.group('invitations.list and inspect', (group) => {
   const kit = useTestApp(group)

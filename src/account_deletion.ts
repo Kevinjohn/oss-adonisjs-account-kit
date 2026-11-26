@@ -2,12 +2,12 @@ import { RuntimeException } from '@adonisjs/core/exceptions'
 // Account deletion: re-authenticate, run the application hook, delete every package row, then
 // the user row, all in one transaction under the user lock.
 import { randomUUID } from 'node:crypto'
-import { confirmActor } from './actor_confirmation.js'
-import { transaction } from './db.js'
-import { finishCommitted, createLifecycleEffect, postCommit, settleCommitted } from './effects.js'
-import { deleteUserRows } from './user_rows.js'
-import type { AccountDataInput, DeletedAccount } from './types.js'
-import type { ServiceDependencies } from './service_dependencies.js'
+import { confirmActor } from './actor_confirmation.ts'
+import { transaction } from './db.ts'
+import { finishCommitted, createLifecycleEffect, postCommit, settleCommitted } from './effects.ts'
+import { deleteUserRows } from './user_rows.ts'
+import type { AccountDataInput, DeletedAccount } from './types.ts'
+import type { ServiceDependencies } from './service_dependencies.ts'
 
 export async function deleteAccount(
   deps: ServiceDependencies,

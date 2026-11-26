@@ -20,13 +20,14 @@ function getDatabaseDialect(client: DialectSource): string {
  *
  * @example
  * ```ts
+ * import { DateTime } from 'luxon'
  * import { sqlTimestamp } from '@kevinjohn/adonisjs-account-kit/transaction'
  *
- * const recordedAt = sqlTimestamp(trx)
+ * const recordedAt = sqlTimestamp(trx, DateTime.utc())
  * await trx.table('audit_events').insert({ recorded_at: recordedAt })
  * ```
  */
-export function sqlTimestamp(client: DialectSource, at: DateTime = DateTime.utc()): string {
+export function sqlTimestamp(client: DialectSource, at: DateTime): string {
   const utc = at.toUTC()
   if (!utc.isValid) throw new RuntimeException('account_kit: invalid timestamp')
   return getDatabaseDialect(client) === 'mysql'

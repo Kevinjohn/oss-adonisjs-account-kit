@@ -1,12 +1,12 @@
 // Credential revision: reading and advancing `credentials_changed_at`, and the credential-change transition.
 import { DateTime } from 'luxon'
-import { requireUserMetadata } from './db.js'
-import { clearSocialPending } from './credential_cleanup.js'
-import { sessionTable } from './session_registry.js'
-import { E_INVALID_CREDENTIALS } from './errors.js'
-import type { AccountUser, ChangePasswordInput, ResolvedConfig, Trx, UserId } from './types.js'
-import { hashToken } from './tokens.js'
-import { readIsoTimestamp } from './timestamps.js'
+import { requireUserMetadata } from './db.ts'
+import { clearSocialPending } from './credential_cleanup.ts'
+import { sessionTable } from './session_registry.ts'
+import { E_INVALID_CREDENTIALS } from './errors.ts'
+import type { AccountUser, ChangePasswordInput, ResolvedConfig, Trx, UserId } from './types.ts'
+import { hashToken } from './tokens.ts'
+import { readIsoTimestamp } from './timestamps.ts'
 
 export async function revision(
   trx: Trx,

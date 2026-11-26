@@ -4,7 +4,7 @@ import {
   createSqlUsersAdapter,
   type SqlUsersAdapter,
   type SqlUsersAdapterOptions,
-} from '../adapters/sql.js'
+} from './adapters/sql.ts'
 
 export function createDeferredSqlUsersAdapter(
   resolveTable: () => string,

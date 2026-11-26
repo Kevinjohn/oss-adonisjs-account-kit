@@ -40,6 +40,8 @@ test('the check profiles cover every pnpm script the CI workflows run', ({ asser
   const ignored = new Set(['install', 'dlx', 'add', 'list', 'update', 'pack', 'exec', '--dir'])
   // `check:changed` orchestrates profile scripts; the next test proves every command it plans.
   ignored.add('check:changed')
+  // Release packaging verifies a version intended for publication, after the check profiles.
+  ignored.add('release')
   // PostgreSQL lifecycle commands provision and clean up the consumer job; they are not gates.
   const prerequisites = new Set(['pg:start', 'pg:stop'])
   // A `--config.<key>=<value>` flag before the script (pre and post hooks off) still runs it.

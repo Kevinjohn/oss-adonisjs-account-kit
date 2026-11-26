@@ -1,9 +1,9 @@
 import { test } from '@japa/runner'
-import { type AccountKit } from '../src/account_kit.js'
-import { E_ACCOUNT_KIT_DELIVERY, E_ACCOUNT_KIT_INVALID_SESSION } from '../src/errors.js'
-import { registerManagedRoutes } from '../src/http/managed.js'
-import type { ManagedQuery, ManagedSuccessBody } from '../src/http/contracts.js'
-import { fakeManagedHttp, stubGuard } from './helpers/managed_http_fakes.js'
+import { type AccountKit } from '../src/account_kit.ts'
+import { E_ACCOUNT_KIT_DELIVERY, E_ACCOUNT_KIT_INVALID_SESSION } from '../src/errors.ts'
+import { registerManagedRoutes } from '../src/http/managed.ts'
+import type { ManagedQuery, ManagedSuccessBody } from '../src/http/contracts.ts'
+import { fakeManagedHttp, stubGuard } from './helpers/managed_http_fakes.ts'
 
 test.group('managed HTTP dispatch', () => {
   test('a committed social GET callback returns accepted when notification delivery fails', async ({

@@ -1,5 +1,5 @@
-import { envName } from './diagnostics.js'
-import { resolveSelectedEnvironment } from './selected_environment_values.js'
+import { envName } from './diagnostics.ts'
+import { resolveSelectedEnvironment } from './selected_environment_values.ts'
 import {
   getDefaultImportName,
   getDirectProperty,
@@ -9,7 +9,7 @@ import {
   parseSetupSource,
   hasSafeEnvironmentGetter,
   type SetupSource,
-} from './ts_source.js'
+} from './ts_source.ts'
 import type * as TypeScript from 'typescript'
 
 /** The variable name in `env.get('NAME', ...)`, whatever the remaining arguments are. */

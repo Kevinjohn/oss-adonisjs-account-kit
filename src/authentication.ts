@@ -2,31 +2,31 @@ import { RuntimeException } from '@adonisjs/core/exceptions'
 import { randomUUID } from 'node:crypto'
 import { performance } from 'node:perf_hooks'
 import { errors } from '@adonisjs/limiter'
-import { requireAccountAccessDecision } from './account_access_decision.js'
-import { inspectAccountAccess } from './account_access_inspection.js'
-import { requireAuthentication } from './authentication_config.js'
-import { buildAccountProjection } from './account_projection.js'
-import { lockUser, transaction } from './db.js'
-import { normalizeEmail } from './email.js'
-import { invalidateChangedCredentials, revision } from './credential_revision.js'
-import { establishCredential } from './credential_issuance.js'
+import { requireAccountAccessDecision } from './account_access_decision.ts'
+import { inspectAccountAccess } from './account_access_inspection.ts'
+import { requireAuthentication } from './authentication_config.ts'
+import { buildAccountProjection } from './account_projection.ts'
+import { lockUser, transaction } from './db.ts'
+import { normalizeEmail } from './email.ts'
+import { invalidateChangedCredentials, revision } from './credential_revision.ts'
+import { establishCredential } from './credential_issuance.ts'
 import {
   requireLiveSession,
   isSessionRegistryEnabled,
   sessionTable,
   touchSession,
   type LiveSession,
-} from './session_registry.js'
-import { waitForFloor } from './timing.js'
-import { hashToken } from './tokens.js'
-import { assessRetirementImpact } from './login_method_retirement.js'
-import { finishCommitted, postCommit, settleCommitted } from './effects.js'
+} from './session_registry.ts'
+import { waitForFloor } from './timing.ts'
+import { hashToken } from './tokens.ts'
+import { assessRetirementImpact } from './login_method_retirement.ts'
+import { finishCommitted, postCommit, settleCommitted } from './effects.ts'
 import {
   E_INVALID_CREDENTIALS,
   E_ACCOUNT_KIT_INVALID_SESSION,
   E_ACCOUNT_KIT_THROTTLED,
   E_ACCOUNT_KIT_UNVERIFIED_EMAIL,
-} from './errors.js'
+} from './errors.ts'
 import type {
   AccountAccessInput,
   AccountAccessSnapshot,
@@ -39,8 +39,8 @@ import type {
   SocialProviderName,
   Trx,
   UserId,
-} from './types.js'
-import type { ServiceDependencies } from './service_dependencies.js'
+} from './types.ts'
+import type { ServiceDependencies } from './service_dependencies.ts'
 
 export async function requireCurrentAccountInTransaction(
   deps: Pick<ServiceDependencies, 'config'>,
@@ -174,6 +174,8 @@ export function createAuthenticationService(deps: ServiceDependencies) {
      * ```ts
      * await kit.authentication.login({ email: 'sam@example.test', password, clientKey: request.ip() }, requestGuard)
      * ```
+     *
+     * @throws {AggregateError} If work and its transaction or credential cleanup both fail, or multiple cleanup steps fail.
      */
     async login<Credential>(
       input: PasswordLoginInput,

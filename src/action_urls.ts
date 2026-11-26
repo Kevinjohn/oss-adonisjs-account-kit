@@ -1,6 +1,6 @@
 import { InvalidArgumentsException } from '@adonisjs/core/exceptions'
 // Action URLs: builds email links from configured origins and relative page paths.
-import type { UrlCallbacks } from './types.js'
+import type { UrlCallbacks } from './types.ts'
 
 /**
  * Options for `createActionUrls`: the backend and frontend origins, the relative path of each page,

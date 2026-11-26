@@ -4,13 +4,13 @@ import {
   E_ACCOUNT_KIT_DELIVERY,
   E_ACCOUNT_KIT_INVALID_TOKEN,
   E_ACCOUNT_KIT_POST_COMMIT,
-} from '../src/errors.js'
-import { generateToken, hashToken } from '../src/tokens.js'
-import type { CredentialChangeContext, LifecycleEvent } from '../src/types.js'
-import { useTestApp } from './helpers/app.js'
-import { insertUser, makeNotify, makeService, tokenFrom } from './helpers/fakes.js'
-import { locksRows } from './helpers/dialect.js'
-import { dbTime } from './helpers/db_time.js'
+} from '../src/errors.ts'
+import { generateToken, hashToken } from '../src/tokens.ts'
+import type { CredentialChangeContext, LifecycleEvent } from '../src/types.ts'
+import { useTestApp } from './helpers/app.ts'
+import { insertUser, makeNotify, makeService, tokenFrom } from './helpers/fakes.ts'
+import { locksRows } from './helpers/dialect.ts'
+import { dbTime } from './helpers/db_time.ts'
 
 test.group('credential and lifecycle effects', (group) => {
   const kit = useTestApp(group)
@@ -151,8 +151,7 @@ test.group('credential and lifecycle effects', (group) => {
     }
     assert.instanceOf(error, E_ACCOUNT_KIT_POST_COMMIT)
     const cause = (error as InstanceType<typeof E_ACCOUNT_KIT_POST_COMMIT>).cause
-    assert.instanceOf(cause, AggregateError)
-    assert.deepEqual((cause as AggregateError).errors, failures)
+    assert.deepEqual(cause, failures)
     assert.deepEqual(
       order.map((entry) => entry.split(':')[0]),
       ['legacy', 'notice', 'event']
@@ -332,10 +331,10 @@ test.group('credential and lifecycle effects', (group) => {
       failure = caught
     }
     assert.instanceOf(failure, E_ACCOUNT_KIT_POST_COMMIT)
-    assert.deepEqual(
-      ((failure as InstanceType<typeof E_ACCOUNT_KIT_POST_COMMIT>).cause as AggregateError).errors,
-      [first, last]
-    )
+    assert.deepEqual((failure as InstanceType<typeof E_ACCOUNT_KIT_POST_COMMIT>).cause, [
+      first,
+      last,
+    ])
     assert.deepEqual(order, ['legacy', 'notice', 'event'])
     assert.lengthOf(await kit.db.from('password_reset_tokens'), 0)
   })
@@ -380,10 +379,7 @@ test.group('credential and lifecycle effects', (group) => {
       failure = caught
     }
     assert.instanceOf(failure, E_ACCOUNT_KIT_POST_COMMIT)
-    assert.deepEqual(
-      ((failure as InstanceType<typeof E_ACCOUNT_KIT_POST_COMMIT>).cause as AggregateError).errors,
-      errors
-    )
+    assert.deepEqual((failure as InstanceType<typeof E_ACCOUNT_KIT_POST_COMMIT>).cause, errors)
     assert.deepEqual(order, ['legacy', 'notice', 'event'])
     const changed = await kit.db.from('users').where('id', user.id).first()
     assert.equal(changed.email, 'next@example.test')

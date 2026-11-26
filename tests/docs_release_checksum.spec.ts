@@ -8,12 +8,14 @@ import { repoRoot } from './helpers/tracked_markdown.js'
 test('the documented release workflow publishes the generated checksum notes', async ({
   assert,
 }) => {
-  const [guide, workflow] = await Promise.all([
+  const [guide, workflow, manifest] = await Promise.all([
     readFile(join(repoRoot, 'docs/maintainers/release-gate.md'), 'utf8'),
     readFile(join(repoRoot, '.github/workflows/release.yml'), 'utf8'),
+    readFile(join(repoRoot, 'package.json'), 'utf8'),
   ])
   assert.include(guide, 'bin/release_check.sh')
-  assert.match(workflow, /^\s+run: bash bin\/release_check\.sh\s*$/m)
+  assert.equal(JSON.parse(manifest).scripts.release, 'bash bin/release_check.sh')
+  assert.match(workflow, /^\s+run: pnpm release\s*$/m)
   assert.match(workflow, /^ {10}notes=tmp\/release\/notes\.md$/m)
   const commands = [...workflow.matchAll(/^ {10}(gh release create [^\n]+)/gm)].map(
     ([, command]) => command

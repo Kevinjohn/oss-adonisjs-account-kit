@@ -1,6 +1,5 @@
 // Holds the callbacks an application provider registers, so config files need not import them.
-import { E_ACCOUNT_KIT_INVALID_CONFIGURATION } from './errors.js'
-import type { AccountKitCallbacks } from './types.js'
+import { E_ACCOUNT_KIT_INVALID_CONFIGURATION } from './errors.ts'
 
 /** A registry for one package service. The service reads it once, when first resolved. */
 export class CallbackRegistry<Callbacks extends object> {
@@ -43,24 +42,5 @@ export class CallbackRegistry<Callbacks extends object> {
   resolve(): Promise<Callbacks | undefined> {
     this.#resolved ??= (async () => this.#factory?.())()
     return this.#resolved
-  }
-}
-
-/**
- * Supplies `config/account_kit.ts` callbacks from an application provider. Resolve it as
- * `account_kit.callbacks` in the provider's `boot()` and call `register` once.
- *
- * @example
- * ```ts
- * import { AccountKitCallbackRegistry } from '@kevinjohn/adonisjs-account-kit'
- * import app from '@adonisjs/core/services/app'
- *
- * const registry = await app.container.make(AccountKitCallbackRegistry)
- * registry.register(() => ({ users }))
- * ```
- */
-export class AccountKitCallbackRegistry extends CallbackRegistry<AccountKitCallbacks> {
-  constructor() {
-    super('account_kit')
   }
 }

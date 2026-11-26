@@ -1,6 +1,6 @@
-import { getCommittedResult } from './transaction.js'
-import { E_ACCOUNT_KIT_DELIVERY, E_ACCOUNT_KIT_POST_COMMIT } from './errors.js'
-import type { LifecycleEvent, ResolvedConfig } from './types.js'
+import { getCommittedResult } from './transaction.ts'
+import { E_ACCOUNT_KIT_DELIVERY, E_ACCOUNT_KIT_POST_COMMIT } from './errors.ts'
+import type { LifecycleEvent, ResolvedConfig } from './types.ts'
 
 export interface PostCommitEffect {
   kind: 'delivery' | 'observer'
@@ -20,7 +20,7 @@ export async function postCommit(message: string, effects: PostCommitEffect[]): 
     }
   }
   if (failures.length === 0) return
-  const cause = failures.length === 1 ? failures[0] : new AggregateError(failures)
+  const cause = failures.length === 1 ? failures[0] : failures
   if (observerFailed) throw new E_ACCOUNT_KIT_POST_COMMIT(message, { cause })
   throw new E_ACCOUNT_KIT_DELIVERY(message, { cause })
 }
@@ -68,7 +68,7 @@ export async function finishCommitted(
   } catch (error) {
     if (!fault) throw error
     throw new E_ACCOUNT_KIT_POST_COMMIT(message, {
-      cause: new AggregateError([fault.cause, (error as Error).cause ?? error]),
+      cause: [fault.cause, (error as Error).cause ?? error],
     })
   }
   if (fault) throw fault

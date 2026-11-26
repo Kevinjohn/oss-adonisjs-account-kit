@@ -1,4 +1,4 @@
-import type { Trx, UserId, AccountUser, ThrottleBudget } from './types.js'
+import type { Trx, UserId, AccountUser, ThrottleBudget } from './types.ts'
 
 /** Signs people in through an existing AdonisJS Auth guard. */
 export interface AuthenticationConfig {

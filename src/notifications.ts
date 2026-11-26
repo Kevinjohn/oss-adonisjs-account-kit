@@ -1,17 +1,22 @@
+import { MagicLinkProvision } from './magic_link_provision.ts'
+import { EmailChangeProvision } from './email_change_provision.ts'
+import { InvitationProvision } from './invitation_provision.ts'
+import { AccountActivationProvision } from './account_activation_provision.ts'
+import { PasswordResetProvision } from './password_reset_provision.ts'
 import { InvalidArgumentsException } from '@adonisjs/core/exceptions'
-import type { NotificationCallbacks } from './types.js'
-import type { AccountKitTranslator } from './translator.js'
-import { isSocialProviderName, socialProviderLabels } from './social_providers.js'
-import { renderAccountMessage, type AccountMessageKind } from './account_message_templates.js'
+import type { NotificationCallbacks } from './types.ts'
+import type { AccountKitTranslator } from './translator.ts'
+import { isSocialProviderName, socialProviderLabels } from './social_providers.ts'
+import { renderAccountMessage, type AccountMessageKind } from './account_message_templates.ts'
 
 export {
   renderAccountMessage,
   type AccountMessageKind,
   type RenderedAccountMessage,
-} from './account_message_templates.js'
+} from './account_message_templates.ts'
 
-export { createActionUrls, type ActionUrlOptions } from './action_urls.js'
-export { notificationReadiness, type NotificationReadinessInput } from './notification_readiness.js'
+export { createActionUrls, type ActionUrlOptions } from './action_urls.ts'
+export { notificationReadiness, type NotificationReadinessInput } from './notification_readiness.ts'
 
 /** The small Mail surface used here keeps service-only imports independent of @adonisjs/mail. */
 export interface AccountMailService {
@@ -52,108 +57,6 @@ export interface MailNotificationOptions {
    * `account_kit.emails.<kind>.<part>`, with the English text as the fallback.
    */
   i18n?: AccountKitTranslator | (() => AccountKitTranslator)
-}
-
-/**
- * Maintained action-link values; pass their rendered content through createMailNotifications.
- *
- * @example
- * ```ts
- * import { PasswordResetProvision } from '@kevinjohn/adonisjs-account-kit'
- *
- * const provision = new PasswordResetProvision(
- *   'sam@example.test',
- *   'https://app.example.test/reset-password/example-token'
- * )
- * ```
- */
-export class PasswordResetProvision {
-  readonly kind = 'passwordResetProvision' as const
-  constructor(
-    readonly recipient: string,
-    readonly actionUrl: string
-  ) {}
-}
-/**
- * An account activation email to send: recipient and action URL.
- *
- * @example
- * ```ts
- * import { AccountActivationProvision } from '@kevinjohn/adonisjs-account-kit'
- *
- * const provision = new AccountActivationProvision(
- *   'sam@example.test',
- *   'https://app.example.test/activate/example-token'
- * )
- * ```
- */
-export class AccountActivationProvision {
-  readonly kind = 'accountActivationProvision' as const
-  constructor(
-    readonly recipient: string,
-    readonly actionUrl: string
-  ) {}
-}
-/**
- * An invitation email to send: recipient and action URL.
- *
- * @example
- * ```ts
- * import { InvitationProvision } from '@kevinjohn/adonisjs-account-kit'
- *
- * const provision = new InvitationProvision(
- *   'sam@example.test',
- *   'https://app.example.test/accept-invitation/example-token'
- * )
- * ```
- */
-export class InvitationProvision {
-  readonly kind = 'invitationProvision' as const
-  constructor(
-    readonly recipient: string,
-    readonly actionUrl: string
-  ) {}
-}
-/**
- * An email-change confirmation to send: recipient and action URL.
- *
- * @example
- * ```ts
- * import { EmailChangeProvision } from '@kevinjohn/adonisjs-account-kit'
- *
- * const provision = new EmailChangeProvision(
- *   'sam@example.test',
- *   'https://app.example.test/confirm-email/example-token'
- * )
- * ```
- */
-export class EmailChangeProvision {
-  readonly kind = 'emailChangeProvision' as const
-  constructor(
-    readonly recipient: string,
-    readonly actionUrl: string
-  ) {}
-}
-
-/**
- * A magic sign-in link email to send: recipient and action URL.
- *
- * @example
- * ```ts
- * import { MagicLinkProvision } from '@kevinjohn/adonisjs-account-kit'
- *
- * const provision = new MagicLinkProvision(
- *   'sam@example.test',
- *   'https://app.example.test/sign-in/example-token'
- * )
- * ```
- */
-export class MagicLinkProvision {
-  readonly kind = 'magicLinkProvision' as const
-  constructor(
-    readonly recipient: string,
-    readonly actionUrl: string
-  ) {}
 }
 
 function resolveTranslator(
@@ -253,3 +156,13 @@ export function createMailNotifications(options: MailNotificationOptions): Notif
 function resolveProviderLabel(provider: string): string {
   return isSocialProviderName(provider) ? socialProviderLabels[provider] : 'Social'
 }
+
+export { PasswordResetProvision } from './password_reset_provision.ts'
+
+export { AccountActivationProvision } from './account_activation_provision.ts'
+
+export { InvitationProvision } from './invitation_provision.ts'
+
+export { EmailChangeProvision } from './email_change_provision.ts'
+
+export { MagicLinkProvision } from './magic_link_provision.ts'

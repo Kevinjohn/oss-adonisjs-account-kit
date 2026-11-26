@@ -85,16 +85,16 @@ A package that stores its own rows next to accounts, such as team memberships, n
 transaction behaviour as the package's hooks. `@kevinjohn/adonisjs-account-kit/transaction` exports
 the helpers the package uses itself; they are stable public API.
 
-- `transaction(db, callback)` runs `callback(trx)` in a root transaction. On SQLite it takes the
+- `new TransactionManager(db).run(callback)` runs `callback(trx)` in a root transaction. On SQLite it takes the
   `account_transaction_lock` writer lock first, so the package's transactions and yours serialise,
   and it may retry the callback on write contention. On MySQL it runs at `READ COMMITTED` on a UTC
   connection. On every engine a commit failure is reported instead of swallowed. A
   `E_ACCOUNT_KIT_POST_COMMIT` means the writes committed and a step after the commit failed, so do not run
   the callback again. It refuses to run inside a Lucid global transaction or inside another
   package transaction: use the `trx` you were given instead.
-- `lockRow(trx, table, id)` locks the row with that `id` with `select ... for update` on PostgreSQL
+- `manager.lockRow(trx, table, id)` locks the row with that `id` with `select ... for update` on PostgreSQL
   and MySQL, and does nothing on SQLite, whose writer lock is already held.
-- `sqlTimestamp(client, at?)` is the UTC value to write or compare for a timestamp column on the
+- `sqlTimestamp(client, at)` is the UTC value to write or compare for a timestamp column on the
   client's dialect, and `readTimestamp(value)` reads a timestamp column back as a UTC Luxon
   `DateTime` whatever the driver returned.
 
@@ -212,7 +212,7 @@ not retry a mutation as if it rolled back. See
 ### Place the admission gate after the activation check
 
 With [admission](admission.md), protected application routes call `admission.require(input)`,
-or use `admissionMiddleware`, where they would call `requireActive`. It checks the credential,
+or use `AdmissionMiddleware`, where they would call `requireActive`. It checks the credential,
 then activation, then admission, in one transaction. Keep the routes a person needs before
 admission, such as profile, sign-out and an admission status route, on the plain credential check.
 Your `authorize` and `exportAccountData` callbacks run behind routes that accept any valid

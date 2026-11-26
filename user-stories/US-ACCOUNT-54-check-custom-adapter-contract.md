@@ -4,14 +4,14 @@ As an application integrator, I want to exercise my custom user adapter against 
 
 **Status:** Current for adapter integration tests
 **Access:** The test fixture needs an isolated disposable database, a unique email prefix, and callbacks for transactions, password verification, stored-password inspection and row-lock probes. The helper commits fixture records and may leave them after a failure or interruption.
-**Entry:** Import `assertUsersAdapterContract` from `@kevinjohn/adonisjs-account-kit/testing/adapter_contract` and pass the adapter plus the required fixture callbacks.
+**Entry:** Import `usersAdapterContract` from `@kevinjohn/adonisjs-account-kit/testing/adapter_contract` and pass the adapter plus the required fixture callbacks.
 **Documentation:** [Custom adapter recipe](../docs/recipes/custom-adapter.md), [adapter guide](../docs/guide/adapters.md)
-**Source:** [`testing/adapter_contract.ts`](../testing/adapter_contract.ts), [`package.json` export](../package.json)
+**Source:** [`src/testing/adapter_contract.ts`](../src/testing/adapter_contract.ts), [`package.json` export](../package.json)
 **Coverage:** [`tests/lucid_adapter.spec.ts`](../tests/lucid_adapter.spec.ts), [`tests/drizzle_adapter.spec.ts`](../tests/drizzle_adapter.spec.ts), [`tests/prisma_adapter.spec.ts`](../tests/prisma_adapter.spec.ts), [`tests/sql_adapter.spec.ts`](../tests/sql_adapter.spec.ts)
 
 ## Acceptance criteria
 
-- **Inputs and result:** `assertUsersAdapterContract(fixture)` receives a `UsersAdapter`, transaction runner, `storedPassword`, `verifyPassword`, `acquireAccountLock`, `assertLockBlocksWriter`, and optional unique `emailPrefix`, registration data, string-ID setting and registration-update assertions. It resolves when the contract assertions pass; assertion failures reject. The helper exercises normalised lookup/create, password verification and non-plaintext storage, verification timestamps, update/rollback behaviour, optional prepared-hash and registration-update paths when supplied, deletion when supported, and the package-owned account lock through an independent writer. It is not a dry run: it commits fixture accounts and updates. Optional deletion removes only the inactive fixture and its recreation; the primary and any prepared-hash fixture remain, and cleanup is not guaranteed after failure or interruption.
+- **Inputs and result:** `usersAdapterContract(fixture)()` runs with a `UsersAdapter`, transaction runner, `storedPassword`, `verifyPassword`, `acquireAccountLock`, `assertLockBlocksWriter`, and optional unique `emailPrefix`, registration data, string-ID setting and registration-update assertions. It resolves when the contract assertions pass; assertion failures reject. The helper exercises normalised lookup/create, password verification and non-plaintext storage, verification timestamps, update/rollback behaviour, optional prepared-hash and registration-update paths when supplied, deletion when supported, and the package-owned account lock through an independent writer. It is not a dry run: it commits fixture accounts and updates. Optional deletion removes only the inactive fixture and its recreation; the primary and any prepared-hash fixture remain, and cleanup is not guaranteed after failure or interruption.
 - **Environment and cleanup:** Run only against a dedicated disposable database with the same schema and connection arrangement as the adapter. Before reuse, remove all rows tied to the run's unique prefix or recreate the database, including after an interrupted test. A passing helper call is test evidence for the supplied fixture and database, not a claim that every application runtime combination was tested.
 
 ## User flow
@@ -20,7 +20,7 @@ As an application integrator, I want to exercise my custom user adapter against 
 flowchart TD
  A["Integrator prepares disposable database and unique fixture prefix"] --> B{"Are transaction, verifier, password reader and lock probes wired to that database?"}
  B -->|No| C["Complete fixture wiring before running the contract"]
- B -->|Yes| D["Run assertUsersAdapterContract with the custom adapter"]
+ B -->|Yes| D["Run usersAdapterContract with the custom adapter"]
  D --> E{"Do all adapter assertions pass?"}
  E -->|No| F["Inspect adapter or fixture mismatch and reset the disposable database"]
  E -->|Yes| G["Use the result as evidence for this adapter fixture and database"]
@@ -29,11 +29,11 @@ flowchart TD
 
 ## Code flow
 
-Scope: the `assertUsersAdapterContract` test helper and the fixture it receives. The integrator owns the adapter, the disposable database and fixture cleanup.
+Scope: the `usersAdapterContract` test helper and the fixture it receives. The integrator owns the adapter, the disposable database and fixture cleanup.
 
 ```mermaid
 flowchart TD
- A["assertUsersAdapterContract(fixture)"] --> B["Run create, normalised lookup, password and verification checks inside fixture transaction"]
+ A["usersAdapterContract(fixture)"] --> B["Run create, normalised lookup, password and verification checks inside fixture transaction"]
  B --> C["Commit account; inspect stored password and check lookups, email updates, rollback and verification transactions"]
  C --> D["Invoke independent-writer probe with fixture's package account-lock callback"]
  D --> E["Check password updates, optional prepared-hash paths and inactive/pending-email behaviour"]
@@ -43,4 +43,4 @@ flowchart TD
  G -->|Yes| I["Resolve; primary and any prepared-hash fixture rows remain for caller cleanup"]
 ```
 
-**Code references:** [`assertUsersAdapterContract`](../testing/adapter_contract.ts), [custom adapter recipe](../docs/recipes/custom-adapter.md), [`Lucid fixture`](../tests/lucid_adapter.spec.ts), [`Drizzle fixtures`](../tests/drizzle_adapter.spec.ts), [`Prisma fixtures`](../tests/prisma_adapter.spec.ts), [`SQL fixtures`](../tests/sql_adapter.spec.ts)
+**Code references:** [`usersAdapterContract`](../src/testing/adapter_contract.ts), [custom adapter recipe](../docs/recipes/custom-adapter.md), [`Lucid fixture`](../tests/lucid_adapter.spec.ts), [`Drizzle fixtures`](../tests/drizzle_adapter.spec.ts), [`Prisma fixtures`](../tests/prisma_adapter.spec.ts), [`SQL fixtures`](../tests/sql_adapter.spec.ts)

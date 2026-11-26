@@ -1,11 +1,11 @@
 import { InvalidArgumentsException, RuntimeException } from '@adonisjs/core/exceptions'
 // Checks and the shared client budget used by the managed HTTP routes.
 import { DateTime } from 'luxon'
-import { expiresAt } from './ttl.js'
-import { E_ACCOUNT_KIT_AUTHORIZATION } from './errors.js'
-import { isPasswordAllowed as matchesPasswordPolicy } from './password.js'
-import type { Throttler } from './throttle.js'
-import type { ResolvedConfig } from './types.js'
+import { expiresAt } from './ttl.ts'
+import { E_ACCOUNT_KIT_AUTHORIZATION } from './errors.ts'
+import { isPasswordAllowed as matchesPasswordPolicy } from './password.ts'
+import type { Throttler } from './throttle.ts'
+import type { ResolvedConfig } from './types.ts'
 
 type Dependencies = { config: ResolvedConfig; throttler: Throttler }
 

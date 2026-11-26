@@ -1,9 +1,10 @@
+import { migrationStubPath } from '../../src/setup/migration_paths.ts'
 import { mkdir, rm, symlink, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { MigrationRunner } from '@adonisjs/lucid/migration'
-import { migrationNames, migrationSchema } from '../../configure.js'
-import type { TestApp } from './app.js'
+import { migrationNames, migrationSchema } from '../../configure.ts'
+import type { TestApp } from './app.ts'
 
 type SchemaBuilder = ReturnType<TestApp['db']['connection']>['schema']
 
@@ -66,14 +67,15 @@ export async function resetSchema(
 
   for (const [index, name] of migrationNames.entries()) {
     const filename = `${timestamp + index}_account_kit_${name}.ts`
+    const destination = join(kit.migrationDirectory, filename)
     const stub = await stubs.build(`migrations/${name}.stub`, { source: stubsRoot })
     const prepared = await stub.prepare({
       migration: {
         ...migrationSchema(usersTable, options.stringUserIds ? 'string' : 'integer'),
-        destination: join(kit.migrationDirectory, filename),
+        path: migrationStubPath(kit.app.migrationsPath(), destination),
       },
     })
-    await writeFile(prepared.destination, prepared.contents)
+    await writeFile(destination, prepared.contents)
   }
 
   const runner = new MigrationRunner(kit.db, kit.app, { direction: 'up' })
@@ -81,4 +83,4 @@ export async function resetSchema(
   if (runner.error) throw runner.error
 }
 
-export { userTables, clearRows } from './test_rows.js'
+export { userTables, clearRows } from './test_rows.ts'

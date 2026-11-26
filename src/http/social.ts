@@ -1,7 +1,7 @@
 import type { HttpContext } from '@adonisjs/core/http'
-import { E_ACCOUNT_KIT_INVALID_INPUT, E_ACCOUNT_KIT_SOCIAL_TRANSACTION_INVALID } from '../errors.js'
-import { isSocialProviderName } from '../social_providers.js'
-import { isSensitivePurpose, isSocialBeginIntent, isSocialIntent } from '../social_enums.js'
+import { E_ACCOUNT_KIT_INVALID_INPUT, E_ACCOUNT_KIT_SOCIAL_TRANSACTION_INVALID } from '../errors.ts'
+import { isSocialProviderName } from '../social_providers.ts'
+import { isSensitivePurpose, isSocialBeginIntent, isSocialIntent } from '../social_enums.ts'
 import type {
   CurrentAccountInput,
   SensitivePurpose,
@@ -10,31 +10,31 @@ import type {
   SocialProviderName,
   SocialCallbackResult,
   Trx,
-} from '../types.js'
-import type { ManagedGuard, ManagedHandler } from './managed_types.js'
-import type { ManagedEndpointName } from './routes.js'
+} from '../types.ts'
+import type { ManagedGuard, ManagedHandler } from './managed_types.ts'
+import type { ManagedEndpointName } from './routes.ts'
 import {
   socialBeginValidator,
   socialCallbackValidator,
   socialConfirmationValidator,
   socialRegistrationValidator,
   socialTokenValidator,
-} from './validators.js'
-import { rememberManagedMethod } from './last_used_method.js'
+} from './validators.ts'
+import { rememberManagedMethod } from './last_used_method.ts'
 import {
   forgetSessionState,
   rememberSessionState,
   requireSessionState,
   type SessionSocialState,
-} from './social_session_state.js'
-import { generateVerifierAndChallenge } from './pkce_verifier.js'
+} from './social_session_state.ts'
+import { generateVerifierAndChallenge } from './pkce_verifier.ts'
 import {
   managedSocialAccountHandlers,
   type SocialHandler,
   type SocialRequest,
-} from './managed_social_account_handlers.js'
+} from './managed_social_account_handlers.ts'
 
-export { rememberManagedMethod } from './last_used_method.js'
+export { rememberManagedMethod } from './last_used_method.ts'
 
 /** Social sign-in options for `registerManagedRoutes`, passed as `extensions.social`. */
 export interface ManagedSocialExtension {

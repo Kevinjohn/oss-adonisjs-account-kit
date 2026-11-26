@@ -6,30 +6,30 @@ import {
   postCommit,
   settleCommitted,
   type PostCommitEffect,
-} from './effects.js'
-import { isInvitationRole } from './invitation_input.js'
-import { isEmailShaped, normalizeEmail } from './email.js'
+} from './effects.ts'
+import { isInvitationRole } from './invitation_input.ts'
+import { isEmailShaped, normalizeEmail } from './email.ts'
 import {
   E_ACCOUNT_KIT_EMAIL_ALREADY_REGISTERED,
   E_ACCOUNT_KIT_INVALID_INPUT,
   E_ACCOUNT_KIT_USER_NOT_FOUND,
   type E_ACCOUNT_KIT_POST_COMMIT,
-} from './errors.js'
-import { transaction } from './db.js'
-import { replaceBootstrapInvitation } from './bootstrap_invitation.js'
-import type { Invitation, Trx } from './types.js'
-import { storeInvitation } from './invitations.js'
-import { normalizeScope } from './invitation_scope.js'
-import { issueResetToken } from './password_reset.js'
-import { generateToken } from './tokens.js'
+} from './errors.ts'
+import { transaction } from './db.ts'
+import { replaceBootstrapInvitation } from './bootstrap_invitation.ts'
+import type { Invitation, Trx } from './types.ts'
+import { storeInvitation } from './invitations.ts'
+import { normalizeScope } from './invitation_scope.ts'
+import { issueResetToken } from './password_reset.ts'
+import { generateToken } from './tokens.ts'
 import type {
   OperatorFault,
   OperatorInviteInput,
   OperatorInviteResult,
   OperatorResetLinkInput,
   OperatorResetLinkResult,
-} from './types.js'
-import type { ServiceDependencies } from './service_dependencies.js'
+} from './types.ts'
+import type { ServiceDependencies } from './service_dependencies.ts'
 
 function requireDelivery(value: unknown): asserts value is 'send' | 'print' {
   if (value !== 'send' && value !== 'print')

@@ -6,9 +6,9 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-const script = fileURLToPath(new URL('../../bin/copy_templates.ts', import.meta.url))
+const script = fileURLToPath(new URL('./copyfiles', import.meta.resolve('copyfiles')))
 const run = (directory: string) =>
-  spawnSync(process.execPath, ['--import', import.meta.resolve('@poppinss/ts-exec'), script], {
+  spawnSync(process.execPath, [script, '--error', '--up=1', 'stubs/**/*.stub', 'build'], {
     cwd: directory,
     encoding: 'utf8',
   })

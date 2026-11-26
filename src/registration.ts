@@ -1,22 +1,22 @@
 import { randomUUID } from 'node:crypto'
-import { sqlTimestamp } from './timestamps.js'
+import { sqlTimestamp } from './timestamps.ts'
 import { DateTime } from 'luxon'
-import { transaction, isUserEmailUniqueViolation } from './db.js'
-import { finishCommitted, createLifecycleEffect, postCommit, settleCommitted } from './effects.js'
-import { normalizeEmail, isEmailShaped } from './email.js'
+import { transaction, isUserEmailUniqueViolation } from './db.ts'
+import { finishCommitted, createLifecycleEffect, postCommit, settleCommitted } from './effects.ts'
+import { normalizeEmail, isEmailShaped } from './email.ts'
 import {
   E_ACCOUNT_KIT_AUTHORIZATION,
   E_ACCOUNT_KIT_REGISTRATION_EMAIL_ALREADY_REGISTERED,
   E_ACCOUNT_KIT_INVALID_INPUT,
-} from './errors.js'
-import { isPasswordAllowed } from './password.js'
-import { buildPasswordAttributes, preparePassword } from './password_hashing.js'
-import { mapRegistrationFields } from './registration_fields.js'
-import { generateToken, hashToken } from './tokens.js'
-import { expiresAt } from './ttl.js'
-import type { E_ACCOUNT_KIT_POST_COMMIT } from './errors.js'
-import type { AccountUser, RegistrationInput } from './types.js'
-import type { ServiceDependencies } from './service_dependencies.js'
+} from './errors.ts'
+import { isPasswordAllowed } from './password.ts'
+import { buildPasswordAttributes, preparePassword } from './password_hashing.ts'
+import { mapRegistrationFields } from './registration_fields.ts'
+import { generateToken, hashToken } from './tokens.ts'
+import { expiresAt } from './ttl.ts'
+import type { E_ACCOUNT_KIT_POST_COMMIT } from './errors.ts'
+import type { AccountUser, RegistrationInput } from './types.ts'
+import type { ServiceDependencies } from './service_dependencies.ts'
 
 /** Create an inactive account and its activation proof in one transaction. */
 export async function register(

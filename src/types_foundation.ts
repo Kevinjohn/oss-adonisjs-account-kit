@@ -1,6 +1,6 @@
 import type { DateTime } from 'luxon'
 import type { TransactionClientContract } from '@adonisjs/lucid/types/database'
-import type { SocialIdentity } from './types.js'
+import type { SocialIdentity } from './types.ts'
 
 /**
  * A Lucid transaction. Account Kit passes it to every callback that runs inside an account

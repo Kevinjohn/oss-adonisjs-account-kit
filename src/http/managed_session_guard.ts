@@ -1,9 +1,9 @@
 import type { HttpContext } from '@adonisjs/core/http'
-import { E_ACCOUNT_KIT_INVALID_SESSION } from '../errors.js'
-import type { ManagedGuard } from './managed_types.js'
-import type { ManagedSessionGuardOptions, ManagedUser } from './guard.js'
-import { assertManagedSessionStore } from './session_store_protection.js'
-import { markAuthenticated, type MarkableAuthenticator } from './authenticator_mark.js'
+import { E_ACCOUNT_KIT_INVALID_SESSION } from '../errors.ts'
+import type { ManagedGuard } from './managed_types.ts'
+import type { ManagedSessionGuardOptions, ManagedUser } from './guard.ts'
+import { assertManagedSessionStore } from './session_store_protection.ts'
+import { markAuthenticated, type MarkableAuthenticator } from './authenticator_mark.ts'
 
 function requireManagedUser(value: unknown): ManagedUser {
   if (!value || typeof value !== 'object') throw new E_ACCOUNT_KIT_INVALID_SESSION()

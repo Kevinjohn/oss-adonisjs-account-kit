@@ -1,11 +1,12 @@
+import { DateTime } from 'luxon'
 import { readFile } from 'node:fs/promises'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { Kernel } from '@adonisjs/core/ace'
 import { test } from '@japa/runner'
-import { bootTestApp } from './helpers/app.js'
-import { makeConfig, makeUsersAdapter } from './helpers/fakes.js'
-import { resetSchema } from './helpers/schema.js'
+import { bootTestApp } from './helpers/app.ts'
+import { makeConfig, makeUsersAdapter } from './helpers/fakes.ts'
+import { resetSchema } from './helpers/schema.ts'
 
 if (process.env.TEST_BUILT_EXPORTS === '1')
   test('loads every built public export and resolves the built class through the built provider', async ({
@@ -66,7 +67,7 @@ if (process.env.TEST_BUILT_EXPORTS === '1')
     assert.isFunction(sql.createSqlUsersAdapter)
     assert.isFunction(drizzle.createDrizzleAdapter)
     assert.isFunction(prisma.createPrismaAdapter)
-    assert.isFunction(contract.assertUsersAdapterContract)
+    assert.isFunction(contract.usersAdapterContract)
     assert.isFunction(capture.captureNotifications)
     assert.isFunction(root.createLogNotifications)
     assert.isFunction(commands.getMetaData)
@@ -75,14 +76,18 @@ if (process.env.TEST_BUILT_EXPORTS === '1')
     assert.isFunction(auth.accountKitSessionGuard)
     assert.isFunction(http.registerManagedRoutes)
     assert.isFunction(http.createManagedGuard)
-    assert.isFunction(transactionHelpers.transaction)
-    assert.isFunction(transactionHelpers.lockRow)
+    assert.isFunction(transactionHelpers.TransactionManager)
     assert.isFunction(transactionHelpers.sqlTimestamp)
     assert.isFunction(transactionHelpers.readTimestamp)
-    assert.isFunction(admission.defineAdmission)
+    assert.isFunction(admission.defineConfig)
     assert.isFunction(admission.AccountAdmission)
     assert.isFunction(admission.AdmissionCallbackRegistry)
-    assert.isFunction(admission.admissionMiddleware)
+    for (const middleware of [
+      await import('@kevinjohn/adonisjs-account-kit/middleware/admission'),
+      await import('@kevinjohn/adonisjs-account-kit/middleware/managed_account'),
+      await import('@kevinjohn/adonisjs-account-kit/middleware/proof_headers'),
+    ])
+      assert.isFunction(middleware.default.prototype.handle)
     assert.isFunction(admission.withInvitationEvidence)
     assert.isFunction(admission.withAdmissionCleanup)
     assert.instanceOf(new admission.E_ACCOUNT_KIT_ADMISSION_DECISION(), root.E_ACCOUNT_KIT)
@@ -96,18 +101,21 @@ if (process.env.TEST_BUILT_EXPORTS === '1')
     try {
       await resetSchema(built)
       await built.limiter.clear()
-      const stamped = await transactionHelpers.transaction(built.db, async (trx) => {
+      const transactions = new transactionHelpers.TransactionManager(built.db)
+      const stamped = await transactions.run(async (trx) => {
         const [inserted] = await trx
           .table('users')
           .insert({
             email: 'built@example.test',
             password: null,
-            created_at: transactionHelpers.sqlTimestamp(trx),
+            created_at: transactionHelpers.sqlTimestamp(trx, DateTime.utc()),
           })
           .returning('id')
         const id = typeof inserted === 'object' ? inserted.id : inserted
-        await transactionHelpers.lockRow(trx, 'users', id)
-        return transactionHelpers.readTimestamp(transactionHelpers.sqlTimestamp(trx))
+        await transactions.lockRow(trx, 'users', id)
+        return transactionHelpers.readTimestamp(
+          transactionHelpers.sqlTimestamp(trx, DateTime.utc())
+        )
       })
       assert.isTrue(stamped!.isValid)
       built.app.config.set(
@@ -140,10 +148,7 @@ if (process.env.TEST_BUILT_EXPORTS === '1')
       assert.equal(service.default, first)
 
       new admissionProvider.default(built.app).register()
-      built.app.config.set(
-        'admission',
-        admission.defineAdmission({ invitation: { required: true } })
-      )
+      built.app.config.set('admission', admission.defineConfig({ invitation: { required: true } }))
       const gate = await built.app.container.make(admission.AccountAdmission)
       assert.equal(gate.kit, first)
 

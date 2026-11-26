@@ -1,7 +1,7 @@
 import { test } from '@japa/runner'
-import { doPathsOverlap } from '../src/http/route_collisions.js'
-import { assertManagedRouteCollisions, planManagedRoutes } from '../src/http/routes.js'
-import { bootTestApp } from './helpers/app.js'
+import { doPathsOverlap } from '../src/http/route_collisions.ts'
+import { assertManagedRouteCollisions, planManagedRoutes } from '../src/http/routes.ts'
+import { bootTestApp } from './helpers/app.ts'
 
 test.group('managed route plan', () => {
   test('accounts for sticky matchers that can start beyond the first character', ({ assert }) => {

@@ -1,15 +1,16 @@
+import { DateTime } from 'luxon'
 // A signed-in person asks for approval.
 import { randomUUID } from 'node:crypto'
-import { requireCurrentAccountInTransaction } from '../authentication.js'
-import { transaction } from '../db.js'
-import { E_ACCOUNT_KIT_INVALID_SESSION, E_ACCOUNT_KIT_UNVERIFIED_EMAIL } from '../errors.js'
-import { sqlTimestamp } from '../timestamps.js'
-import type { CurrentAccountInput } from '../types.js'
-import { requireApproval } from './capability.js'
-import { withAdmissionEvent } from './events.js'
-import { readAdmissionRow, toAdmissionRecord, upsertAdmissionRow } from './rows.js'
-import type { AdmissionContext } from './service.js'
-import type { AdmissionRecord } from './types.js'
+import { requireCurrentAccountInTransaction } from '../authentication.ts'
+import { transaction } from '../db.ts'
+import { E_ACCOUNT_KIT_INVALID_SESSION, E_ACCOUNT_KIT_UNVERIFIED_EMAIL } from '../errors.ts'
+import { sqlTimestamp } from '../timestamps.ts'
+import type { CurrentAccountInput } from '../types.ts'
+import { requireApproval } from './capability.ts'
+import { withAdmissionEvent } from './events.ts'
+import { readAdmissionRow, toAdmissionRecord, upsertAdmissionRow } from './rows.ts'
+import type { AdmissionContext } from './service.ts'
+import type { AdmissionRecord } from './types.ts'
 
 /**
  * Records that the signed-in person asked for approval, once. Idempotent: a repeat returns the
@@ -38,7 +39,7 @@ export async function requestAdmission(
       // A decided account has nothing for an approver to act on, so it records but does not notify.
       const undecided = !row || row.approval_status === null
       if (firstRequest) {
-        const now = sqlTimestamp(trx)
+        const now = sqlTimestamp(trx, DateTime.utc())
         row = await upsertAdmissionRow(trx, user.id, { requested_at: now }, now)
       }
       return { record: toAdmissionRecord(row!, user.email), first: firstRequest && undecided }

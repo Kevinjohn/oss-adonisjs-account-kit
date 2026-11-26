@@ -1,13 +1,13 @@
 import { test } from '@japa/runner'
 import { RuntimeException } from '@adonisjs/core/exceptions'
 import { DateTime } from 'luxon'
-import { E_ACCOUNT_KIT_INVALID_CONFIGURATION } from '../src/errors.js'
-import { defineConfig } from '../src/account_kit.js'
-import { resolveConfig } from '../src/config.js'
-import { expiresAt } from '../src/ttl.js'
-import type { AccountKitConfig } from '../src/types.js'
-import { useTestApp } from './helpers/app.js'
-import { makeConfig, makeUsersAdapter } from './helpers/fakes.js'
+import { E_ACCOUNT_KIT_INVALID_CONFIGURATION } from '../src/errors.ts'
+import { resolveConfig as defineConfig } from '../src/config.ts'
+import { resolveConfig } from '../src/config.ts'
+import { expiresAt } from '../src/ttl.ts'
+import type { AccountKitConfig } from '../src/types.ts'
+import { useTestApp } from './helpers/app.ts'
+import { makeConfig, makeUsersAdapter } from './helpers/fakes.ts'
 test.group('account kit configuration and service surface', (group) => {
   const kit = useTestApp(group)
 

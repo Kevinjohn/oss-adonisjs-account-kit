@@ -1,12 +1,12 @@
 import { rm, symlink, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { test } from '@japa/runner'
-import { planSetup } from '../src/setup/plan.js'
+import { planSetup } from '../src/setup/plan.ts'
 import {
   inspectNativeSessionConfiguration,
   renderManagedSessionConfig,
-} from '../src/setup/session_config.js'
-import { withFixture } from './helpers/setup_prerequisites.js'
+} from '../src/setup/session_config.ts'
+import { withFixture } from './helpers/setup_prerequisites.ts'
 
 test.group('setup session prerequisites', () => {
   test('an uncompilable session config is reported only when setup needs it', async ({
@@ -144,7 +144,7 @@ test.group('setup session prerequisites', () => {
       delete process.env.SESSION_DRIVER
       await writeFile(join(state.root, '.env'), 'SESSION_DRIVER=$OTHER\n')
       try {
-        const plan = await planSetup(choices, state)
+        const plan = await planSetup(choices, state, { env: process.env })
         assert.isTrue(
           plan.diagnostics.some(
             ({ field, severity }) => field === 'config/session.ts' && severity === 'error'
@@ -168,35 +168,35 @@ test.group('setup session prerequisites', () => {
       process.env.SESSION_DRIVER = 'database'
       try {
         state.files['config/session.ts'] = original
-        const initial = await planSetup(choices, state)
+        const initial = await planSetup(choices, state, { env: process.env })
         const session = initial.changes.find(({ path }) => path === 'config/session.ts')!
         assert.equal(session.action, 'update')
         assert.include(session.content, 'protectManagedSessionConfig')
         assert.include(session.content, 'accountKitSelectedSessionStore === "database"')
         state.files['config/session.ts'] = session.content
         state.existingChoices = structuredClone(choices)
-        const repeated = await planSetup(choices, state)
+        const repeated = await planSetup(choices, state, { env: process.env })
         assert.equal(
           repeated.changes.find(({ path }) => path === 'config/session.ts')?.action,
           'unchanged'
         )
-        const selected = await planSetup(choices, state)
+        const selected = await planSetup(choices, state, { env: process.env })
         assert.isFalse(selected.diagnostics.some(({ field }) => field === 'config/session.ts'))
         const disabled = structuredClone(choices)
         disabled.managed = []
-        const retirement = await planSetup(disabled, state)
+        const retirement = await planSetup(disabled, state, { env: process.env })
         const unwrapped = retirement.changes.find(({ path }) => path === 'config/session.ts')!
         assert.equal(unwrapped.action, 'update')
         assert.equal(unwrapped.content, original)
         state.files['config/session.ts'] = unwrapped.content
         state.existingChoices = disabled
-        const reenabled = await planSetup(choices, state)
+        const reenabled = await planSetup(choices, state, { env: process.env })
         assert.equal(
           reenabled.changes.find(({ path }) => path === 'config/session.ts')?.content,
           session.content
         )
         state.files['config/session.ts'] = session.content.replace("'destroy'", "'destroyOther'")
-        const ownerEdit = await planSetup(choices, state)
+        const ownerEdit = await planSetup(choices, state, { env: process.env })
         assert.isTrue(ownerEdit.diagnostics.some(({ field }) => field === 'config/session.ts'))
       } finally {
         if (oldDriver === undefined) delete process.env.SESSION_DRIVER
@@ -267,7 +267,7 @@ test.group('setup session prerequisites', () => {
     await withFixture(async (choices, state) => {
       state.files['config/session.ts'] =
         "import { defineConfig, stores } from '@adonisjs/session'\nconst sessionConfig = defineConfig({ store: 'custom', stores: { database: stores.database(), custom: customStore() } })\nexport default sessionConfig\n"
-      const plan = await planSetup(choices, state)
+      const plan = await planSetup(choices, state, { env: process.env })
       assert.isTrue(
         plan.diagnostics.some(
           ({ field, severity, message }) =>
@@ -284,7 +284,7 @@ test.group('setup session prerequisites', () => {
           "store: 'custom'",
           "store: env.get('SESSION_DRIVER')"
         )
-        const selectedFromEnvironment = await planSetup(choices, state)
+        const selectedFromEnvironment = await planSetup(choices, state, { env: process.env })
         assert.isTrue(
           selectedFromEnvironment.diagnostics.some(
             ({ field, severity }) => field === 'config/session.ts' && severity === 'error'
@@ -335,7 +335,7 @@ test.group('setup session prerequisites', () => {
         // Each step puts the unsupported `custom` store in the file that should lose.
         await writeFile(join(root, '.env'), 'SESSION_DRIVER=custom\nPRIVATE_VALUE=hidden-value\n')
         await writeFile(join(root, '.env.development'), 'SESSION_DRIVER=database\n')
-        const fromFile = await planSetup(choices, state)
+        const fromFile = await planSetup(choices, state, { env: process.env })
         assert.isFalse(
           fromFile.diagnostics.some(
             ({ field, severity }) => field === 'config/session.ts' && severity === 'error'
@@ -344,7 +344,7 @@ test.group('setup session prerequisites', () => {
         assert.isFalse(JSON.stringify(fromFile).includes('hidden-value'))
         await writeFile(join(root, '.env.development'), 'SESSION_DRIVER=custom\n')
         await writeFile(join(root, '.env.development.local'), 'SESSION_DRIVER="memory"\n')
-        const local = await planSetup(choices, state)
+        const local = await planSetup(choices, state, { env: process.env })
         assert.isFalse(
           local.diagnostics.some(
             ({ field, severity }) => field === 'config/session.ts' && severity === 'error'
@@ -352,14 +352,14 @@ test.group('setup session prerequisites', () => {
         )
         await writeFile(join(root, '.env.development.local'), 'SESSION_DRIVER=custom\n')
         process.env.SESSION_DRIVER = 'database'
-        const override = await planSetup(choices, state)
+        const override = await planSetup(choices, state, { env: process.env })
         assert.isFalse(
           override.diagnostics.some(
             ({ field, severity }) => field === 'config/session.ts' && severity === 'error'
           )
         )
         process.env.SESSION_DRIVER = 'custom'
-        const rejected = await planSetup(choices, state)
+        const rejected = await planSetup(choices, state, { env: process.env })
         assert.isTrue(
           rejected.diagnostics.some(
             ({ field, severity }) => field === 'config/session.ts' && severity === 'error'
@@ -387,7 +387,7 @@ test.group('setup session prerequisites', () => {
         delete process.env.SESSION_DRIVER
         state.files['config/session.ts'] =
           "import env from '#start/env'\nimport { defineConfig, stores } from '@adonisjs/session'\nconst sessionConfig = defineConfig({ store: env.get('SESSION_DRIVER'), stores: { database: stores.database() } })\nexport default sessionConfig\n"
-        const missing = await planSetup(choices, state)
+        const missing = await planSetup(choices, state, { env: process.env })
         assert.isTrue(
           missing.diagnostics.some(
             ({ field, severity }) => field === 'config/session.ts' && severity === 'error'
@@ -400,7 +400,7 @@ test.group('setup session prerequisites', () => {
           'PRIVATE_TEXT="first line\nSESSION_DRIVER=database\nlast line"\n',
         ]) {
           await writeFile(join(root, '.env'), assignment)
-          const rejected = await planSetup(choices, state)
+          const rejected = await planSetup(choices, state, { env: process.env })
           assert.isTrue(
             rejected.diagnostics.some(
               ({ field, severity }) => field === 'config/session.ts' && severity === 'error'
@@ -410,7 +410,7 @@ test.group('setup session prerequisites', () => {
         }
         await rm(join(root, '.env'))
         await symlink('/tmp/unsupported-session-env', join(root, '.env'))
-        const linked = await planSetup(choices, state)
+        const linked = await planSetup(choices, state, { env: process.env })
         assert.isTrue(
           linked.diagnostics.some(
             ({ field, severity }) => field === 'config/session.ts' && severity === 'error'
@@ -433,14 +433,14 @@ test.group('setup session prerequisites', () => {
         process.env.SESSION_DRIVER = 'database'
         state.files['config/session.ts'] =
           "import env from '#start/env'\nimport { defineConfig, stores } from '@adonisjs/session'\nconst sessionConfig = defineConfig({ store: env.get('APP_SESSION_STORE'), stores: { database: stores.database() } })\nexport default sessionConfig\n"
-        const missing = await planSetup(choices, state)
+        const missing = await planSetup(choices, state, { env: process.env })
         assert.isTrue(
           missing.diagnostics.some(
             ({ field, severity }) => field === 'config/session.ts' && severity === 'error'
           )
         )
         await writeFile(join(root, '.env'), 'APP_SESSION_STORE=database\n')
-        const selected = await planSetup(choices, state)
+        const selected = await planSetup(choices, state, { env: process.env })
         assert.isFalse(
           selected.diagnostics.some(
             ({ field, severity }) => field === 'config/session.ts' && severity === 'error'
@@ -509,7 +509,7 @@ test.group('setup session prerequisites', () => {
         await writeFile(join(root, '.env'), 'APP_SESSION_STORE=memory\n')
         state.files['config/session.ts'] =
           "import env from '#start/env'\nimport { defineConfig, stores } from '@adonisjs/session'\nconst sessionConfig = defineConfig({ store: env.get('APP_SESSION_STORE'), stores: { database: stores.database(), memory: stores.memory() } })\nexport default sessionConfig\n"
-        const plan = await planSetup(choices, state, { production: true })
+        const plan = await planSetup(choices, state, { env: process.env, production: true })
         assert.isTrue(
           plan.diagnostics.some(
             ({ field, severity, message }) =>

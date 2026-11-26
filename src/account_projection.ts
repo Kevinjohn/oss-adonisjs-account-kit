@@ -1,4 +1,4 @@
-import type { AccountUser, CurrentAccount } from './types.js'
+import type { AccountUser, CurrentAccount } from './types.ts'
 
 /** An account is active unless its only address is still unconfirmed. */
 export function isActiveAccount(user: Pick<AccountUser, 'email' | 'unverifiedEmail'>): boolean {

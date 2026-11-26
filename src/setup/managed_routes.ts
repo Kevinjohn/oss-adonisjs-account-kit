@@ -1,5 +1,5 @@
-import type { SetupChoices } from './types.js'
-import { planManagedRoutes, type ExistingRoute, type ManagedRoute } from '../http/routes.js'
+import type { SetupChoices } from './types.ts'
+import { planManagedRoutes, type ExistingRoute, type ManagedRoute } from '../http/routes.ts'
 
 export function listManagedExclusions(choices: SetupChoices): ManagedRoute['name'][] {
   return [

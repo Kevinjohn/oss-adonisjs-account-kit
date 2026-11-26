@@ -2,9 +2,9 @@ import { test } from '@japa/runner'
 import { configProvider } from '@adonisjs/core'
 import { defineConfig, SessionCollection, stores } from '@adonisjs/session'
 import type { ResolvedSessionConfig } from '@adonisjs/session/types'
-import { createManagedGuard } from '../src/http/guard.js'
-import { protectManagedSessionConfig } from '../src/http/session_store_protection.js'
-import { protectedContext, ServerStore } from './helpers/protected_context.js'
+import { createManagedGuard } from '../src/http/guard.ts'
+import { protectManagedSessionConfig } from '../src/http/session_store_protection.ts'
+import { protectedContext, ServerStore } from './helpers/protected_context.ts'
 
 test.group('managed existing-guard adapters', () => {
   test('refuses a missing verifier or a selected store that is not configured', async ({

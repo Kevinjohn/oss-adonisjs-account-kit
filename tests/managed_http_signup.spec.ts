@@ -1,8 +1,8 @@
 import { test } from '@japa/runner'
-import { AccountKit } from '../src/account_kit.js'
-import { E_ACCOUNT_KIT_DELIVERY, E_ACCOUNT_KIT_THROTTLED } from '../src/errors.js'
-import { registerManagedRoutes } from '../src/http/managed.js'
-import { fakeManagedHttp, stubGuard } from './helpers/managed_http_fakes.js'
+import { AccountKit } from '../src/account_kit.ts'
+import { E_ACCOUNT_KIT_DELIVERY, E_ACCOUNT_KIT_THROTTLED } from '../src/errors.ts'
+import { registerManagedRoutes } from '../src/http/managed.ts'
+import { fakeManagedHttp, stubGuard } from './helpers/managed_http_fakes.ts'
 
 test.group('managed HTTP dispatch', () => {
   test('public registration is allowed only by shared open availability', ({ assert }) => {

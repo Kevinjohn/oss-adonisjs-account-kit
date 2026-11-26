@@ -1,11 +1,11 @@
 import { test } from '@japa/runner'
 import { DateTime } from 'luxon'
-import { consumeRows, deleteReturning, countDeletedRowsFromResult } from '../src/consume_rows.js'
-import { transaction } from '../src/db.js'
-import { useTestApp } from './helpers/app.js'
-import { dbTime } from './helpers/db_time.js'
-import { insertUser } from './helpers/fakes.js'
-import { testEngine } from './helpers/dialect.js'
+import { consumeRows, deleteReturning, countDeletedRowsFromResult } from '../src/consume_rows.ts'
+import { transaction } from '../src/db.ts'
+import { useTestApp } from './helpers/app.ts'
+import { dbTime } from './helpers/db_time.ts'
+import { insertUser } from './helpers/fakes.ts'
+import { testEngine } from './helpers/dialect.ts'
 
 test.group('consuming single-use rows', (group) => {
   const kit = useTestApp(group)

@@ -1,5 +1,5 @@
 import type { Database } from '@adonisjs/lucid/database'
-import type { Trx } from '../../src/types.js'
+import type { Trx } from '../../src/types.ts'
 
 /** A database whose package transactions fail in a commit listener after committing. */
 export function faultAfterCommit(db: Database, failure: Error): Database {

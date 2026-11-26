@@ -1,5 +1,5 @@
-import type { SetupChoices, SetupDiagnostic, SetupInspection } from './types.js'
-import { hasEmailFlow, addSetupDiagnostic } from './shared.js'
+import type { SetupChoices, SetupDiagnostic, SetupInspection } from './types.ts'
+import { hasEmailFlow, addSetupDiagnostic } from './shared.ts'
 
 /** Guard selection and the session or token checks for the selected strategy. */
 export function addAuthenticationDiagnostics(

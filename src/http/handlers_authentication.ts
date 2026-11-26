@@ -1,9 +1,9 @@
 /** Managed handlers for the authentication capability: CSRF token, login, logout and profile read. */
-import type { ManagedEndpointName } from './routes.js'
-import type { ManagedHandler } from './managed_types.js'
-import { rememberManagedMethod } from './last_used_method.js'
-import { renderIssuedAccountBody, signInLabel } from './response_helpers.js'
-import { loginValidator } from './validators.js'
+import type { ManagedEndpointName } from './routes.ts'
+import type { ManagedHandler } from './managed_types.ts'
+import { rememberManagedMethod } from './last_used_method.ts'
+import { renderIssuedAccountBody, signInLabel } from './response_helpers.ts'
+import { loginValidator } from './validators.ts'
 
 export const authenticationHandlers = {
   'auth.csrf': async ({ context, csrfToken }) => {

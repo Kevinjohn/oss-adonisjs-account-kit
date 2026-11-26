@@ -3,4 +3,4 @@ export {
   mapPublicErrorIdentity,
   type ProofKind,
   type PublicIdentity,
-} from '../error_identity.js'
+} from '../error_identity.ts'

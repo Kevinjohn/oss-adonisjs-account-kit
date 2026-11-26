@@ -1,4 +1,4 @@
-import type { SetupDiagnostic, SetupFileChange, SetupInspection } from './types.js'
+import type { SetupDiagnostic, SetupFileChange, SetupInspection } from './types.ts'
 import {
   getDefaultImportName,
   hasAmbiguousRuntimeModuleImports,
@@ -7,9 +7,9 @@ import {
   parseSetupSource,
   walk,
   type SetupSource,
-} from './ts_source.js'
+} from './ts_source.ts'
 import type * as TypeScript from 'typescript'
-import { addSetupDiagnostic } from './shared.js'
+import { addSetupDiagnostic } from './shared.ts'
 
 export async function planRouteImport(
   changes: SetupFileChange[],

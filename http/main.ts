@@ -1,7 +1,6 @@
-export { registerManagedRoutes } from '../src/http/managed.js'
-export { createManagedGuard, managedAccountMiddleware } from '../src/http/guard.js'
-export { protectManagedSessionConfig } from '../src/http/session_store_protection.js'
-export { managedProofHeadersMiddleware } from '../src/http/proof_headers.js'
+export { registerManagedRoutes } from '../src/http/managed.ts'
+export { createManagedGuard } from '../src/http/guard.ts'
+export { protectManagedSessionConfig } from '../src/http/session_store_protection.ts'
 export type {
   ManagedTokenCredential,
   ManagedTokenModel,
@@ -9,24 +8,24 @@ export type {
   ManagedUserModel,
   ManagedSessionGuardOptions,
   ManagedTokenGuardOptions,
-} from '../src/http/guard.js'
+} from '../src/http/guard.ts'
 export type {
   ManagedSessionConfiguration,
   ManagedSessionStoreFactory,
-} from '../src/http/session_store_protection.js'
-export type { ManagedSocialExtension } from '../src/http/social.js'
-export type { ManagedExtensions, ManagedGuard, ManagedRoutesOptions } from '../src/http/managed.js'
-export { planManagedRoutes } from '../src/http/routes.js'
-export { generateManagedOpenApi } from '../src/http/openapi.js'
-export type { ManagedOpenApiInput, OpenApiDocument } from '../src/http/openapi.js'
-export { managedRouteRegistration } from '../src/http/route_registration.js'
+} from '../src/http/session_store_protection.ts'
+export type { ManagedSocialExtension } from '../src/http/social.ts'
+export type { ManagedExtensions, ManagedGuard, ManagedRoutesOptions } from '../src/http/managed.ts'
+export { planManagedRoutes } from '../src/http/routes.ts'
+export { generateManagedOpenApi } from '../src/http/openapi.ts'
+export type { ManagedOpenApiInput, OpenApiDocument } from '../src/http/openapi.ts'
+export { managedRouteRegistration } from '../src/http/route_registration.ts'
 export type {
   JsonSchema,
   ManagedOpenApiOptions,
   ManagedRouteRegistration,
   ReplaceableRequestEndpoint,
-} from '../src/http/route_registration.js'
-export type { ManagedMessage } from '../src/http/responses.js'
+} from '../src/http/route_registration.ts'
+export type { ManagedMessage } from '../src/http/responses.ts'
 export type {
   ManagedErrorBody,
   ManagedCommittedSuccess,
@@ -37,7 +36,7 @@ export type {
   ManagedSocialFlowBody,
   ManagedSuccessBodies,
   ManagedSuccessBody,
-} from '../src/http/contracts.js'
+} from '../src/http/contracts.ts'
 export type {
   ExistingRoute,
   ManagedCapability,
@@ -45,4 +44,4 @@ export type {
   ManagedRoute,
   ManagedRouteSelection,
   RoutePatternToken,
-} from '../src/http/routes.js'
+} from '../src/http/routes.ts'

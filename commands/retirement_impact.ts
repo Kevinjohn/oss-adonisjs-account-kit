@@ -1,8 +1,8 @@
-import { E_ACCOUNT_KIT_INVALID_PROVIDERS_FLAG } from '../src/errors.js'
+import { E_ACCOUNT_KIT_INVALID_PROVIDERS_FLAG } from '../src/errors.ts'
 import { BaseCommand, flags } from '@adonisjs/core/ace'
-import { AccountKit } from '../src/account_kit.js'
-import { isSocialProviderName, socialProviderNames } from '../src/social_providers.js'
-import type { SocialProviderName } from '../src/types.js'
+import { AccountKit } from '../src/account_kit.ts'
+import { isSocialProviderName, socialProviderNames } from '../src/social_providers.ts'
+import type { SocialProviderName } from '../src/types.ts'
 
 /**
  * Parses `--providers`: absent keeps every configured provider; `none` or an empty list retires

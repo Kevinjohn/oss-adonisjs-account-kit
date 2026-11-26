@@ -1,7 +1,7 @@
 // Shared output rules for operator commands: one JSON line on stdout, warnings and errors on stderr.
 import type { BaseCommand } from '@adonisjs/core/ace'
-import { E_ACCOUNT_KIT } from '../src/errors.js'
-import type { OperatorFault } from '../src/types.js'
+import { E_ACCOUNT_KIT } from '../src/errors.ts'
+import type { OperatorFault } from '../src/types.ts'
 
 export const BEARER_WARNING =
   'The printed link is a bearer secret: anyone holding it can use it until it expires. Share it only over a trusted channel.'

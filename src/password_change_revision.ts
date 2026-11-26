@@ -1,6 +1,6 @@
 // The revision a committed password change wrote, kept for a follow-up failure it then threw.
-import { isCommittedFailure } from './errors.js'
-import type { E_ACCOUNT_KIT } from './errors.js'
+import { isCommittedFailure } from './errors.ts'
+import type { E_ACCOUNT_KIT } from './errors.ts'
 
 const credentialRevisionsByError = new WeakMap<InstanceType<typeof E_ACCOUNT_KIT>, string | null>()
 

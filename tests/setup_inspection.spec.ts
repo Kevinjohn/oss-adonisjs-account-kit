@@ -2,14 +2,14 @@ import { mkdtemp, mkdir, rm, symlink, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { test } from '@japa/runner'
-import { inspectSetup } from '../src/setup/inspect.js'
-import { buildDefaultSetupChoices } from '../src/setup/defaults.js'
-import { planSetup } from '../src/setup/plan.js'
+import { inspectSetup } from '../src/setup/inspect.ts'
+import { buildDefaultSetupChoices } from '../src/setup/defaults.ts'
+import { planSetup } from '../src/setup/plan.ts'
 import {
   resolveSelectedEnvironment,
   resolveSelectedEnvironmentValue,
-} from '../src/setup/selected_environment.js'
-import { fixture, registerSetupTeardown } from './helpers/setup.js'
+} from '../src/setup/selected_environment.ts'
+import { fixture, registerSetupTeardown } from './helpers/setup.ts'
 
 async function applicationRoot() {
   const root = await mkdtemp(join(tmpdir(), 'account-setup-inspect-'))
@@ -116,19 +116,19 @@ test('additional executable environment imports invalidate database selection', 
       database,
       "import { defineConfig } from '@adonisjs/lucid'\nimport env from '#start/env'\nimport * as envModule from '#start/env'\nenvModule.default.get = () => 'mysql'\nexport default defineConfig({ connection: env.get('DB_CONNECTION', 'sqlite'), connections: { sqlite: { client: 'better-sqlite3' }, mysql: { client: 'mysql2' } } })"
     )
-    const namespaceAlias = await inspectSetup(root)
+    const namespaceAlias = await inspectSetup(root, { env: process.env })
     assert.equal(namespaceAlias.database, 'unknown')
     await writeFile(
       database,
       "import { defineConfig } from '@adonisjs/lucid'\nimport env from '#start/env'\nimport { default as alternative } from '#start/env'\nalternative.get = () => 'mysql'\nexport default defineConfig({ connection: env.get('DB_CONNECTION', 'sqlite'), connections: { sqlite: { client: 'better-sqlite3' }, mysql: { client: 'mysql2' } } })"
     )
-    const namedAlias = await inspectSetup(root)
+    const namedAlias = await inspectSetup(root, { env: process.env })
     assert.equal(namedAlias.database, 'unknown')
     await writeFile(
       database,
       "import { defineConfig } from '@adonisjs/lucid'\nimport env from '#start/env'\nimport type * as EnvTypes from '#start/env'\nexport default defineConfig({ connection: env.get('DB_CONNECTION', 'sqlite'), connections: { sqlite: { client: 'better-sqlite3' } } })"
     )
-    const typeOnly = await inspectSetup(root)
+    const typeOnly = await inspectSetup(root, { env: process.env })
     assert.equal(typeOnly.database, 'sqlite')
   } finally {
     if (previous === undefined) delete process.env.DB_CONNECTION
@@ -264,7 +264,7 @@ test('guard metadata must belong to the exported config and imported factories',
   }
 })
 
-test('database selection uses process, dotenv, then literal default without guessing', async ({
+test('database selection uses explicit values, dotenv, then literal default without guessing', async ({
   assert,
 }) => {
   const root = await applicationRoot()
@@ -280,19 +280,19 @@ test('database selection uses process, dotenv, then literal default without gues
         'export default defineConfig({ connection: env.get("DB_CONNECTION", "sqlite"), connections: { sqlite: { client: "better-sqlite3" }, pg: { client: "pg" }, mysql: { client: "mysql2" }, mssql: { client: "mssql" } } })',
       ].join('\n')
     )
-    const fallback = await inspectSetup(root)
+    const fallback = await inspectSetup(root, { env: process.env })
     assert.equal(fallback.database, 'sqlite')
     await writeFile(join(root, '.env'), 'DB_CONNECTION=pg\n')
-    const dotenv = await inspectSetup(root)
+    const dotenv = await inspectSetup(root, { env: process.env })
     assert.equal(dotenv.database, 'postgres')
     await writeFile(join(root, '.env'), 'DB_CONNECTION=mysql\n')
-    const mysql = await inspectSetup(root)
+    const mysql = await inspectSetup(root, { env: process.env })
     assert.equal(mysql.database, 'mysql')
     for (const selected of ['mssql', 'unconfigured']) {
       await writeFile(join(root, '.env'), `DB_CONNECTION=${selected}\n`)
-      const unsupported = await inspectSetup(root)
+      const unsupported = await inspectSetup(root, { env: process.env })
       assert.equal(unsupported.database, selected === 'mssql' ? 'unsupported' : 'unknown')
-      const plan = await planSetup(buildDefaultSetupChoices(), unsupported)
+      const plan = await planSetup(buildDefaultSetupChoices(), unsupported, { env: process.env })
       assert.isTrue(
         plan.diagnostics.some(
           ({ field, severity }) => field === 'database.client' && severity === 'error'
@@ -306,12 +306,12 @@ test('database selection uses process, dotenv, then literal default without gues
       'DB_CONNECTION=pg\nDB_CONNECTION=sqlite\n',
     ]) {
       await writeFile(join(root, '.env'), contents)
-      const unresolvedValue = await inspectSetup(root)
+      const unresolvedValue = await inspectSetup(root, { env: process.env })
       assert.equal(unresolvedValue.database, 'unknown', contents)
     }
     await writeFile(join(root, '.env'), 'DB_CONNECTION=pg\n')
     process.env.DB_CONNECTION = 'sqlite'
-    const processSelected = await inspectSetup(root)
+    const processSelected = await inspectSetup(root, { env: process.env })
     assert.equal(processSelected.database, 'sqlite')
     delete process.env.DB_CONNECTION
     await rm(join(root, '.env'))
@@ -319,14 +319,17 @@ test('database selection uses process, dotenv, then literal default without gues
       database,
       "import { defineConfig } from '@adonisjs/lucid'\nimport env from '#start/env'\nexport default defineConfig({ connection: env.get('DB_CONNECTION'), connections: { sqlite: { client: 'better-sqlite3' } } })"
     )
-    const unresolved = await inspectSetup(root)
+    const unresolved = await inspectSetup(root, { env: process.env })
     assert.equal(unresolved.database, 'unknown')
     const outsideRoot = await mkdtemp(join(tmpdir(), 'account-env-outside-'))
     const outside = join(outsideRoot, '.env')
     try {
       await writeFile(outside, 'DB_CONNECTION=sqlite\n')
       await symlink(outside, join(root, '.env'))
-      await assert.rejects(() => inspectSetup(root), /symlink|non-directory|regular file/)
+      await assert.rejects(
+        () => inspectSetup(root, { env: process.env }),
+        /symlink|non-directory|regular file/
+      )
     } finally {
       await rm(outsideRoot, { recursive: true, force: true })
     }
@@ -455,10 +458,10 @@ test.group('setup database selection', (group) => {
     const before = process.env.DB_CONNECTION
     try {
       process.env.DB_CONNECTION = 'sqlite'
-      const sqlite = await inspectSetup(root)
+      const sqlite = await inspectSetup(root, { env: process.env })
       assert.equal(sqlite.database, 'sqlite')
       process.env.DB_CONNECTION = 'pg'
-      const postgres = await inspectSetup(root)
+      const postgres = await inspectSetup(root, { env: process.env })
       assert.equal(postgres.database, 'postgres')
     } finally {
       if (before === undefined) delete process.env.DB_CONNECTION

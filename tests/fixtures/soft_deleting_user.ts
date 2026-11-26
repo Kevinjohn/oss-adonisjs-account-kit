@@ -1,7 +1,7 @@
 import { compose } from '@adonisjs/core/helpers'
 import { afterDelete, beforeDelete, beforeSave, beforeUpdate } from '@adonisjs/lucid/orm'
 import { SoftDeletes } from '@kevinjohn/adonisjs-lucid-soft-delete'
-import LucidUser from './lucid_user.js'
+import LucidUser from './lucid_user.ts'
 
 export default class SoftDeletingUser extends compose(LucidUser, SoftDeletes) {
   static table = 'users'

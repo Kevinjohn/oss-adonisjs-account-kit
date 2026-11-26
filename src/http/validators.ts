@@ -3,8 +3,8 @@ import {
   invitationPageSize,
   invitationRoleLength,
   invitationScopeLength,
-} from '../invitation_input.js'
-import { MAX_PASSWORD_LENGTH, MIN_PASSWORD_LENGTH } from '../password.js'
+} from '../invitation_input.ts'
+import { MAX_PASSWORD_LENGTH, MIN_PASSWORD_LENGTH } from '../password.ts'
 
 const email = () => vine.string().trim().toLowerCase().email().maxLength(254)
 const password = () => vine.string().minLength(MIN_PASSWORD_LENGTH).maxLength(MAX_PASSWORD_LENGTH)

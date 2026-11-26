@@ -17,15 +17,16 @@ of sending them:
 ```ts
 // config/account_kit.ts
 import app from '@adonisjs/core/services/app'
+import logger from '@adonisjs/core/services/logger'
 import { createLogNotifications, createMailNotifications } from '@kevinjohn/adonisjs-account-kit'
 
 notify: app.inProduction
   ? createMailNotifications({ from: 'accounts@acme.test', brandName: 'Acme' })
-  : createLogNotifications({ brandName: 'Acme', environment: app.inTest ? 'test' : 'development' }),
+  : createLogNotifications({ logger: () => logger, brandName: 'Acme', environment: app.inTest ? 'test' : 'development' }),
 ```
 
-Messages go to the AdonisJS logger. To send them elsewhere, pass `logger`: either an object with
-an `info(message)` method, or a function returning one. Use a function for AdonisJS services,
+Pass `logger` as an object with an `info(message)` method or a function returning one. The
+example supplies the AdonisJS logger. Use a function for AdonisJS services,
 because config files load before services exist.
 
 `createLogNotifications` replaces the generated throwing callbacks and renders the message and

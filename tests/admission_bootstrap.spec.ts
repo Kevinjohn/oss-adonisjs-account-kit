@@ -1,22 +1,20 @@
-/* eslint-disable @unicorn/no-await-expression-member -- Keep each assertion next to the operation it inspects. */
-
 import { DateTime, Settings } from 'luxon'
 import { test } from '@japa/runner'
-import { replaceBootstrapInvitation } from '../src/bootstrap_invitation.js'
-import { withInvitationEvidence } from '../src/admission/invitation_evidence.js'
-import { transaction } from '../src/db.js'
+import { replaceBootstrapInvitation } from '../src/bootstrap_invitation.ts'
+import { withInvitationEvidence } from '../src/admission/invitation_evidence.ts'
+import { transaction } from '../src/db.ts'
 import {
   E_ACCOUNT_KIT_CAPABILITY_DISABLED,
   E_ACCOUNT_KIT_EMAIL_ALREADY_REGISTERED,
   E_ACCOUNT_KIT_INVALID_INPUT,
-} from '../src/errors.js'
-import type { Invitation } from '../src/types.js'
-import { locksRows } from './helpers/dialect.js'
-import { createBarrier, startWithBackendId, waitForBlockedBy } from './helpers/lock_coordination.js'
-import { dbTime } from './helpers/db_time.js'
-import { useAdmissionApp } from './helpers/admission_schema.js'
-import { allRequirements, makeAdmission, writeAdmissionRow } from './helpers/admission.js'
-import { insertUser, tokenFrom } from './helpers/fakes.js'
+} from '../src/errors.ts'
+import type { Invitation } from '../src/types.ts'
+import { locksRows } from './helpers/dialect.ts'
+import { createBarrier, startWithBackendId, waitForBlockedBy } from './helpers/lock_coordination.ts'
+import { dbTime } from './helpers/db_time.ts'
+import { useAdmissionApp } from './helpers/admission_schema.ts'
+import { allRequirements, makeAdmission, writeAdmissionRow } from './helpers/admission.ts'
+import { insertUser, tokenFrom } from './helpers/fakes.ts'
 
 test.group('admission bootstrap', (group) => {
   const kit = useAdmissionApp(group)
@@ -186,6 +184,7 @@ test.group('admission bootstrap', (group) => {
       await assert.rejects(() => admission.operator.bootstrap(input), E_ACCOUNT_KIT_INVALID_INPUT)
     // The earlier waiting approval for the taken address is left as it was.
     assert.deepEqual(
+      // eslint-disable-next-line @unicorn/no-await-expression-member -- Assert the result at the call site.
       (await kit.db.from('account_admissions')).map((row) => row.bootstrap_email),
       ['taken@example.test']
     )
@@ -246,6 +245,7 @@ test.group('admission bootstrap', (group) => {
         email: 'boss@example.test',
         role: 'admin',
       })
+      // eslint-disable-next-line @unicorn/no-await-expression-member -- Assert the result at the call site.
       assert.equal((await waiting().first()).invitation_id, later.invitation.id)
       release()
       await rejected
@@ -302,6 +302,7 @@ test.group('admission bootstrap', (group) => {
       config.users.findByEmail = find
     }
     assert.deepEqual(await waiting().first(), prior)
+    // eslint-disable-next-line @unicorn/no-await-expression-member -- Assert the result at the call site.
     assert.equal((await kit.db.from('account_invitations').first()).id, original.invitation.id)
     assert.deepEqual(events, [])
     const user = await account.invitations.accept({
@@ -363,6 +364,7 @@ test.group('admission bootstrap', (group) => {
       config.users.findByEmail = find
     }
     assert.deepEqual(await waiting().first(), prior)
+    // eslint-disable-next-line @unicorn/no-await-expression-member -- Assert the result at the call site.
     assert.equal((await kit.db.from('account_invitations').first()).id, issued.invitation.id)
   })
 
@@ -463,6 +465,7 @@ test.group('admission bootstrap', (group) => {
           release()
           await earlier.operation
           const issued = await later
+          // eslint-disable-next-line @unicorn/no-await-expression-member -- Assert the result at the call site.
           assert.equal((await waiting().first()).invitation_id, issued.invitation.id)
           assert.lengthOf(await kit.db.from('account_invitations'), 1)
           const user = await account.invitations.accept({

@@ -1,6 +1,6 @@
 import { test } from '@japa/runner'
-import { useTestApp } from './helpers/app.js'
-import { insertUser, makeService, tokenFrom } from './helpers/fakes.js'
+import { useTestApp } from './helpers/app.ts'
+import { insertUser, makeService, tokenFrom } from './helpers/fakes.ts'
 test.group('token secret length', (group) => {
   const kit = useTestApp(group)
 

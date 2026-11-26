@@ -1,8 +1,8 @@
 import { RuntimeException } from '@adonisjs/core/exceptions'
 // Setup planning phase: static analysis of the selected Lucid user model.
 import { lstat, readFile } from 'node:fs/promises'
-import { requireSafeSetupPath } from './safe_path.js'
-import type { SetupChoices, SetupInspection, SetupDiagnostic } from './types.js'
+import { requireSafeSetupPath } from './safe_path.ts'
+import type { SetupChoices, SetupInspection, SetupDiagnostic } from './types.ts'
 import {
   getDefaultImportName,
   isDirectClassBaseReference,
@@ -14,17 +14,17 @@ import {
   unwrapStaticExpression,
   walk,
   type SetupSource,
-} from './ts_source.js'
-import { E_ACCOUNT_KIT_INVALID_SETUP_SOURCE } from '../errors.js'
-import { addSetupDiagnostic } from './shared.js'
+} from './ts_source.ts'
+import { E_ACCOUNT_KIT_INVALID_SETUP_SOURCE } from '../errors.ts'
+import { addSetupDiagnostic } from './shared.ts'
 import {
   inspectClassColumns,
   hasUnsafeStaticMetadata,
   listStaticMembers,
   hasUnsupportedClassRuntime,
-} from './model_inspection.js'
-import { hasConventionalSetupImport } from './package_imports.js'
-import { inspectUserSchema } from './user_schema_inspection.js'
+} from './model_inspection.ts'
+import { hasConventionalSetupImport } from './package_imports.ts'
+import { inspectUserSchema } from './user_schema_inspection.ts'
 import type * as TypeScript from 'typescript'
 
 export async function planUserModel(

@@ -1,25 +1,25 @@
-import { sqlTimestamp } from './timestamps.js'
+import { sqlTimestamp } from './timestamps.ts'
 import { randomUUID } from 'node:crypto'
 import { DateTime } from 'luxon'
-import { invalidateChangedCredentials } from './credential_revision.js'
-import { isActiveAccount } from './account_projection.js'
-import { clearPendingSocialIdentities, clearRecoveryTokens } from './credential_cleanup.js'
-import { consumeUserToken, transaction } from './db.js'
-import { finishCommitted, createLifecycleEffect, postCommit, settleCommitted } from './effects.js'
-import { E_ACCOUNT_KIT_INVALID_INPUT, E_ACCOUNT_KIT_INVALID_TOKEN } from './errors.js'
-import { emitInvitationAccepted, matchInvitation } from './invitation_match.js'
-import { isPasswordAllowed } from './password.js'
-import { preparePassword, storePassword } from './password_hashing.js'
-import { hashToken, isTokenShaped } from './tokens.js'
+import { invalidateChangedCredentials } from './credential_revision.ts'
+import { isActiveAccount } from './account_projection.ts'
+import { clearPendingSocialIdentities, clearRecoveryTokens } from './credential_cleanup.ts'
+import { consumeUserToken, transaction } from './db.ts'
+import { finishCommitted, createLifecycleEffect, postCommit, settleCommitted } from './effects.ts'
+import { E_ACCOUNT_KIT_INVALID_INPUT, E_ACCOUNT_KIT_INVALID_TOKEN } from './errors.ts'
+import { emitInvitationAccepted, matchInvitation } from './invitation_match.ts'
+import { isPasswordAllowed } from './password.ts'
+import { preparePassword, storePassword } from './password_hashing.ts'
+import { hashToken, isTokenShaped } from './tokens.ts'
 import type {
   AccountUser,
   PasswordResetInspectInput,
   PasswordResetCompleteInput,
   UserId,
-} from './types.js'
-import type { ServiceDependencies } from './service_dependencies.js'
+} from './types.ts'
+import type { ServiceDependencies } from './service_dependencies.ts'
 
-export { requestPasswordReset, issueResetToken } from './password_reset_request.js'
+export { requestPasswordReset, issueResetToken } from './password_reset_request.ts'
 
 export async function inspectPasswordReset(
   deps: Pick<ServiceDependencies, 'config' | 'db'>,
@@ -30,7 +30,7 @@ export async function inspectPasswordReset(
     .from('password_reset_tokens')
     .select('tokenable_id', 'email')
     .where('hash', hashToken(input.token))
-    .where('expires_at', '>', sqlTimestamp(deps.db))
+    .where('expires_at', '>', sqlTimestamp(deps.db, DateTime.utc()))
     .first()
   if (!row) return false
   const user = await deps.config.users.findById(row.tokenable_id)

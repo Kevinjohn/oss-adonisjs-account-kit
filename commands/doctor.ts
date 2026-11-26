@@ -1,11 +1,14 @@
-import { BaseCommand } from '@adonisjs/core/ace'
-import { runDoctor } from '../src/doctor.js'
-import { resolveAccountKitConfig } from '../src/config_resolution.js'
+import { BaseCommand, flags } from '@adonisjs/core/ace'
+import { runDoctor } from '../src/doctor.ts'
+import { resolveAccountKitConfig } from '../src/config_resolution.ts'
 
 export default class AccountKitDoctor extends BaseCommand {
   static commandName = 'account-kit:doctor'
   static description = 'Check config, limiter, backend origin and database tables for Account Kit'
   static options = { startApp: true }
+
+  @flags.string({ description: 'Backend origin if config omits it' })
+  declare appUrl?: string
 
   async run(): Promise<void> {
     const config = await resolveAccountKitConfig(this.app)
@@ -13,7 +16,7 @@ export default class AccountKitDoctor extends BaseCommand {
       config,
       db: await this.app.container.make('lucid.db'),
       limiterBound: this.app.container.hasBinding('limiter.manager'),
-      appUrl: process.env.APP_URL,
+      appUrl: this.appUrl,
       environment: this.app.inProduction ? 'production' : this.app.inTest ? 'test' : 'development',
     })
     for (const check of checks) {

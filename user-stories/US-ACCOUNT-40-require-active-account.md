@@ -4,7 +4,7 @@ As an application developer, I want to require an active account before a protec
 
 **Status:** Current when authentication is configured
 **Access:** The host applies this check to routes that require an active account; it decides which routes remain available for verification and sign-out.
-**Entry:** Host calls `authentication.requireActive(current)` or attaches `managedAccountMiddleware({ kit, guard, active: true })`. Managed routes marked `active` enforce this check by default.
+**Entry:** Host calls `authentication.requireActive(current)` or attaches `new ManagedAccountMiddleware({ kit, guard, active: true })`. Managed routes marked `active` enforce this check by default.
 **Documentation:** [Authentication](../docs/guide/authentication.md)
 **Source:** [`src/authentication.ts`](../src/authentication.ts)
 **Coverage:** [`tests/authentication.spec.ts`](../tests/authentication.spec.ts), [`tests/managed_http_live_account.spec.ts`](../tests/managed_http_live_account.spec.ts)
@@ -32,7 +32,7 @@ Scope: entry and active check through handler dispatch. See [US-ACCOUNT-39](US-A
 ```mermaid
 flowchart TD
  H["Host calls authentication.requireActive(current)"] --> A
- M["managedAccountMiddleware with active true asserts guard and reads current input"] --> A
+ M["ManagedAccountMiddleware with active true asserts guard and reads current input"] --> A
  N["executeManagedRequest on an active managed route asserts guard and reads current input"] --> O{"verificationRequired is false?"}
  O -->|Yes| P["Use authentication.current; dispatch on success"]
  O -->|No| A["requireActive runs requireCurrentAccountInTransaction checks from US-ACCOUNT-39 and commits"]

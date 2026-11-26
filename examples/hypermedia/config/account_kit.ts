@@ -1,3 +1,4 @@
+import logger from '@adonisjs/core/services/logger'
 import app from '@adonisjs/core/services/app'
 import env from '#start/env'
 import {
@@ -74,7 +75,11 @@ export default defineConfig({
    */
   notify: app.inTest
     ? accountKitNotify
-    : createLogNotifications({ brandName: 'Account Kit Example', environment }),
+    : createLogNotifications({
+        logger: () => logger,
+        brandName: 'Account Kit Example',
+        environment,
+      }),
   /**
    * A no-op on purpose: session login checks the credential revision on every request, so older
    * sessions end on their own. Nothing else holds credentials in this app.

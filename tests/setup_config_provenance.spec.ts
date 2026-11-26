@@ -1,6 +1,6 @@
 import { test } from '@japa/runner'
-import { planSetup } from '../src/setup/plan.js'
-import { withFixture } from './helpers/setup_prerequisites.js'
+import { planSetup } from '../src/setup/plan.ts'
+import { withFixture } from './helpers/setup_prerequisites.ts'
 
 test.group('setup config origins', () => {
   test('mutated Limiter and environment bindings cannot certify selected factories', async ({

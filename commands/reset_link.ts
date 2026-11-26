@@ -1,8 +1,8 @@
 import { BaseCommand, args, flags } from '@adonisjs/core/ace'
-import { AccountKit } from '../src/account_kit.js'
-import { isActiveAccount } from '../src/account_projection.js'
-import type { OperatorResetLinkResult } from '../src/types.js'
-import { reportOperatorOutcome, completeOperatorCommand } from './operator_output.js'
+import { AccountKit } from '../src/account_kit.ts'
+import { isActiveAccount } from '../src/account_projection.ts'
+import type { OperatorResetLinkResult } from '../src/types.ts'
+import { reportOperatorOutcome, completeOperatorCommand } from './operator_output.ts'
 
 /** Operator password-reset link: no throttles; replaces the account's live reset link. */
 export default class ResetLink extends BaseCommand {

@@ -3,9 +3,9 @@ import {
   E_ACCOUNT_KIT_INVALID_INPUT,
   E_ACCOUNT_KIT_INVITATION_MANAGEMENT_DENIED,
   E_ACCOUNT_KIT_INVITATION_NOT_FOUND,
-} from '../src/errors.js'
-import { useTestApp } from './helpers/app.js'
-import { allowAll, insertUser, makeService, makeUsersAdapter } from './helpers/fakes.js'
+} from '../src/errors.ts'
+import { useTestApp } from './helpers/app.ts'
+import { allowAll, insertUser, makeService, makeUsersAdapter } from './helpers/fakes.ts'
 
 test.group('invitation management contracts', (group) => {
   const kit = useTestApp(group)
