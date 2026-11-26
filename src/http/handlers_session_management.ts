@@ -6,10 +6,12 @@ import type { ManagedHandler } from './managed_types.ts'
 import { endSessionAfterCommit } from './session_end.ts'
 
 export const sessionManagementHandlers = {
+  /** @throws {AggregateError} If transaction work and cleanup fail before a commit is confirmed. */
   'account.sessions.list': async ({ context, kit, accountInput }) =>
     context.response.ok({
       sessions: await kit.authentication.sessions.list({ current: accountInput! }),
     }),
+  /** @throws {AggregateError} If transaction work and cleanup fail before a commit is confirmed. */
   'account.sessions.revoke': async ({ context, kit, options, accountInput, route }) => {
     let result: { current: boolean }
     try {
@@ -26,8 +28,10 @@ export const sessionManagementHandlers = {
     if (result.current) await endSessionAfterCommit(options.guard, context, route.name)
     return context.response.noContent()
   },
+  /** @throws {AggregateError} If transaction work and cleanup fail before a commit is confirmed. */
   'account.sessions.revokeOthers': async ({ context, kit, accountInput }) =>
     context.response.ok(await kit.authentication.sessions.revokeOthers({ current: accountInput! })),
+  /** @throws {AggregateError} If transaction work and cleanup fail before a commit is confirmed. */
   'account.sessions.revokeAll': async ({ context, kit, options, accountInput, route }) => {
     try {
       await kit.authentication.sessions.revokeAll({ current: accountInput! })

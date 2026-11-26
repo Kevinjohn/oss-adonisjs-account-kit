@@ -67,7 +67,11 @@ function resolveClientChallenge<Credential>(
   return { verifier: null, clientChallenge }
 }
 
-/** Session flows redeem the handoff in-request; token flows return the code for `auth.oauth.token`. */
+/**
+ * Session flows redeem the handoff in-request; token flows return the code for `auth.oauth.token`.
+ *
+ * @throws {AggregateError} If work and its transaction or credential cleanup both fail, or multiple cleanup steps fail.
+ */
 async function finishHandoff<Credential>({
   context,
   social,
@@ -96,6 +100,7 @@ async function finishHandoff<Credential>({
   return response.ok(projectSocialCallbackResult(result))
 }
 
+/** @throws {AggregateError} If work and its transaction or credential cleanup both fail, or multiple cleanup steps fail. */
 const completeOAuthCallback: SocialHandler = async ({
   name,
   context,
@@ -147,6 +152,7 @@ const completeOAuthCallback: SocialHandler = async ({
 
 const socialHandlers = {
   ...managedSocialAccountHandlers,
+  /** @throws {AggregateError} If transaction work and cleanup fail before a commit is confirmed. */
   'auth.oauth.redirect': async ({ context, social, guard, extension }) => {
     const { request, response, params } = context
     const provider = requireEnabledProviderName(params.provider, extension.providers)
@@ -171,6 +177,7 @@ const socialHandlers = {
     if (verifier) rememberSessionState(context, result.state, { verifier, intent, provider })
     return response.ok({ authorizationUrl: result.url })
   },
+  /** @throws {AggregateError} If transaction work and cleanup fail before a commit is confirmed. */
   'auth.oauth.confirmation': async ({ context, social, guard, extension }) => {
     const { request, response, params } = context
     const provider = requireEnabledProviderName(params.provider, extension.providers)
@@ -189,6 +196,7 @@ const socialHandlers = {
   },
   'auth.oauth.callback': completeOAuthCallback,
   'auth.oauth.complete': completeOAuthCallback,
+  /** @throws {AggregateError} If work and its transaction or credential cleanup both fail, or multiple cleanup steps fail. */
   'auth.oauth.registration': async ({ context, social, guard, extension, methodsEnabled }) => {
     const input = await context.request.validateUsing(socialRegistrationValidator)
     const saved =
@@ -202,6 +210,7 @@ const socialHandlers = {
     if (saved) forgetSessionState(context, input.continuation)
     return finishHandoff({ context, social, guard, extension, methodsEnabled, result, saved })
   },
+  /** @throws {AggregateError} If work and its transaction or credential cleanup both fail, or multiple cleanup steps fail. */
   'auth.oauth.token': async ({ context, social, guard, extension, methodsEnabled }) => {
     const input = await context.request.validateUsing(socialTokenValidator)
     const result = await social.redeemHandoff({
@@ -225,7 +234,11 @@ const socialHandlers = {
 
 export type ManagedSocialEndpointName = keyof typeof socialHandlers
 
-/** Dispatch only after the managed router has applied guard, CSRF, throttle and no-store policy. */
+/**
+ * Dispatch only after the managed router has applied guard, CSRF, throttle and no-store policy.
+ *
+ * @throws {AggregateError} If work and its transaction or credential cleanup both fail, or multiple cleanup steps fail.
+ */
 export async function executeManagedSocial<Credential>({
   name,
   methodsEnabled = true,
@@ -237,6 +250,7 @@ export async function executeManagedSocial<Credential>({
   return socialHandlers[name]({ ...request, name, methodsEnabled })
 }
 
+/** @throws {AggregateError} If work and its transaction or credential cleanup both fail, or multiple cleanup steps fail. */
 const executeManagedSocialRoute: ManagedHandler = ({
   route,
   context,

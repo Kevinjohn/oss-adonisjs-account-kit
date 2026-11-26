@@ -11,6 +11,7 @@ export const authenticationHandlers = {
     response.header('Cache-Control', 'no-store')
     return response.ok({ csrfToken })
   },
+  /** @throws {AggregateError} If work and its transaction or credential cleanup both fail, or multiple cleanup steps fail. */
   'auth.login': async ({ context, kit, options, methodsEnabled, representIssued }) => {
     const { request, response } = context
     // The body can carry a bearer token; no cache may keep it.

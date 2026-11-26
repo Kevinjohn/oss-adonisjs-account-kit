@@ -17,6 +17,7 @@ export const invitationHandlers = {
       ? context.response.ok(preview)
       : sendInvalidProofResponse(context, 'invitation', options.extensions?.message)
   },
+  /** @throws {AggregateError} If transaction work and cleanup fail before a commit is confirmed. */
   'auth.invitation.accept': async ({ context, kit, options, representIssued }) => {
     const { request, response, params } = context
     const input = options.extensions?.invitationAcceptance
@@ -31,6 +32,7 @@ export const invitationHandlers = {
     })
     return response.created({ account: await representIssued(buildAccountProjection(user)) })
   },
+  /** @throws {AggregateError} If transaction work and cleanup fail before a commit is confirmed. */
   'account.invitation.send': async ({ context, kit, actorId }) => {
     const { email, role, scope } = await context.request.validateUsing(invitationSendValidator)
     const invitation = await kit.invitations.send({ actorId: actorId!, email, role, scope })
@@ -42,6 +44,7 @@ export const invitationHandlers = {
       await kit.invitations.list({ actorId: actorId!, limit, cursor, scope })
     )
   },
+  /** @throws {AggregateError} If transaction work and cleanup fail before a commit is confirmed. */
   'account.invitation.resend': async ({ context, kit, actorId }) => {
     const invitation = await kit.invitations.resend({
       actorId: actorId!,
@@ -49,6 +52,7 @@ export const invitationHandlers = {
     })
     return context.response.ok({ id: invitation.id })
   },
+  /** @throws {AggregateError} If transaction work and cleanup fail before a commit is confirmed. */
   'account.invitation.revoke': async ({ context, kit, actorId }) => {
     await kit.invitations.revoke({
       actorId: actorId!,

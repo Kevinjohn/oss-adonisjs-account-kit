@@ -10,6 +10,7 @@ import {
 import { newPasswordValidator, passwordResetRequestValidator } from './validators.ts'
 
 export const passwordResetHandlers = {
+  /** @throws {AggregateError} If transaction work and cleanup fail before a commit is confirmed. */
   'auth.passwordReset.request': async ({ route, context, kit }) => {
     const { request, response } = context
     const { email } = await request.validateUsing(passwordResetRequestValidator)
@@ -30,6 +31,7 @@ export const passwordResetHandlers = {
     (await kit.passwordReset.inspect({ token: context.params.token }))
       ? context.response.ok({ valid: true })
       : sendInvalidProofResponse(context, 'password', options.extensions?.message),
+  /** @throws {AggregateError} If transaction work and cleanup fail before a commit is confirmed. */
   'auth.passwordReset.complete': async ({ context, kit }) => {
     const { request, response, params } = context
     const { password } = await request.validateUsing(newPasswordValidator)

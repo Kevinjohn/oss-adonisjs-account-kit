@@ -62,6 +62,7 @@ async function commitTransaction(
 
   // Knex can resolve its COMMIT query even when the database rejects it. Lucid must not
   // emit commit or run after-commit hooks until Knex's completion promise settles.
+  /** @throws {AggregateError} If commit and rollback cleanup both fail. */
   knexTrx.commit = (async () => {
     try {
       await originalCommit.call(knexTrx)

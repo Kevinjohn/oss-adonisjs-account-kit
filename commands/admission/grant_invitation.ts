@@ -18,6 +18,7 @@ export default class GrantInvitationEvidence extends BaseCommand {
   result: AdmissionRecord | null = null
   failure: string | null = null
 
+  /** @throws {AggregateError} If transaction work and cleanup fail before a commit is confirmed. */
   async run(): Promise<void> {
     const admission = await this.app.container.make(AccountAdmission)
     this.result = await admission.operator.grantInvitation({
