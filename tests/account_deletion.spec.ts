@@ -1,6 +1,6 @@
 import { test } from '@japa/runner'
 import { createLucidAdapter } from '../src/adapters/lucid.ts'
-import SoftDeletingUser from './fixtures/soft_deleting_user.ts'
+import SoftDeletingUser from './helpers/soft_deleting_user.ts'
 import { resolveConfig as defineConfig } from '../src/config.ts'
 import {
   E_ACCOUNT_KIT_CAPABILITY_DISABLED,

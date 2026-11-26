@@ -11,7 +11,7 @@ import { transaction } from '../src/db.ts'
 import type { Trx, UsersAdapter } from '../src/types.ts'
 import type { AdapterContractFixture } from '../src/testing/adapter_contract.ts'
 import { usersAdapterContract } from '../src/testing/adapter_contract.ts'
-import LucidUser from './fixtures/lucid_user.ts'
+import LucidUser from './helpers/lucid_user.ts'
 import { useTestApp } from './helpers/app.ts'
 import { contractFixture as sharedContractFixture } from './helpers/adapter_contract_fixture.ts'
 

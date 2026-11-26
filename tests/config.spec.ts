@@ -45,11 +45,10 @@ test.group('account kit configuration and service surface', (group) => {
     assert.notInclude(resolved.enabled, 'invitations')
   })
 
-  test('registration availability is required in the public configuration type', ({ assert }) => {
-    type AllowsOmission =
-      Omit<AccountKitConfig, 'registration'> extends AccountKitConfig ? true : false
-    const allowsOmission: AllowsOmission = false
-    assert.isFalse(allowsOmission)
+  test('registration availability is required in the public configuration type', ({
+    expectTypeOf,
+  }) => {
+    expectTypeOf<Omit<AccountKitConfig, 'registration'>>().not.toExtend<AccountKitConfig>()
   })
 
   test('accepts token secret length boundaries and rejects invalid values', ({ assert }) => {

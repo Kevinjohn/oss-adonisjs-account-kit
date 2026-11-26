@@ -196,14 +196,11 @@ test.group('managed route plan', () => {
 
   test('every planned endpoint has a handler and a missing handler does not compile', ({
     assert,
+    expectTypeOf,
   }) => {
-    const withoutCsrf: Omit<
-      Record<ManagedEndpointName, ManagedHandler>,
-      'auth.csrf'
-    > = managedHandlers
-    // @ts-expect-error a handler table without an entry for a defined endpoint is rejected
-    const incomplete: Record<ManagedEndpointName, ManagedHandler> = withoutCsrf
-    assert.isFunction(incomplete['auth.login'])
+    type HandlerTable = Record<ManagedEndpointName, ManagedHandler>
+    expectTypeOf(managedHandlers).toExtend<HandlerTable>()
+    expectTypeOf<Omit<HandlerTable, 'auth.csrf'>>().not.toExtend<HandlerTable>()
     for (const strategy of ['session', 'access_tokens'] as const) {
       const routes = planManagedRoutes({
         prefix: '/api/v1',

@@ -50,6 +50,9 @@ importers:
       '@japa/assert':
         specifier: ^4.2.0
         version: 4.2.0(@japa/runner@5.4.0)
+      '@japa/expect-type':
+        specifier: ^2.0.4
+        version: 2.0.4(@japa/runner@5.4.0)
       '@japa/file-system':
         specifier: ^3.0.0
         version: 3.0.0(@japa/assert@4.2.0(@japa/runner@5.4.0))(@japa/runner@5.4.0)
@@ -900,6 +903,12 @@ packages:
   '@japa/errors-printer@4.1.4':
     resolution: {integrity: sha512-ogPT87QLaugKyPVcq+ZypcetVeJpXZN7RfVRlRDIrSHsHBw6ILCtNXghVxD9POjqxtUM7RON3sUkgZzLnVQA5g==}
     engines: {node: '>=18.16.0'}
+
+  '@japa/expect-type@2.0.4':
+    resolution: {integrity: sha512-hFj8uSAivFhAz7KXYyNL77E6TI+gkONKBK/1foI4YXjNKot2NckIklBBvyEDVKB4YT+leo4kZdZhKzgAMyqR0Q==}
+    engines: {node: '>=18.16.0'}
+    peerDependencies:
+      '@japa/runner': ^3.1.2 || ^4.0.0 || ^5.0.0
 
   '@japa/file-system@3.0.0':
     resolution: {integrity: sha512-N9cSjtjcRy0BaIvN2Q3kh+nXoHFr74IyrpRWHzwEC/zNeaxItKp3aEQKFAxPPJCrP61hN/TI7shaRDyXpQ7g9g==}
@@ -2563,6 +2572,10 @@ packages:
   execa@9.6.1:
     resolution: {integrity: sha512-9Be3ZoN4LmYR90tUoVu2te2BsbzHfhJyfEiAVfz7N5/zv+jduIfLrV2xdQXOHbaD6KgpGdO9PRPM1Y4Q9QkPkA==}
     engines: {node: ^18.19.0 || >=20.5.0}
+
+  expect-type@1.4.0:
+    resolution: {integrity: sha512-KfYbmpRm0VbLjEvVa9yGwCi9GI34xvi7A/HXYWQO65CSD2u3MczUJSuwXKFIxlGsgBQizV9q5J9NHj4VG0n+pA==}
+    engines: {node: '>=12.0.0'}
 
   fast-deep-equal@3.1.3:
     resolution: {integrity: sha512-f3qQ9oQy9j2AhBe/H9VC91wLmKBCCU/gDOnKNAYG5hswO7BLKj09Hc5HYNz9cGI++xlpDCIgDaitVs03ATR84Q==}
@@ -5106,6 +5119,11 @@ snapshots:
       supports-color: 10.2.2
       youch: 4.1.1
 
+  '@japa/expect-type@2.0.4(@japa/runner@5.4.0)':
+    dependencies:
+      '@japa/runner': 5.4.0
+      expect-type: 1.4.0
+
   '@japa/file-system@3.0.0(@japa/assert@4.2.0(@japa/runner@5.4.0))(@japa/runner@5.4.0)':
     dependencies:
       '@japa/assert': 4.2.0(@japa/runner@5.4.0)
@@ -6507,6 +6525,8 @@ snapshots:
       signal-exit: 4.1.0
       strip-final-newline: 4.0.0
       yoctocolors: 2.2.0
+
+  expect-type@1.4.0: {}
 
   fast-deep-equal@3.1.3: {}
 

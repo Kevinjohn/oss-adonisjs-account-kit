@@ -111,6 +111,7 @@
     "@formatjs/icu-messageformat-parser": "^3.5.22",
     "@japa/api-client": "^3.2.1",
     "@japa/assert": "^4.2.0",
+    "@japa/expect-type": "^2.0.4",
     "@japa/file-system": "^3.0.0",
     "@japa/runner": "^5.3.0",
     "@kevinjohn/adonisjs-lucid-soft-delete": "https://github.com/Kevinjohn/oss-adonisjs-lucid-soft-delete/releases/download/v0.3.3/kevinjohn-adonisjs-lucid-soft-delete-0.3.3.tgz",

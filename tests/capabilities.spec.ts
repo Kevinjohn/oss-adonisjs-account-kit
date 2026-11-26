@@ -94,9 +94,8 @@ test.group('capability configuration', (group) => {
 })
 
 test.group('capability registry', () => {
-  test('has one entry per Capability union member', ({ assert }) => {
-    // Record<Capability, true> fails to compile when the union gains or loses a member.
-    const union: Record<Capability, true> = {
+  test('has one entry per Capability union member', ({ assert, expectTypeOf }) => {
+    const union = {
       passwordReset: true,
       emailVerification: true,
       invitations: true,
@@ -108,8 +107,9 @@ test.group('capability registry', () => {
       dataExport: true,
       accountDeletion: true,
     }
+    expectTypeOf<Capability>().toEqualTypeOf<keyof typeof union>()
     assert.sameMembers(Object.keys(capabilityRegistry), Object.keys(union))
-    assert.deepEqual(capabilities, Object.keys(union) as Capability[])
+    assert.deepEqual(capabilities, Object.keys(union))
     assert.deepEqual(defaultCapabilities, [
       'passwordReset',
       'emailVerification',

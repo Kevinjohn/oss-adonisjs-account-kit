@@ -6,11 +6,7 @@ import { AccountKit } from '../src/account_kit.ts'
 import RetirementImpact from '../commands/retirement_impact.ts'
 import { dbTime } from './helpers/db_time.ts'
 import { createLucidAdapter } from '../src/adapters/lucid.ts'
-import SoftDeletingUser from './fixtures/soft_deleting_user.ts'
-
-class RetirementSoftDeletingUser extends SoftDeletingUser {
-  static table = 'retirement_soft_users'
-}
+import SoftDeletingUser from './helpers/soft_deleting_user.ts'
 
 test.group('authentication retirement impact', (group) => {
   const kit = useTestApp(group)
@@ -430,6 +426,10 @@ test.group('authentication retirement impact', (group) => {
   test('Lucid retirement inventory follows model visibility and fails closed on a missing visible user', async ({
     assert,
   }) => {
+    class RetirementSoftDeletingUser extends SoftDeletingUser {
+      static table = 'retirement_soft_users'
+    }
+
     const schema = kit.db.connection().schema
     await schema.dropTableIfExists('retirement_soft_users')
     try {
