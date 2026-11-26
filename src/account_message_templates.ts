@@ -1,15 +1,8 @@
 import { InvalidArgumentsException } from '@adonisjs/core/exceptions'
-import type { NotificationCallbacks } from './types.ts'
 import type { AccountKitTranslator } from './translator.ts'
+import type { AccountMessageKind, RenderedAccountMessage } from './types_notifications.ts'
 
-export type AccountMessageKind = keyof NotificationCallbacks
-
-/** A rendered account email: subject, plain text and HTML. */
-export interface RenderedAccountMessage {
-  subject: string
-  text: string
-  html: string
-}
+export type { AccountMessageKind, RenderedAccountMessage } from './types_notifications.ts'
 
 const templates: Record<
   AccountMessageKind,

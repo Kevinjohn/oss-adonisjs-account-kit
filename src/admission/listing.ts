@@ -7,16 +7,16 @@ import { requireApproval } from './capability.ts'
 import { decodeKeysetCursor, encodeKeysetCursor } from '../keyset_cursor.ts'
 import { evaluateAdmission } from './decision.ts'
 import { admissionTable, readAdmissionRow, toAdmissionRecord, type AdmissionRow } from './rows.ts'
-import type { AdmissionContext } from './service.ts'
-import type { AdmissionApprovalStatus, AdmissionRecord } from './types.ts'
+import type {
+  AdmissionApprovalStatus,
+  AdmissionContext,
+  AdmissionPage,
+  AdmissionRecord,
+} from './types.ts'
+
+export type { AdmissionPage } from './types.ts'
 
 const statuses: readonly AdmissionApprovalStatus[] = ['pending', 'approved', 'rejected', 'revoked']
-
-/** One page of admission records and the cursor for the next, or null. */
-export interface AdmissionPage {
-  items: AdmissionRecord[]
-  nextCursor: string | null
-}
 
 /**
  * Admission records ordered by creation, after `authorize.list` allows the actor. `pending` lists

@@ -28,3 +28,9 @@ export interface AccountErrorResponse {
 
 /** The proof an invalid token was for; picks the per-kind invalid-token code. */
 export type ProofKind = 'password' | 'email' | 'invitation' | 'magicLink'
+
+/**
+ * Replaces the public wording of a managed response. Receives the stable code and the default
+ * message; the status and code cannot change.
+ */
+export type ManagedMessage = (code: string, defaultMessage: string) => string

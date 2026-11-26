@@ -1,33 +1,13 @@
 /** What `registerManagedRoutes` mounted on a router, recorded for documentation and duplicate checks. */
 import type { Router } from '@adonisjs/core/http'
-import type { SocialProviderName } from '../types.ts'
-import type { ManagedOpenApiOptions } from './openapi_types.ts'
-import type { ManagedRoute } from './routes.ts'
+import type { ManagedRouteRegistration } from './openapi_types.ts'
 
 export type {
   JsonSchema,
   ManagedOpenApiOptions,
+  ManagedRouteRegistration,
   ReplaceableRequestEndpoint,
 } from './openapi_types.ts'
-
-/**
- * What `registerManagedRoutes` mounted on a router. Read it with `managedRouteRegistration` to
- * build the OpenAPI document.
- */
-export interface ManagedRouteRegistration {
-  routes: readonly ManagedRoute[]
-  strategy: 'session' | 'access_tokens'
-  prefix: string
-  socialProviders: readonly SocialProviderName[]
-  /** Which application extensions replace a default schema. */
-  replaced: {
-    registration: boolean
-    invitationAcceptance: boolean
-    profile: boolean
-    representAccount: boolean
-  }
-  openapi?: ManagedOpenApiOptions
-}
 
 const registrations = new WeakMap<Router, ManagedRouteRegistration>()
 

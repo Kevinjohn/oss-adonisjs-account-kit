@@ -3,29 +3,16 @@ import { managedEndpointSchemas, ref } from './openapi_schemas.ts'
 import { buildSharedSchemas } from './openapi_components.ts'
 import type {
   JsonSchema,
+  ManagedOpenApiInput,
   ManagedOpenApiOptions,
+  ManagedRouteRegistration,
+  OpenApiDocument,
   ReplaceableRequestEndpoint,
 } from './openapi_types.ts'
-import type { ManagedRouteRegistration } from './route_registration.ts'
-import type { ManagedCapability, ManagedRoute } from './routes.ts'
+import type { ManagedCapability, ManagedRoute } from './route_types.ts'
 import { InvalidArgumentsException } from '@adonisjs/core/exceptions'
 
-export interface ManagedOpenApiInput extends ManagedOpenApiOptions {
-  /** From `managedRouteRegistration(router)` after the routes are registered. */
-  registration: ManagedRouteRegistration
-  info: { title: string; version: string; description?: string }
-  /** Session cookie name for session guards. Defaults to `adonis-session`. */
-  sessionCookieName?: string
-}
-
-/** An OpenAPI 3.1 document for the mounted managed routes. */
-export type OpenApiDocument = JsonSchema & {
-  openapi: string
-  info: ManagedOpenApiInput['info']
-  tags: Array<{ name: ManagedCapability; description: string }>
-  paths: Record<string, Record<string, JsonSchema>>
-  components: JsonSchema & { schemas: Record<string, JsonSchema> }
-}
+export type { ManagedOpenApiInput, OpenApiDocument } from './openapi_types.ts'
 
 const tagDescriptions: Record<ManagedCapability, string> = {
   authentication: 'Sign-in, sign-out and the current account.',

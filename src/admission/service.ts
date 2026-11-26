@@ -1,5 +1,4 @@
 // The admission service: evaluates admission and gates protected application routes.
-import type { Database } from '@adonisjs/lucid/database'
 import type { AccountKit } from '../account_kit.ts'
 import { requireCurrentAccountInTransaction } from '../authentication.ts'
 import { transaction } from '../db.ts'
@@ -14,7 +13,6 @@ import type {
   OperatorInviteResult,
   CurrentAccount,
   CurrentAccountInput,
-  ResolvedConfig,
   Trx,
   UserId,
 } from '../types.ts'
@@ -23,28 +21,19 @@ import { isDomainAllowed, extractEmailDomain } from './domain.ts'
 import { readAdmissionRow, toAdmissionRecord } from './rows.ts'
 import type {
   AdmissionApprovalStatus,
+  AdmissionContext,
   AdmissionDecision,
+  AdmissionDependencies,
+  AdmissionPage,
   AdmissionRecord,
-  ResolvedAdmissionConfig,
 } from './types.ts'
 import { requestAdmission } from './request.ts'
 import { decideAdmission } from './decisions.ts'
-import { paginateAdmissions, type AdmissionPage } from './listing.ts'
+import { paginateAdmissions } from './listing.ts'
 import { applyOperatorDecision, grantOperatorInvitation } from './operator.ts'
 import { cancelBootstrap, bootstrapOperatorInvitation } from './bootstrap.ts'
 
-/** The dependencies the admission service is built from; the provider supplies them. */
-export interface AdmissionDependencies {
-  kit: AccountKit
-  db: Database
-  /** The resolved `config/account_kit.ts`. */
-  accountConfig: ResolvedConfig
-  /** The resolved `config/admission.ts`. */
-  config: ResolvedAdmissionConfig
-}
-
-/** What the admission operations read: everything but the account service. */
-export type AdmissionContext = Omit<AdmissionDependencies, 'kit'>
+export type { AdmissionContext, AdmissionDependencies } from './types.ts'
 
 /**
  * Admission: whether a verified account may use the application. Resolve it with

@@ -8,6 +8,13 @@ import type { NotificationCallbacks } from './types.ts'
 import type { AccountKitTranslator } from './translator.ts'
 import { isSocialProviderName, socialProviderLabels } from './social_providers.ts'
 import { renderAccountMessage, type AccountMessageKind } from './account_message_templates.ts'
+import type { AccountMailService, MailNotificationOptions } from './types_notifications.ts'
+
+export type {
+  AccountMailMessage,
+  AccountMailService,
+  MailNotificationOptions,
+} from './types_notifications.ts'
 
 export {
   renderAccountMessage,
@@ -17,47 +24,6 @@ export {
 
 export { createActionUrls, type ActionUrlOptions } from './action_urls.ts'
 export { notificationReadiness, type NotificationReadinessInput } from './notification_readiness.ts'
-
-/** The small Mail surface used here keeps service-only imports independent of @adonisjs/mail. */
-export interface AccountMailService {
-  /** Queue a message; `callback` fills it in. */
-  sendLater(callback: (message: AccountMailMessage) => void): Promise<unknown>
-}
-
-/** The part of an AdonisJS Mail message `createMailNotifications` uses. */
-export interface AccountMailMessage {
-  /** Set the recipient address. */
-  to(address: string): this
-  /** Set the sender address. */
-  from(address: string): this
-  /** Set the subject line. */
-  subject(subject: string): this
-  /** Set the HTML body. */
-  html(content: string): this
-  /** Set the plain-text body. */
-  text(content: string): this
-}
-
-/** Options for `createMailNotifications`. */
-export interface MailNotificationOptions {
-  /**
-   * Defaults to the AdonisJS Mail service, resolved when a message is sent. Config files load
-   * before that service exists, so pass a function rather than the service itself.
-   */
-  mail?: AccountMailService | (() => AccountMailService)
-  /** The sender address. */
-  from: string
-  /** Your product name, used in subjects and message bodies. */
-  brandName: string
-  /** Receives escaped body markup; return a complete HTML document or wrapper. */
-  emailLayout?: (body: string) => string
-  /**
-   * An `@adonisjs/i18n` instance for one site-wide language, resolved when a message is sent, for
-   * example `() => i18nManager.locale('fr')`. Each part is looked up as
-   * `account_kit.emails.<kind>.<part>`, with the English text as the fallback.
-   */
-  i18n?: AccountKitTranslator | (() => AccountKitTranslator)
-}
 
 function resolveTranslator(
   option: MailNotificationOptions['i18n']

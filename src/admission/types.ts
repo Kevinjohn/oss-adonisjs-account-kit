@@ -1,6 +1,8 @@
 // Public types of the admission module.
-import type { AccountUser, AuthorizationContext, UserId } from '../types.ts'
-
+import type { Database } from '@adonisjs/lucid/database'
+import type { AccountKit } from '../account_kit.ts'
+import type { ResolvedConfig } from '../types_configuration.ts'
+import type { AccountUser, AuthorizationContext, UserId } from '../types_foundation.ts'
 import type { AdmissionApprovalStatus } from '../admission_decision.ts'
 
 export type { AdmissionApprovalStatus, AdmissionDecision } from '../admission_decision.ts'
@@ -104,4 +106,23 @@ export interface AdmissionRecord {
   } | null
   createdAt: string
   updatedAt: string
+}
+
+/** The dependencies the admission service is built from; the provider supplies them. */
+export interface AdmissionDependencies {
+  kit: AccountKit
+  db: Database
+  /** The resolved `config/account_kit.ts`. */
+  accountConfig: ResolvedConfig
+  /** The resolved `config/admission.ts`. */
+  config: ResolvedAdmissionConfig
+}
+
+/** What the admission operations read: everything but the account service. */
+export type AdmissionContext = Omit<AdmissionDependencies, 'kit'>
+
+/** One page of admission records and the cursor for the next, or null. */
+export interface AdmissionPage {
+  items: AdmissionRecord[]
+  nextCursor: string | null
 }

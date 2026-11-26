@@ -1,26 +1,7 @@
-import type { ManagedRoute } from './routes.ts'
+import type { ExistingRoute, ManagedRoute, RoutePatternToken } from './route_types.ts'
 import { InvalidArgumentsException } from '@adonisjs/core/exceptions'
 
-/** A route already registered by the application, checked for collisions with managed routes. */
-export interface ExistingRoute {
-  /** The HTTP method. */
-  method: string
-  /** The route pattern, such as `/users/:id`. */
-  path: string
-  /** The route name, if any. */
-  name?: string
-  /** Parsed by AdonisJS when available; retains inherited parameter constraints. */
-  tokens?: readonly RoutePatternToken[]
-  matchers?: Record<string, { match?: RegExp }>
-}
-
-/** One segment of a parsed AdonisJS route pattern. */
-export interface RoutePatternToken {
-  type: 0 | 1 | 2 | 3
-  val: string
-  end: string
-  matcher?: RegExp
-}
+export type { ExistingRoute, RoutePatternToken } from './route_types.ts'
 
 function tokenizeRoutePath(
   path: string,

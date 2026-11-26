@@ -1,25 +1,9 @@
 import { InvalidArgumentsException } from '@adonisjs/core/exceptions'
 // Action URLs: builds email links from configured origins and relative page paths.
 import type { UrlCallbacks } from './types.ts'
+import type { ActionUrlOptions } from './types_notifications.ts'
 
-/**
- * Options for `createActionUrls`: the backend and frontend origins, the relative path of each page,
- * and the environment. Production origins must be HTTPS.
- */
-export interface ActionUrlOptions {
-  /** The API's public origin. */
-  backendOrigin: string
-  /** The name of the backend origin setting to show in configuration diagnostics. */
-  backendOriginSetting?: string
-  /** The frontend URL the links point at, including any base path. */
-  appFrontendUrl: string
-  /**
-   * The relative page path for each kind of link, such as `reset-password`. The token is appended.
-   */
-  destinations: Partial<Record<keyof UrlCallbacks, string>>
-  /** In production, origins must be HTTPS; HTTP is allowed only for loopback in development. */
-  environment: 'development' | 'test' | 'production'
-}
+export type { ActionUrlOptions } from './types_notifications.ts'
 
 export const actionUrlBackendOrigins = new WeakMap<object, { value: string; setting?: string }>()
 

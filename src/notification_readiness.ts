@@ -1,35 +1,9 @@
 // Notification readiness: checks that account email will reach people in an environment.
-import { createActionUrls, requireTrustedOrigin, type ActionUrlOptions } from './action_urls.ts'
-import type { Capability, UrlCallbacks } from './types.ts'
+import { createActionUrls, requireTrustedOrigin } from './action_urls.ts'
+import type { UrlCallbacks } from './types.ts'
+import type { NotificationReadinessInput } from './types_notifications.ts'
 
-/**
- * What `notificationReadiness` checks: environment, delivery mode, mail transport, origins, enabled
- * capabilities and page paths.
- */
-export interface NotificationReadinessInput {
-  /** The environment being checked. */
-  environment: ActionUrlOptions['environment']
-  /** The configured `delivery` mode. */
-  delivery: 'best-effort' | 'durable' | 'capture'
-  /** The application's selected AdonisJS Mail transport behavior. */
-  transport: 'delivery' | 'capture' | 'discard'
-  /** The API's public origin. */
-  backendOrigin: string
-  /** The frontend origin the links point at. */
-  actionOrigin: string
-  /** The enabled capabilities, to know which links are needed. */
-  enabled: Capability[]
-  /** The relative page path for each kind of link. */
-  destinations: Partial<Record<keyof UrlCallbacks, string>>
-  /** Application assertions; Account Kit cannot inspect an application-owned worker. */
-  durableChecks?: {
-    worker: boolean
-    retries: boolean
-    terminalFailures: boolean
-    actionLinks: boolean
-    securityNotices: boolean
-  }
-}
+export type { NotificationReadinessInput } from './types_notifications.ts'
 
 /**
  * Checks that account email will actually reach people in this environment. Returns `ready`, a

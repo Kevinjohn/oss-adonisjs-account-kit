@@ -1,29 +1,17 @@
 // A command loader for `adonisrc.ts` that can leave commands out. It imports the commands only
 // when Ace first asks for them, so loading `adonisrc.ts` stays cheap.
-import type { BaseCommand } from '@adonisjs/core/ace'
-import type { CommandMetaData } from '@adonisjs/core/types/ace'
 import { E_ACCOUNT_KIT_INVALID_CONFIGURATION } from './errors.ts'
+import type {
+  AccountKitCommandName,
+  AccountKitCommandsLoader,
+  AccountKitCommandsOptions,
+} from './types_commands.ts'
 
-/** Every command name the package's `./commands` loader registers. */
-export type AccountKitCommandName =
-  | 'account-kit:admission:install'
-  | 'account-kit:doctor'
-  | 'account-kit:invite'
-  | 'account-kit:openapi'
-  | 'account-kit:prune'
-  | 'account-kit:reset-link'
-  | 'account-kit:retirement-impact'
-  | 'account-kit:setup'
-
-export interface AccountKitCommandsOptions {
-  /** Commands to leave out. */
-  exclude?: readonly AccountKitCommandName[]
-}
-
-export interface AccountKitCommandsLoader {
-  getMetaData(): Promise<CommandMetaData[]>
-  getCommand(metaData: CommandMetaData): Promise<typeof BaseCommand | null>
-}
+export type {
+  AccountKitCommandName,
+  AccountKitCommandsLoader,
+  AccountKitCommandsOptions,
+} from './types_commands.ts'
 
 const accountKitCommandNames: readonly AccountKitCommandName[] = [
   'account-kit:admission:install',

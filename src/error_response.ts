@@ -1,4 +1,4 @@
-import type { AccountErrorResponse } from './types_error_response.ts'
+import type { AccountErrorResponse, ManagedMessage } from './types_error_response.ts'
 import { HttpRequest } from '@adonisjs/core/http'
 import { E_ACCOUNT_KIT } from './errors.ts'
 import {
@@ -12,12 +12,6 @@ const JSON_API = 'application/vnd.api+json'
 
 /** The managed routes' error response; the same shape as the public {@link AccountErrorResponse}. */
 export type ManagedErrorResponse = AccountErrorResponse
-
-/**
- * Replaces the public wording of a managed response. Receives the stable code and the default
- * message; the status and code cannot change.
- */
-export type ManagedMessage = (code: string, defaultMessage: string) => string
 
 /**
  * The error media type the `Accept` header asks for, by the framework's own negotiation: a
@@ -158,4 +152,4 @@ export function accountErrorResponse(
   })
 }
 
-export type { AccountErrorResponse } from './types_error_response.ts'
+export type { AccountErrorResponse, ManagedMessage } from './types_error_response.ts'
