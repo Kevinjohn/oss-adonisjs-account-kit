@@ -86,7 +86,7 @@ commands/                   Ace commands
 services/main.ts            container service
 stubs/                      configure templates
 src/                        implementation; `src/types.ts` and `src/errors.ts` hold public types and errors
-<subpath>/main.ts           top-level folder only when it backs a package export
+src/<subpath>/main.ts       public subpath entry beside its implementation
 bin/                        package scripts (`.ts` via ts-exec; `.sh` allowed)
 bin/helpers/                modules used only by `bin/`
 tests/                      Japa specs, flat
@@ -98,7 +98,8 @@ examples/                   example applications
 docs/                       documentation
 ```
 
-1. A top-level folder exists only for an exported subpath. Anything else goes in `src/`.
+1. Package implementation and public subpath entries live in `src/`. Only framework folders
+   (`commands/`, `providers/`, `services/` and `stubs/`) stay at the root.
 2. Scripts are TypeScript under `bin/`, run with `node --import=@poppinss/ts-exec`. Use `.mjs`
    only when the script must run before dependencies are installed, and explain why in a comment
    at the top.

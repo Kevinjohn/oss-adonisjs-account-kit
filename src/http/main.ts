@@ -1,6 +1,6 @@
-export { registerManagedRoutes } from '../src/http/managed.ts'
-export { createManagedGuard } from '../src/http/guard.ts'
-export { protectManagedSessionConfig } from '../src/http/session_store_protection.ts'
+export { registerManagedRoutes } from './managed.ts'
+export { createManagedGuard } from './guard.ts'
+export { protectManagedSessionConfig } from './session_store_protection.ts'
 export type {
   ManagedTokenCredential,
   ManagedTokenModel,
@@ -8,20 +8,20 @@ export type {
   ManagedUserModel,
   ManagedSessionGuardOptions,
   ManagedTokenGuardOptions,
-} from '../src/http/guard_types.ts'
+} from './guard_types.ts'
 export type {
   ManagedSessionConfiguration,
   ManagedSessionStoreFactory,
-} from '../src/http/session_store_types.ts'
+} from './session_store_types.ts'
 export type {
   ManagedExtensions,
   ManagedGuard,
   ManagedRoutesOptions,
   ManagedSocialExtension,
-} from '../src/http/managed_types.ts'
-export { planManagedRoutes } from '../src/http/routes.ts'
-export { generateManagedOpenApi } from '../src/http/openapi.ts'
-export { managedRouteRegistration } from '../src/http/route_registration.ts'
+} from './managed_types.ts'
+export { planManagedRoutes } from './routes.ts'
+export { generateManagedOpenApi } from './openapi.ts'
+export { managedRouteRegistration } from './route_registration.ts'
 export type {
   JsonSchema,
   ManagedOpenApiInput,
@@ -29,8 +29,8 @@ export type {
   ManagedRouteRegistration,
   OpenApiDocument,
   ReplaceableRequestEndpoint,
-} from '../src/http/openapi_types.ts'
-export type { ManagedMessage } from '../src/types_error_response.ts'
+} from './openapi_types.ts'
+export type { ManagedMessage } from '../types_error_response.ts'
 export type {
   ManagedErrorBody,
   ManagedCommittedSuccess,
@@ -41,7 +41,7 @@ export type {
   ManagedSocialFlowBody,
   ManagedSuccessBodies,
   ManagedSuccessBody,
-} from '../src/http/contract_types.ts'
+} from './contract_types.ts'
 export type {
   ExistingRoute,
   ManagedCapability,
@@ -49,4 +49,4 @@ export type {
   ManagedRoute,
   ManagedRouteSelection,
   RoutePatternToken,
-} from '../src/http/route_types.ts'
+} from './route_types.ts'

@@ -2,8 +2,8 @@
   "$schema": "https://typedoc.org/schema.json",
   "entryPoints": [
     "index.ts",
-    "http/main.ts",
-    "transaction/main.ts",
+    "src/http/main.ts",
+    "src/transaction/main.ts",
     "src/testing/adapter_contract.ts",
     "src/testing/notifications.ts"
   ],

@@ -6,7 +6,7 @@ import { test } from '@japa/runner'
 
 const root = fileURLToPath(new URL('..', import.meta.url))
 /** Core source: every package directory except the admission module itself. */
-const coreDirectories = ['src', 'providers', 'commands', 'http', 'services']
+const coreDirectories = ['src', 'providers', 'commands', 'services']
 /** Admission entry points may name the optional module. */
 const allowed = new Set([
   'commands/admission_install.ts',
