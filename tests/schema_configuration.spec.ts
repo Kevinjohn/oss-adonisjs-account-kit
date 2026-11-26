@@ -7,7 +7,7 @@ import { test } from '@japa/runner'
 import { MigrationRunner } from '@adonisjs/lucid/migration'
 import { BaseModel, beforeCreate, column } from '@adonisjs/lucid/orm'
 import type { DateTime } from 'luxon'
-import { migrationNames, migrationSchema, type UserIdType } from '../configure.ts'
+import { migrationNames, migrationTemplateData, type UserIdType } from '../configure.ts'
 import { createLucidAdapter } from '../src/adapters/lucid.ts'
 import { transaction } from '../src/db.ts'
 import { bootTestApp } from './helpers/app.ts'
@@ -70,10 +70,10 @@ for (const userIdType of idTypes) {
           kit.migrationDirectory,
           `${timestamp + index}_account_kit_${name}.ts`
         )
-        const stub = await stubs.build(`migrations/${name}.stub`, { source: stubsRoot })
+        const stub = await stubs.build(`make/migration/${name}.stub`, { source: stubsRoot })
         const prepared = await stub.prepare({
           migration: {
-            ...migrationSchema(usersTable, userIdType),
+            ...migrationTemplateData(usersTable, userIdType),
             path: migrationStubPath(kit.app.migrationsPath(), destination),
           },
         })
@@ -187,7 +187,7 @@ test('migration schema quotes reserved table names and selects each supported ID
 }) => {
   for (const userIdType of idTypes) {
     const usersTable = reservedUsersTable[userIdType]
-    const schema = migrationSchema(usersTable, userIdType)
+    const schema = migrationTemplateData(usersTable, userIdType)
     assert.equal(schema.usersTable, JSON.stringify(usersTable))
     if (userIdType === 'integer') {
       assert.equal(schema.userIdColumn, "table.integer('user_id').unsigned()")
@@ -209,7 +209,7 @@ test('migration schema rejects invalid table identifiers and unsupported ID type
   assert,
 }) => {
   for (const invalidTable of ['', '1users', 'app.users', 'users;drop table users']) {
-    assert.throws(() => migrationSchema(invalidTable))
+    assert.throws(() => migrationTemplateData(invalidTable))
   }
-  assert.throws(() => migrationSchema('users', 'bigint' as UserIdType))
+  assert.throws(() => migrationTemplateData('users', 'bigint' as UserIdType))
 })

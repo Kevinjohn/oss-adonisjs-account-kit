@@ -1,6 +1,6 @@
 import { readFile } from 'node:fs/promises'
 import { test } from '@japa/runner'
-import { migrationNames, migrationSchema } from '../configure.ts'
+import { migrationNames, migrationTemplateData } from '../configure.ts'
 import { exportedUserColumns, omittedUserColumns } from '../src/account_export_coverage.ts'
 import { admissionTable } from '../src/admission/rows.ts'
 import { userOwnedRows } from '../src/user_rows.ts'
@@ -36,7 +36,7 @@ const admissionOmissions = [
  * placeholder, wherever its foreign key is declared, or if it has none.
  */
 function userColumnsIn(name: string, stub: string): string[] {
-  const schema = migrationSchema() as Record<string, string>
+  const schema = migrationTemplateData() as Record<string, string>
   const table = stub.match(/protected tableName = '(\w+)'/)?.[1]
   const placeholders = [...stub.matchAll(/\{\{\{ migration\.(\w+IdColumn) \}\}\}/g)]
   const references = [...stub.matchAll(/\.inTable\(\{\{\{ migration\.usersTable \}\}\}\)/g)]
@@ -55,7 +55,7 @@ async function migratedUserColumns(names: readonly string[] = migrationNames): P
   const found: string[] = []
   for (const name of names) {
     const stub = await readFile(
-      new URL(`../stubs/migrations/${name}.stub`, import.meta.url),
+      new URL(`../stubs/make/migration/${name}.stub`, import.meta.url),
       'utf8'
     )
     found.push(...userColumnsIn(name, stub))

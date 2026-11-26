@@ -8,7 +8,7 @@ import type { CodeTransformer } from '@adonisjs/assembler/code_transformer'
 import { relative, resolve, sep } from 'node:path'
 import type Configure from '@adonisjs/core/commands/configure'
 import type * as TypeScript from 'typescript'
-import { buildMigrationSchema } from './src/setup/migration_definitions.ts'
+import { buildMigrationTemplateData } from './src/setup/migration_definitions.ts'
 import { inspectMigrationDirectory, migrationStubPath } from './src/setup/migration_paths.ts'
 import { orderMigrations } from './src/setup/migration_order.ts'
 import { readRegularFile } from './src/setup/safe_path.ts'
@@ -19,7 +19,7 @@ import { stubsRoot } from './stubs/main.ts'
 
 export {
   migrationNames,
-  buildMigrationSchema as migrationSchema,
+  buildMigrationTemplateData as migrationTemplateData,
   type UserIdType,
 } from './src/setup/migration_definitions.ts'
 
@@ -160,9 +160,9 @@ async function hasRegisteredProvider(project: AssemblerProject, rcPath: string):
  * command while preserving the existing entries.
  */
 export async function configure(command: Configure) {
-  let schema: ReturnType<typeof buildMigrationSchema>
+  let schema: ReturnType<typeof buildMigrationTemplateData>
   try {
-    schema = buildMigrationSchema(
+    schema = buildMigrationTemplateData(
       command.parsedFlags['users-table'] ?? 'users',
       command.parsedFlags['user-id-type'] ?? 'integer'
     )
@@ -241,7 +241,7 @@ export async function configure(command: Configure) {
       command.logger.info(`Skipped ${directory.path}/${filename}`)
       continue
     }
-    await codemods.makeUsingStub(stubsRoot, `migrations/${name}.stub`, {
+    await codemods.makeUsingStub(stubsRoot, `make/migration/${name}.stub`, {
       migration: {
         ...schema,
         path: migrationStubPath(
