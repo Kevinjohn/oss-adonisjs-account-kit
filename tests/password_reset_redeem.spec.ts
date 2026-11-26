@@ -1,16 +1,16 @@
 import { DateTime } from 'luxon'
 import { test } from '@japa/runner'
-import { defineConfig } from '../src/account_kit.js'
-import { generateToken, hashToken } from '../src/tokens.js'
+import { resolveConfig as defineConfig } from '../src/config.ts'
+import { generateToken, hashToken } from '../src/tokens.ts'
 import {
   E_ACCOUNT_KIT_DELIVERY,
   E_ACCOUNT_KIT_INVALID_INPUT,
   E_ACCOUNT_KIT_INVALID_TOKEN,
   E_ACCOUNT_KIT_POST_COMMIT,
   E_ACCOUNT_KIT_THROTTLED,
-} from '../src/errors.js'
-import type { AccountKitConfig } from '../src/types.js'
-import { bootTestApp, useTestApp } from './helpers/app.js'
+} from '../src/errors.ts'
+import type { AccountKitConfig } from '../src/types.ts'
+import { bootTestApp, useTestApp } from './helpers/app.ts'
 import {
   accountKit,
   insertUser,
@@ -19,10 +19,10 @@ import {
   makeService,
   makeUsersAdapter,
   tokenFrom,
-} from './helpers/fakes.js'
-import { resetSchema } from './helpers/schema.js'
-import { locksRows } from './helpers/dialect.js'
-import { dbTime } from './helpers/db_time.js'
+} from './helpers/fakes.ts'
+import { resetSchema } from './helpers/schema.ts'
+import { locksRows } from './helpers/dialect.ts'
+import { dbTime } from './helpers/db_time.ts'
 test.group('passwordReset.reset', (group) => {
   const kit = useTestApp(group)
 

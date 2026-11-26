@@ -1,11 +1,11 @@
 /** Managed handlers for the email and password management capability: email change, profile, password. */
-import type { ManagedEndpointName } from './routes.js'
-import type { ManagedHandler } from './managed_types.js'
-import { buildAccountProjection } from '../account_projection.js'
-import { passwordChangeRevision } from '../password_change_revision.js'
-import { takeCorrectionRevision } from '../profile_correction_revision.js'
-import { sendInvalidProofResponse, sendPasswordPolicyErrorResponse } from './response_helpers.js'
-import { passwordChangeValidator, profileUpdateValidator } from './validators.js'
+import type { ManagedEndpointName } from './routes.ts'
+import type { ManagedHandler } from './managed_types.ts'
+import { buildAccountProjection } from '../account_projection.ts'
+import { passwordChangeRevision } from '../password_change_revision.ts'
+import { takeCorrectionRevision } from '../profile_correction_revision.ts'
+import { sendInvalidProofResponse, sendPasswordPolicyErrorResponse } from './response_helpers.ts'
+import { passwordChangeValidator, profileUpdateValidator } from './validators.ts'
 
 export const emailPasswordManagementHandlers = {
   'auth.emailChange.inspect': async ({ context, kit, options }) =>

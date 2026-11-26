@@ -1,9 +1,9 @@
 import { test } from '@japa/runner'
-import type { AdmissionEvent } from '../src/admission/types.js'
-import { E_ACCOUNT_KIT_POST_COMMIT } from '../src/errors.js'
-import { useAdmissionApp } from './helpers/admission_schema.js'
-import { allRequirements, makeAdmission, writeAdmissionRow } from './helpers/admission.js'
-import { insertUser } from './helpers/fakes.js'
+import type { AdmissionEvent } from '../src/admission/types.ts'
+import { E_ACCOUNT_KIT_POST_COMMIT } from '../src/errors.ts'
+import { useAdmissionApp } from './helpers/admission_schema.ts'
+import { allRequirements, makeAdmission, writeAdmissionRow } from './helpers/admission.ts'
+import { insertUser } from './helpers/fakes.ts'
 
 test.group('admission events', (group) => {
   const kit = useAdmissionApp(group)

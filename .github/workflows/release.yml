@@ -41,7 +41,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - name: Release checks (tag, changelog, build, pack)
         id: check
-        run: bash bin/release_check.sh
+        run: pnpm release
       - name: Test the release archive in a fresh SQLite consumer
         env:
           TARBALL: ${{ steps.check.outputs.tarball }}

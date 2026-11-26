@@ -1,8 +1,8 @@
 /** Ends the caller's browser session after an account operation has committed. */
 import type { HttpContext } from '@adonisjs/core/http'
-import type { ManagedEndpointName } from './routes.js'
-import type { ManagedGuard } from './managed_types.js'
-import { logRecoveryDiagnostic } from './response_helpers.js'
+import type { ManagedEndpointName } from './routes.ts'
+import type { ManagedGuard } from './managed_types.ts'
+import { logRecoveryDiagnostic } from './response_helpers.ts'
 
 /**
  * End the caller's browser session once the operation has committed. Token guards need nothing:

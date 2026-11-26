@@ -1,8 +1,8 @@
 import { RuntimeException } from '@adonisjs/core/exceptions'
-import { E_ACCOUNT_KIT_INVALID_SETUP_SOURCE, E_ACCOUNT_KIT_MIGRATION_DIRECTORY } from '../errors.js'
+import { E_ACCOUNT_KIT_INVALID_SETUP_SOURCE, E_ACCOUNT_KIT_MIGRATION_DIRECTORY } from '../errors.ts'
 import { lstat, readdir } from 'node:fs/promises'
 import { join, relative, sep } from 'node:path'
-import { inspectDatabaseConnection } from './database_inspection.js'
+import { inspectDatabaseConnection } from './database_inspection.ts'
 import {
   matchDirectObject,
   getDirectProperty,
@@ -10,12 +10,17 @@ import {
   hasUnsafeObjectEntries,
   getImportedBindingName,
   parseSetupSource,
-} from './ts_source.js'
-import { requireSafeSetupPath } from './safe_path.js'
-import { matchesAccountKitMigration, migrationNames } from './migration_definitions.js'
+} from './ts_source.ts'
+import { requireSafeSetupPath } from './safe_path.ts'
+import { matchesAccountKitMigration, migrationNames } from './migration_definitions.ts'
 
 /** The AdonisJS default Lucid migration directory, relative to the application root. */
 export const defaultMigrationDirectory = 'database/migrations'
+
+/** Encode a filesystem path for the URL-backed app.migrationsPath helper. */
+export function migrationStubPath(directory: string, destination: string): string {
+  return relative(directory, destination).split(sep).map(encodeURIComponent).join('/')
+}
 
 /** Reports a failure to read or resolve a migration directory against that directory. */
 async function withinDirectory<T>(directory: string, action: () => Promise<T>): Promise<T> {

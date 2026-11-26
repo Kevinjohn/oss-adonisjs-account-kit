@@ -1,5 +1,5 @@
-import type { SetupChoices } from './types.js'
-import { hasEmailFlow } from './shared.js'
+import type { SetupChoices } from './types.ts'
+import { hasEmailFlow } from './shared.ts'
 
 export function generateEnvironmentTemplate(choices: SetupChoices): string {
   const names = new Set<string>()

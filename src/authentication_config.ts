@@ -1,5 +1,5 @@
-import { E_ACCOUNT_KIT_CAPABILITY_DISABLED } from './errors.js'
-import type { ResolvedAuthenticationConfig, ResolvedConfig } from './types.js'
+import { E_ACCOUNT_KIT_CAPABILITY_DISABLED } from './errors.ts'
+import type { ResolvedAuthenticationConfig, ResolvedConfig } from './types.ts'
 
 /** The authentication settings, or `E_ACCOUNT_KIT_CAPABILITY_DISABLED` when authentication is off. */
 export function requireAuthentication(config: ResolvedConfig): ResolvedAuthenticationConfig {

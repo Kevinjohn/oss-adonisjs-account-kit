@@ -1,11 +1,11 @@
 import { DateTime } from 'luxon'
 import { test } from '@japa/runner'
-import { withInvitationEvidence } from '../src/admission/invitation_evidence.js'
-import { transaction } from '../src/db.js'
-import type { AccountUser, Invitation, Trx } from '../src/types.js'
-import { useAdmissionApp } from './helpers/admission_schema.js'
-import { allowDecisions, makeAdmission } from './helpers/admission.js'
-import { invitationHelpers } from './helpers/invitations.js'
+import { withInvitationEvidence } from '../src/admission/invitation_evidence.ts'
+import { transaction } from '../src/db.ts'
+import type { AccountUser, Invitation, Trx } from '../src/types.ts'
+import { useAdmissionApp } from './helpers/admission_schema.ts'
+import { allowDecisions, makeAdmission } from './helpers/admission.ts'
+import { invitationHelpers } from './helpers/invitations.ts'
 
 const invitationOnly = { invitation: { required: true as const } }
 

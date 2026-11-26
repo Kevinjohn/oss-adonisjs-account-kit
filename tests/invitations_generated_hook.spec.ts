@@ -2,16 +2,16 @@ import { fileURLToPath } from 'node:url'
 import { RuntimeException } from '@adonisjs/core/exceptions'
 import { test } from '@japa/runner'
 import ts from 'typescript'
-import { defineConfig } from '../src/account_kit.js'
-import { resolveConfig } from '../src/config.js'
-import { useTestApp } from './helpers/app.js'
+import { resolveConfig as defineConfig } from '../src/config.ts'
+import { resolveConfig } from '../src/config.ts'
+import { useTestApp } from './helpers/app.ts'
 import {
   insertUser,
   makeConfig,
   makeService,
   makeUsersAdapter,
   tokenFrom,
-} from './helpers/fakes.js'
+} from './helpers/fakes.ts'
 
 async function generatedInvitationAcceptanceHook(kit: ReturnType<typeof useTestApp>) {
   const stubsRoot = fileURLToPath(new URL('../stubs', import.meta.url))

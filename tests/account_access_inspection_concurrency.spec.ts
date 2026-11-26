@@ -1,16 +1,16 @@
 import { test } from '@japa/runner'
-import { readIsoTimestamp } from '../src/timestamps.js'
-import { useTestApp } from './helpers/app.js'
-import { makeService } from './helpers/fakes.js'
-import { insertUser } from './helpers/insert_user.js'
-import { locksRows } from './helpers/dialect.js'
+import { readIsoTimestamp } from '../src/timestamps.ts'
+import { useTestApp } from './helpers/app.ts'
+import { makeService } from './helpers/fakes.ts'
+import { insertUser } from './helpers/insert_user.ts'
+import { locksRows } from './helpers/dialect.ts'
 import {
   assertUserLockIsHeld,
   createBarrier,
   startWithBackendId,
   waitForDatabaseLockWait,
-} from './helpers/lock_coordination.js'
-import type { AccountAccessSnapshot } from '../src/types.js'
+} from './helpers/lock_coordination.ts'
+import type { AccountAccessSnapshot } from '../src/types.ts'
 
 test.group('authentication.inspectAccountAccess concurrency', (group) => {
   const kit = useTestApp(group)

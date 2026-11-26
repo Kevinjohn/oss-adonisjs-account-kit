@@ -1,8 +1,8 @@
 import { RuntimeException } from '@adonisjs/core/exceptions'
 // Setup planning phase: static analysis of the UserSchema class the user model composes.
 import { lstat, readFile } from 'node:fs/promises'
-import { requireSafeSetupPath } from './safe_path.js'
-import type { SetupDiagnostic } from './types.js'
+import { requireSafeSetupPath } from './safe_path.ts'
+import type { SetupDiagnostic } from './types.ts'
 import {
   isDirectClassBaseReference,
   isExactCall,
@@ -12,10 +12,10 @@ import {
   parseSetupSource,
   walk,
   type SetupSource,
-} from './ts_source.js'
-import { addSetupDiagnostic } from './shared.js'
-import { hasConventionalSetupImport } from './package_imports.js'
-import { hasUnsafeStaticMetadata, hasUnsupportedClassRuntime } from './model_inspection.js'
+} from './ts_source.ts'
+import { addSetupDiagnostic } from './shared.ts'
+import { hasConventionalSetupImport } from './package_imports.ts'
+import { hasUnsafeStaticMetadata, hasUnsupportedClassRuntime } from './model_inspection.ts'
 import type * as TypeScript from 'typescript'
 
 /** Resolve #database/schema to a UserSchema class that is safe to read column metadata from. */

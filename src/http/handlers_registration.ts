@@ -1,8 +1,8 @@
 /** Managed handler for the registration capability: public signup followed by login. */
-import { E_ACCOUNT_KIT_EMAIL_ALREADY_REGISTERED } from '../errors.js'
-import type { CurrentAccount } from '../types.js'
-import type { ManagedEndpointName } from './routes.js'
-import type { ManagedHandler, ManagedRequest } from './managed_types.js'
+import { E_ACCOUNT_KIT_EMAIL_ALREADY_REGISTERED } from '../errors.ts'
+import type { CurrentAccount } from '../types.ts'
+import type { ManagedEndpointName } from './routes.ts'
+import type { ManagedHandler, ManagedRequest } from './managed_types.ts'
 import {
   renderIssuedAccountBody,
   sendPasswordPolicyErrorResponse,
@@ -10,8 +10,8 @@ import {
   reportCommittedFailure,
   sendRuleViolationResponse,
   signInLabel,
-} from './response_helpers.js'
-import { signupValidator } from './validators.js'
+} from './response_helpers.ts'
+import { signupValidator } from './validators.ts'
 
 async function signUp<Credential>({
   route,

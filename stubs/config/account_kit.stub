@@ -51,12 +51,12 @@ export default defineConfig({
   },
 
   /**
-   * Links sent in account emails: each page path below FRONTEND_URL, or APP_URL when it is unset.
+   * Links sent in account emails: each page path below ACCOUNT_KIT_FRONTEND_URL, or APP_URL when it is unset.
    * Point the paths at your own pages. Production origins must use HTTPS.
    */
   urls: createActionUrls({
     backendOrigin: env.get('APP_URL'),
-    appFrontendUrl: env.get('FRONTEND_URL') ?? env.get('APP_URL'),
+    appFrontendUrl: env.get('ACCOUNT_KIT_FRONTEND_URL') ?? env.get('APP_URL'),
     environment: app.inProduction ? 'production' : app.inTest ? 'test' : 'development',
     destinations: {
       emailVerification: 'account/verification',

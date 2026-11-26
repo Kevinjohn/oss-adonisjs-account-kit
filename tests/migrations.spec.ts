@@ -1,7 +1,7 @@
 import { test } from '@japa/runner'
-import { useTestApp } from './helpers/app.js'
-import { dbTime } from './helpers/db_time.js'
-import { insertUser } from './helpers/fakes.js'
+import { useTestApp } from './helpers/app.ts'
+import { dbTime } from './helpers/db_time.ts'
+import { insertUser } from './helpers/fakes.ts'
 /** A unique violation, as SQLite, PostgreSQL and MySQL word it. */
 const unique = /unique|duplicate/i
 

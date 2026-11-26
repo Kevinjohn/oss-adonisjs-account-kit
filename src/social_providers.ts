@@ -1,5 +1,5 @@
 // Single source of truth for the supported social provider names and their display labels.
-import type { SocialProviderName } from './types.js'
+import type { SocialProviderName } from './types.ts'
 
 /** The supported social providers. */
 export const socialProviderNames = ['google', 'github'] as const

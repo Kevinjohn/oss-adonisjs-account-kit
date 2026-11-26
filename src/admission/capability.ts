@@ -1,6 +1,6 @@
 // Refuses admission operations whose requirement is not configured.
-import { E_ACCOUNT_KIT_CAPABILITY_DISABLED } from '../errors.js'
-import type { ResolvedAdmissionConfig } from './types.js'
+import { E_ACCOUNT_KIT_CAPABILITY_DISABLED } from '../errors.ts'
+import type { ResolvedAdmissionConfig } from './types.ts'
 
 /** The approval settings, or `E_ACCOUNT_KIT_CAPABILITY_DISABLED` when approval is not configured. */
 export function requireApproval(

@@ -1,9 +1,10 @@
+import ManagedAccountMiddleware from '../src/http/managed_account_middleware.ts'
+import AdmissionMiddleware from '../src/admission/middleware.ts'
 import { test } from '@japa/runner'
-import { E_ACCOUNT_KIT_ADAPTER_CONTRACT, E_ACCOUNT_KIT_INVALID_SESSION } from '../src/errors.js'
-import { createManagedGuard, managedAccountMiddleware } from '../src/http/guard.js'
-import { admissionMiddleware } from '../src/admission/middleware.js'
-import { fakeAuthenticator } from './helpers/managed_http_fakes.js'
-import { protectedContext } from './helpers/protected_context.js'
+import { E_ACCOUNT_KIT_ADAPTER_CONTRACT, E_ACCOUNT_KIT_INVALID_SESSION } from '../src/errors.ts'
+import { createManagedGuard } from '../src/http/guard.ts'
+import { fakeAuthenticator } from './helpers/managed_http_fakes.ts'
+import { protectedContext } from './helpers/protected_context.ts'
 
 test.group('managed existing-guard adapters', () => {
   test('conventional model static types compile while invalid authenticated IDs fail closed', async ({
@@ -402,7 +403,7 @@ test.group('managed existing-guard adapters', () => {
   }) => {
     const calls: string[] = []
     const middleware = (active: boolean, refuse: boolean) =>
-      managedAccountMiddleware({
+      new ManagedAccountMiddleware({
         kit: async () =>
           ({
             managedHttp: { assertGuard: () => calls.push('assertGuard') },
@@ -425,16 +426,16 @@ test.group('managed existing-guard adapters', () => {
     }
     const input = JSON.stringify({ userId: 42, revision: 'stamp' })
 
-    await middleware(true, false)({} as never, next)
+    await middleware(true, false).handle({} as never, next)
     assert.deepEqual(calls, ['assertGuard', `requireActive:${input}`, 'next'])
 
     calls.length = 0
-    await middleware(false, false)({} as never, next)
+    await middleware(false, false).handle({} as never, next)
     assert.deepEqual(calls, ['assertGuard', `current:${input}`, 'next'])
 
     for (const active of [true, false]) {
       calls.length = 0
-      await assert.rejects(() => middleware(active, true)({} as never, next), 'refused')
+      await assert.rejects(() => middleware(active, true).handle({} as never, next), 'refused')
       assert.notInclude(calls, 'next')
     }
   })
@@ -495,11 +496,11 @@ test.group('managed guard adapters leave ctx.auth authenticated', () => {
     assert.deepEqual(await adapter.current({ auth } as never), { userId: 42, tokenId: 17 })
   })
 
-  test('ctx.auth.user is set after managedAccountMiddleware and admissionMiddleware', async ({
+  test('ctx.auth.user is set after ManagedAccountMiddleware and AdmissionMiddleware', async ({
     assert,
   }) => {
     const guard = createManagedGuard({ strategy: 'session', name: 'web', loadUser })
-    const managed = managedAccountMiddleware({
+    const managed = new ManagedAccountMiddleware({
       kit: async () =>
         ({
           managedHttp: { assertGuard: () => {} },
@@ -508,7 +509,7 @@ test.group('managed guard adapters leave ctx.auth authenticated', () => {
       guard,
       active: true,
     })
-    const admitted = admissionMiddleware({
+    const admitted = new AdmissionMiddleware({
       admission: async () =>
         ({ kit: { managedHttp: { assertGuard: () => {} } }, require: async () => {} }) as never,
       guard,
@@ -516,7 +517,7 @@ test.group('managed guard adapters leave ctx.auth authenticated', () => {
     for (const handler of [managed, admitted]) {
       const { auth, ctx } = await sessionContext()
       let seen: unknown
-      await handler(ctx as never, async () => {
+      await handler.handle(ctx as never, async () => {
         seen = auth.user
       })
       assert.strictEqual(seen, user)

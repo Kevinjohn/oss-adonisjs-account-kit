@@ -1,7 +1,7 @@
 import { RuntimeException } from '@adonisjs/core/exceptions'
 // Users table metadata and row locks taken before credential changes.
-import { isSqlIdentifier } from './sql_identifier.js'
-import type { ResolvedConfig, Trx, UserId, UsersAdapterMetadata } from './types.js'
+import { isSqlIdentifier } from './sql_identifier.ts'
+import type { ResolvedConfig, Trx, UserId, UsersAdapterMetadata } from './types.ts'
 
 /** The slice of resolved config that locates and describes the users table. */
 export type UsersStorage = Pick<ResolvedConfig, 'users' | 'usersTable' | 'emailConstraint'>

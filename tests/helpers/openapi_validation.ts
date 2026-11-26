@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { Ajv2020, type ValidateFunction } from 'ajv/dist/2020.js'
 import addFormats from 'ajv-formats'
-import type { OpenApiDocument } from '../../src/http/openapi.js'
+import type { OpenApiDocument } from '../../src/http/openapi.ts'
 
 /**
  * The official OpenAPI 3.1 schema (https://spec.openapis.org/oas/3.1/schema/2022-10-07). Ajv

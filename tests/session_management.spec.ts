@@ -5,8 +5,8 @@ import {
   E_ACCOUNT_KIT_INVALID_SESSION,
   E_ACCOUNT_KIT_POST_COMMIT,
   E_ACCOUNT_KIT_SESSION_NOT_FOUND,
-} from '../src/errors.js'
-import { getRevocationOutcome } from '../src/session_revocation.js'
+} from '../src/errors.ts'
+import { getRevocationOutcome } from '../src/session_revocation.ts'
 import type {
   AccountKitConfig,
   CredentialChangeContext,
@@ -15,11 +15,11 @@ import type {
   SessionsRevokedContext,
   Trx,
   UserId,
-} from '../src/types.js'
-import { useTestApp } from './helpers/app.js'
-import { accessTokenDefaults } from './helpers/access_tokens.js'
-import { insertUser, makeService } from './helpers/fakes.js'
-import { dbTime } from './helpers/db_time.js'
+} from '../src/types.ts'
+import { useTestApp } from './helpers/app.ts'
+import { accessTokenDefaults } from './helpers/access_tokens.ts'
+import { insertUser, makeService } from './helpers/fakes.ts'
+import { dbTime } from './helpers/db_time.ts'
 
 const later = (days: number) => DateTime.utc().plus({ days })
 

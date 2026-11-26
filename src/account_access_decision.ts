@@ -1,4 +1,4 @@
-import { E_ACCOUNT_KIT_ADAPTER_CONTRACT } from './errors.js'
+import { E_ACCOUNT_KIT_ADAPTER_CONTRACT } from './errors.ts'
 
 /** Validate the application's access decision without exposing its value in a contract fault. */
 export function requireAccountAccessDecision(result: unknown): boolean {

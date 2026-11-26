@@ -3,8 +3,8 @@ import { IgnitorFactory } from '@adonisjs/core/factories'
 import { defineConfig as defineDatabaseConfig } from '@adonisjs/lucid'
 import { LimiterManager } from '@adonisjs/limiter'
 import LimiterDatabaseStore from '@adonisjs/limiter/stores/database'
-import { E_ACCOUNT_KIT_THROTTLED } from '../../src/errors.js'
-import { consume } from '../../src/throttle.js'
+import { E_ACCOUNT_KIT_THROTTLED } from '../../src/errors.ts'
+import { consume } from '../../src/throttle.ts'
 
 const filename = process.env.ACCOUNT_KIT_TEST_DB!
 const secret = process.env.ACCOUNT_KIT_TEST_SECRET!

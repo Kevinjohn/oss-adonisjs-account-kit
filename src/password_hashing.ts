@@ -1,5 +1,5 @@
 // Hashing a new password before its write transaction, for adapters that store a ready hash.
-import type { Trx, UserId, UsersAdapter } from './types.js'
+import type { Trx, UserId, UsersAdapter } from './types.ts'
 
 /** A new password to write: already hashed when the adapter offers `hashPassword`. */
 export type PreparedPassword = { plain: string } | { hash: string }

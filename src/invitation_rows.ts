@@ -1,7 +1,7 @@
 import type { DateTime } from 'luxon'
-import type { Invitation, UserId } from './types.js'
-import { readTimestamp } from './timestamps.js'
-import { decodeScopeColumn } from './invitation_scope.js'
+import type { Invitation, UserId } from './types.ts'
+import { readTimestamp } from './timestamps.ts'
+import { decodeScopeColumn } from './invitation_scope.ts'
 
 type DatabaseDate = Date | string
 

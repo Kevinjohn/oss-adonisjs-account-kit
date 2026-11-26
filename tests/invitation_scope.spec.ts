@@ -1,14 +1,14 @@
 import { RequestValidator } from '@adonisjs/core/http'
 import { DateTime } from 'luxon'
 import { test } from '@japa/runner'
-import { transaction } from '../src/db.js'
-import { E_ACCOUNT_KIT_INVALID_INPUT, E_ACCOUNT_KIT_INVITATION_PENDING } from '../src/errors.js'
-import { matchInvitation } from '../src/invitation_match.js'
-import { registerManagedRoutes } from '../src/http/managed.js'
-import type { AccountKitConfig, AuthorizationContext, LifecycleEvent } from '../src/types.js'
-import { useTestApp } from './helpers/app.js'
-import { allowAll, insertUser, makeService, tokenFrom } from './helpers/fakes.js'
-import { fakeManagedHttp, requestWithHeaders, stubGuard } from './helpers/managed_http_fakes.js'
+import { transaction } from '../src/db.ts'
+import { E_ACCOUNT_KIT_INVALID_INPUT, E_ACCOUNT_KIT_INVITATION_PENDING } from '../src/errors.ts'
+import { matchInvitation } from '../src/invitation_match.ts'
+import { registerManagedRoutes } from '../src/http/managed.ts'
+import type { AccountKitConfig, AuthorizationContext, LifecycleEvent } from '../src/types.ts'
+import { useTestApp } from './helpers/app.ts'
+import { allowAll, insertUser, makeService, tokenFrom } from './helpers/fakes.ts'
+import { fakeManagedHttp, requestWithHeaders, stubGuard } from './helpers/managed_http_fakes.ts'
 
 test.group('invitation scope', (group) => {
   const kit = useTestApp(group)

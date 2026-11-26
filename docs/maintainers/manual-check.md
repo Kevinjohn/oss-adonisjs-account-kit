@@ -123,7 +123,7 @@ Stage 7, starter/browser work, owner application integration and publication rem
 The subsequent refactor shares token-consumption, password validation and post-commit effect
 helpers, reduces repeated test setup, validates password reset client keys, reports missing provider
 configuration, and preserves `APP_URL` subpaths. Email-change notices are attempted after a failing
-credential callback; multiple post-commit failures retain their order in an `AggregateError`.
+credential callback; multiple post-commit failures retain their order in the exception’s `cause` array.
 
 Custom-table support now quotes SQLite identifiers and maps PostgreSQL's stored constraint-name
 truncation. The application prerequisites describe all three foreign-key targets, both verification

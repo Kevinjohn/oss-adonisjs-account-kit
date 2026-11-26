@@ -1,9 +1,9 @@
 import { test } from '@japa/runner'
-import { E_ACCOUNT_KIT_IDENTITY_NOT_CONFIRMED, E_ACCOUNT_KIT_THROTTLED } from '../src/errors.js'
-import { useTestApp } from './helpers/app.js'
-import { makeUsersAdapter } from './helpers/fakes.js'
-import { credentialsFixtures } from './helpers/credentials.js'
-import { locksRows, lockNotAvailableCode } from './helpers/dialect.js'
+import { E_ACCOUNT_KIT_IDENTITY_NOT_CONFIRMED, E_ACCOUNT_KIT_THROTTLED } from '../src/errors.ts'
+import { useTestApp } from './helpers/app.ts'
+import { makeUsersAdapter } from './helpers/fakes.ts'
+import { credentialsFixtures } from './helpers/credentials.ts'
+import { locksRows, lockNotAvailableCode } from './helpers/dialect.ts'
 test.group('emailPasswordManagement', (group) => {
   const kit = useTestApp(group)
   const { createUser, service } = credentialsFixtures(kit)

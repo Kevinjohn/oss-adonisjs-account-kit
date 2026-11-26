@@ -4,14 +4,14 @@ import {
   E_INVALID_CREDENTIALS,
   E_ACCOUNT_KIT_INVALID_SESSION,
   E_ACCOUNT_KIT_UNVERIFIED_EMAIL,
-} from '../src/errors.js'
-import { pruneExpired } from '../src/maintenance.js'
-import { hashToken } from '../src/tokens.js'
-import type { AccountKitConfig, CurrentAccountInput, UserId } from '../src/types.js'
-import { useTestApp } from './helpers/app.js'
-import { insertUser, makeService, tokenFrom } from './helpers/fakes.js'
-import { clientChallenge, provider, verifier } from './helpers/social_identity.js'
-import { dbTime } from './helpers/db_time.js'
+} from '../src/errors.ts'
+import { pruneExpired } from '../src/maintenance.ts'
+import { hashToken } from '../src/tokens.ts'
+import type { AccountKitConfig, CurrentAccountInput, UserId } from '../src/types.ts'
+import { useTestApp } from './helpers/app.ts'
+import { insertUser, makeService, tokenFrom } from './helpers/fakes.ts'
+import { clientChallenge, provider, verifier } from './helpers/social_identity.ts'
+import { dbTime } from './helpers/db_time.ts'
 
 const minutesAgo = (minutes: number) => DateTime.utc().minus({ minutes })
 

@@ -1,6 +1,6 @@
 import { test } from '@japa/runner'
-import { createLogNotifications } from '../src/log_notifications.js'
-import { useTestApp } from './helpers/app.js'
+import { createLogNotifications } from '../src/log_notifications.ts'
+import { useTestApp } from './helpers/app.ts'
 
 test.group('createLogNotifications', () => {
   test('logs the rendered message with its action link', async ({ assert }) => {
@@ -47,7 +47,7 @@ test.group('createLogNotifications logger resolution', (group) => {
     assert.lengthOf(lines, 1)
   })
 
-  test('defaults to the AdonisJS logger service', async ({ assert, cleanup }) => {
+  test('uses the application-supplied AdonisJS logger service', async ({ assert, cleanup }) => {
     const { default: logger } = await import('@adonisjs/core/services/logger')
     const original = logger.info
     const lines: string[] = []
@@ -55,7 +55,11 @@ test.group('createLogNotifications logger resolution', (group) => {
     cleanup(() => {
       logger.info = original
     })
-    const notify = createLogNotifications({ brandName: 'Acme', environment: 'development' })
+    const notify = createLogNotifications({
+      logger: () => logger,
+      brandName: 'Acme',
+      environment: 'development',
+    })
     await notify.passwordChanged({ email: 'person@example.test' } as never, {} as never)
     assert.match(
       lines[0],

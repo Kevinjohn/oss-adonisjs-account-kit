@@ -1,16 +1,18 @@
+import { resolveAccountKitConfig } from '../src/config_resolution.ts'
+import { resolveAdmissionConfig } from '../src/admission/config.ts'
 import { test } from '@japa/runner'
-import { AccountKit, defineConfig } from '../src/account_kit.js'
-import { AdmissionCallbackRegistry } from '../src/admission/callback_registry.js'
-import { defineAdmission } from '../src/admission/config.js'
-import AdmissionProvider from '../src/admission/provider.js'
-import { AccountAdmission } from '../src/admission/service.js'
-import type { AdmissionConfig } from '../src/admission/types.js'
-import { AccountKitCallbackRegistry } from '../src/callback_registry.js'
-import { E_ACCOUNT_KIT_INVALID_CONFIGURATION } from '../src/errors.js'
-import type { AccountKitCallbacks, AccountKitConfig } from '../src/types.js'
-import { bootTestApp, type TestApp } from './helpers/app.js'
-import { allowDecisions } from './helpers/admission.js'
-import { allowAll, makeConfig, makeUsersAdapter } from './helpers/fakes.js'
+import { AccountKit, defineConfig } from '../src/account_kit.ts'
+import { AdmissionCallbackRegistry } from '../src/admission/callback_registry.ts'
+import { defineConfig as defineAdmissionConfig } from '../src/admission/config.ts'
+import AdmissionProvider from '../providers/account_admission_provider.ts'
+import { AccountAdmission } from '../src/admission/service.ts'
+import type { AdmissionConfig } from '../src/admission/types.ts'
+import { AccountKitCallbackRegistry } from '../src/account_kit_callback_registry.ts'
+import { E_ACCOUNT_KIT_INVALID_CONFIGURATION } from '../src/errors.ts'
+import type { AccountKitCallbacks, AccountKitConfig } from '../src/types.ts'
+import { bootTestApp, type TestApp } from './helpers/app.ts'
+import { allowDecisions } from './helpers/admission.ts'
+import { allowAll, makeConfig, makeUsersAdapter } from './helpers/fakes.ts'
 
 /** A full config without the fields the registry can supply. */
 function plainConfig(overrides: Partial<AccountKitConfig> = {}): AccountKitConfig {
@@ -70,8 +72,8 @@ test.group('callback registry', () => {
       app.app.config.set('account_kit', defineConfig(plainConfig()))
       const registry = await app.app.container.make('account_kit.callbacks')
       registry.register(async () => registered)
-      const service = await app.app.container.make(AccountKit)
-      const { config } = service['deps']
+      await app.app.container.make(AccountKit)
+      const config = (await resolveAccountKitConfig(app.app))!
       assert.equal(config.users, registered.users)
       assert.equal(await config.authorize.invite({} as never, {} as never), true)
       assert.isFunction(config.registration.mapFields)
@@ -92,11 +94,14 @@ test.group('callback registry', () => {
         'account_kit',
         defineConfig(makeConfig({ users: makeUsersAdapter(app.db, app.hash) }))
       )
-      app.app.config.set('admission', defineAdmission({ approval: { required: true } }))
+      app.app.config.set('admission', defineAdmissionConfig({ approval: { required: true } }))
       const registry = await app.app.container.make('account_admission.callbacks')
       registry.register(() => ({ approvalAuthorize: allowDecisions, onAdmissionEvent }))
-      const service = await app.app.container.make(AccountAdmission)
-      const { config } = service['deps']
+      await app.app.container.make(AccountAdmission)
+      const config = resolveAdmissionConfig(
+        app.app.config.get('admission'),
+        await registry.resolve()
+      )
       assert.equal(config.approval?.authorize, allowDecisions)
       assert.equal(config.onAdmissionEvent, onAdmissionEvent)
     })
@@ -118,7 +123,7 @@ test.group('callback registry', () => {
         'account_kit',
         defineConfig(makeConfig({ users: makeUsersAdapter(app.db, app.hash) }))
       )
-      app.app.config.set('admission', defineAdmission({ invitation: { required: true } }))
+      app.app.config.set('admission', defineAdmissionConfig({ invitation: { required: true } }))
       await app.app.container.make(AccountAdmission)
       for (const [alias, service] of [
         ['account_kit.callbacks', 'account_kit'],
@@ -175,7 +180,7 @@ test.group('callback registry', () => {
         )
         app.app.config.set(
           'admission',
-          defineAdmission({
+          defineAdmissionConfig({
             approval: { required: true, authorize: allowDecisions },
             onAdmissionEvent: async () => {},
           })
@@ -214,7 +219,7 @@ test.group('callback registry', () => {
         'account_kit',
         defineConfig(makeConfig({ users: makeUsersAdapter(app.db, app.hash) }))
       )
-      app.app.config.set('admission', defineAdmission({ approval: { required: true } }))
+      app.app.config.set('admission', defineAdmissionConfig({ approval: { required: true } }))
       const error = await rejection(() => app.app.container.make(AccountAdmission))
       assert.equal(error.field, 'admission.approval.authorize')
       assert.equal(error.message, 'account_kit: admission approval.authorize must be an object')
@@ -234,7 +239,7 @@ test.group('callback registry', () => {
         'account_kit',
         defineConfig(makeConfig({ users: makeUsersAdapter(app.db, app.hash) }))
       )
-      app.app.config.set('admission', defineAdmission({ invitation: { required: true } }))
+      app.app.config.set('admission', defineAdmissionConfig({ invitation: { required: true } }))
       const registry = await app.app.container.make('account_admission.callbacks')
       registry.register(() => 'callbacks' as never)
       const error = await rejection(() => app.app.container.make(AccountAdmission))
@@ -249,11 +254,10 @@ test.group('callback registry', () => {
       const config = defineConfig(makeConfig({ users: makeUsersAdapter(app.db, app.hash) }))
       const admission: AdmissionConfig = { approval: { required: true, authorize: allowDecisions } }
       app.app.config.set('account_kit', config)
-      app.app.config.set('admission', defineAdmission(admission))
+      app.app.config.set('admission', defineAdmissionConfig(admission))
       const service = await app.app.container.make(AccountAdmission)
-      assert.equal(service.kit['deps'].config, config)
-      assert.equal(service['deps'].accountConfig, config)
-      assert.equal(service['deps'].config, app.app.config.get('admission'))
+      assert.equal(service.kit, await app.app.container.make('account_kit.manager'))
+      assert.equal(await resolveAccountKitConfig(app.app), await resolveAccountKitConfig(app.app))
     })
   })
 })

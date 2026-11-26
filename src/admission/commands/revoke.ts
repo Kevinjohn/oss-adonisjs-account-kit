@@ -1,7 +1,7 @@
 import { BaseCommand, args } from '@adonisjs/core/ace'
-import { completeOperatorCommand, writeResult } from '../../../commands/operator_output.js'
-import { AccountAdmission } from '../service.js'
-import type { AdmissionRecord } from '../types.js'
+import { completeOperatorCommand, writeResult } from '../../../commands/operator_output.ts'
+import { AccountAdmission } from '../service.ts'
+import type { AdmissionRecord } from '../types.ts'
 
 /** Operator revocation: the account keeps signing in but no longer passes the admission gate. */
 export default class RevokeAdmission extends BaseCommand {

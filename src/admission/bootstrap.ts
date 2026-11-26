@@ -1,18 +1,19 @@
+import { DateTime } from 'luxon'
 // Operator bootstrap: an operator invitation plus an approval waiting for the account it creates.
-import { countDeletedRowsFromResult } from '../consume_rows.js'
-import { issueOperatorInvitation } from '../operator.js'
-import { isInvitationRole } from '../invitation_input.js'
-import { isEmailShaped, normalizeEmail } from '../email.js'
+import { countDeletedRowsFromResult } from '../consume_rows.ts'
+import { issueOperatorInvitation } from '../operator.ts'
+import { isInvitationRole } from '../invitation_input.ts'
+import { isEmailShaped, normalizeEmail } from '../email.ts'
 import {
   E_ACCOUNT_KIT_BOOTSTRAP_APPROVAL_CHANGED,
   E_ACCOUNT_KIT_CAPABILITY_DISABLED,
   E_ACCOUNT_KIT_INVALID_INPUT,
-} from '../errors.js'
-import { sqlTimestamp } from '../timestamps.js'
-import type { OperatorInviteResult } from '../types.js'
-import { requireApproval } from './capability.js'
-import { admissionTable } from './rows.js'
-import type { AdmissionContext } from './service.js'
+} from '../errors.ts'
+import { sqlTimestamp } from '../timestamps.ts'
+import type { OperatorInviteResult } from '../types.ts'
+import { requireApproval } from './capability.ts'
+import { admissionTable } from './rows.ts'
+import type { AdmissionContext } from './service.ts'
 
 function requireEmail(value: unknown): string {
   if (!isEmailShaped(value)) throw new E_ACCOUNT_KIT_INVALID_INPUT('Invalid email')
@@ -36,7 +37,7 @@ export async function bootstrapOperatorInvitation(
     { config: deps.accountConfig, db: deps.db },
     { email, role: input.role, deliver: 'print' },
     async (invitation, trx) => {
-      const now = sqlTimestamp(trx)
+      const now = sqlTimestamp(trx, DateTime.utc())
       await trx.from(admissionTable).where('bootstrap_email', email).whereNull('user_id').delete()
       await trx.table(admissionTable).insert({
         user_id: null,

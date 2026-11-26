@@ -1,6 +1,6 @@
-import type { SetupChoices, SetupDiagnostic, SetupInspection } from './types.js'
-import { planManagedRoutes, type ManagedRoute } from '../http/routes.js'
-import { routePrefix, planSelectedManagedRoutes, addSetupDiagnostic } from './shared.js'
+import type { SetupChoices, SetupDiagnostic, SetupInspection } from './types.ts'
+import { planManagedRoutes, type ManagedRoute } from '../http/routes.ts'
+import { routePrefix, planSelectedManagedRoutes, addSetupDiagnostic } from './shared.ts'
 
 /** Route prefix, managed endpoint exclusions and collisions with application routes. */
 export function addRoutesDiagnostics(

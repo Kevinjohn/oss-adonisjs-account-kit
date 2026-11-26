@@ -1,4 +1,4 @@
-import { accountErrorResponse, type AccountErrorResponse } from '../../index.js'
+import { accountErrorResponse, type AccountErrorResponse } from '../../index.ts'
 
 type Equal<Left, Right> =
   (<Value>() => Value extends Left ? 1 : 2) extends <Value>() => Value extends Right ? 1 : 2

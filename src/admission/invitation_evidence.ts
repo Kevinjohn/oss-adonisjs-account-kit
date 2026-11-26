@@ -1,7 +1,8 @@
+import { DateTime } from 'luxon'
 // Records invitation evidence inside the invitation acceptance transaction.
-import { sqlTimestamp } from '../timestamps.js'
-import type { AccountUser, Invitation, Trx } from '../types.js'
-import { admissionTable, readAdmissionRow, upsertAdmissionRow } from './rows.js'
+import { sqlTimestamp } from '../timestamps.ts'
+import type { AccountUser, Invitation, Trx } from '../types.ts'
+import { admissionTable, readAdmissionRow, upsertAdmissionRow } from './rows.ts'
 
 type InvitationAccepted = (user: AccountUser, invitation: Invitation, trx: Trx) => Promise<void>
 
@@ -21,7 +22,7 @@ export function withInvitationEvidence(next?: InvitationAccepted): InvitationAcc
   return async (user, invitation, trx) => {
     const existing = await readAdmissionRow(trx, user.id)
     if (!existing || existing.invitation_recorded_at === null) {
-      const now = sqlTimestamp(trx)
+      const now = sqlTimestamp(trx, DateTime.utc())
       const evidence = {
         invitation_id: invitation.id,
         invited_email: invitation.email,

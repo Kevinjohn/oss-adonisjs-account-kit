@@ -1,8 +1,8 @@
-import type { SetupChoices, SetupDiagnostic, SetupInspection } from './types.js'
-import { isSocialProviderName } from '../social_providers.js'
-import type { SocialProviderName } from '../types.js'
-import { envName, addSetupDiagnostic, addOriginDiagnostics } from './shared.js'
-import type { SelectedSetupOrigins } from './diagnostics.js'
+import type { SetupChoices, SetupDiagnostic, SetupInspection } from './types.ts'
+import { isSocialProviderName } from '../social_providers.ts'
+import type { SocialProviderName } from '../types.ts'
+import { envName, addSetupDiagnostic, addOriginDiagnostics } from './shared.ts'
+import type { SelectedSetupOrigins } from './diagnostics.ts'
 
 /** The substituted path must survive URL parsing without traversal or encoded separators. */
 function isSafeCallbackPath(path: string): boolean {

@@ -1,17 +1,17 @@
 import { test } from '@japa/runner'
-import { AccountKit } from '../src/account_kit.js'
+import { AccountKit } from '../src/account_kit.ts'
 import {
   E_ACCOUNT_KIT_ACCOUNT_ACCESS_DENIED,
   E_ACCOUNT_KIT_ADAPTER_CONTRACT,
   E_ACCOUNT_KIT_CAPABILITY_DISABLED,
   E_ACCOUNT_KIT_INVALID_INPUT,
-} from '../src/errors.js'
-import { readIsoTimestamp } from '../src/timestamps.js'
-import type { AccountKitConfig, Trx } from '../src/types.js'
-import { useTestApp } from './helpers/app.js'
-import { failure } from './helpers/failure.js'
-import { insertUser, makeService, makeUsersAdapter } from './helpers/fakes.js'
-import { testEngine } from './helpers/dialect.js'
+} from '../src/errors.ts'
+import { readIsoTimestamp } from '../src/timestamps.ts'
+import type { AccountKitConfig, Trx } from '../src/types.ts'
+import { useTestApp } from './helpers/app.ts'
+import { failure } from './helpers/failure.ts'
+import { insertUser, makeService, makeUsersAdapter } from './helpers/fakes.ts'
+import { testEngine } from './helpers/dialect.ts'
 
 const authentication = { strategy: 'session' as const, guard: 'web' }
 

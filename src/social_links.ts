@@ -1,26 +1,26 @@
 // The caller's linked providers: listing and unlinking.
 import { randomUUID } from 'node:crypto'
-import { invalidateChangedCredentials } from './credential_revision.js'
-import { hasConfirmedAddress } from './account_projection.js'
-import { transaction } from './db.js'
-import { finishCommitted, postCommit, settleCommitted, type PostCommitEffect } from './effects.js'
-import { consumeSocialSensitiveProof } from './social_proofs.js'
+import { invalidateChangedCredentials } from './credential_revision.ts'
+import { hasConfirmedAddress } from './account_projection.ts'
+import { transaction } from './db.ts'
+import { finishCommitted, postCommit, settleCommitted, type PostCommitEffect } from './effects.ts'
+import { consumeSocialSensitiveProof } from './social_proofs.ts'
 import {
   E_ACCOUNT_KIT_SOCIAL_LAST_LOGIN_METHOD,
   E_ACCOUNT_KIT_SOCIAL_USER_NOT_FOUND,
-} from './errors.js'
+} from './errors.ts'
 import {
   requireAuthenticatedUser,
   listEnabledSocialProviders,
   type Dependencies,
-} from './social_shared.js'
+} from './social_shared.ts'
 import type {
   AccountUser,
   CurrentAccountInput,
   SocialIdentity,
   SocialProviderName,
   UserId,
-} from './types.js'
+} from './types.ts'
 
 export function mapSocialIdentityRow(row: Record<string, unknown>): SocialIdentity {
   return {

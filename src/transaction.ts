@@ -3,8 +3,8 @@ import { RuntimeException } from '@adonisjs/core/exceptions'
 import { AsyncLocalStorage } from 'node:async_hooks'
 import { performance } from 'node:perf_hooks'
 import type { Database } from '@adonisjs/lucid/database'
-import { E_ACCOUNT_KIT_POST_COMMIT } from './errors.js'
-import type { Trx } from './types.js'
+import { E_ACCOUNT_KIT_POST_COMMIT } from './errors.ts'
+import type { Trx } from './types.ts'
 
 const SQLITE_RETRY_MS = 10
 const SQLITE_DEADLINE_MS = 5000
@@ -49,6 +49,7 @@ async function lockSQLiteTransaction(trx: Trx): Promise<void> {
   }
 }
 
+/** @throws {AggregateError} If transaction work and cleanup both fail, or multiple cleanup steps fail. */
 async function commitTransaction(
   trx: Trx,
   onCommitted: () => void,
@@ -96,6 +97,7 @@ async function commitTransaction(
   }
 }
 
+/** @throws {AggregateError} If transaction work and cleanup both fail, or multiple cleanup steps fail. */
 async function runAndCommit<T>(
   trx: Trx,
   callback: (trx: Trx) => Promise<T>,
@@ -219,7 +221,11 @@ async function beginSQLiteTransaction(
   }
 }
 
-/** One SQLite attempt on a dedicated connection, with busy_timeout off and cleanup afterwards. */
+/**
+ * One SQLite attempt on a dedicated connection, with busy_timeout off and cleanup afterwards.
+ *
+ * @throws {AggregateError} If transaction work and cleanup both fail, or multiple cleanup steps fail.
+ */
 async function runSqliteTransactionAttempt<T>(
   connection: Connection,
   callback: (trx: Trx) => Promise<T>,
@@ -273,7 +279,11 @@ async function runSqliteTransactionAttempt<T>(
   return result as T
 }
 
-/** Retry SQLite attempts on SQLITE_BUSY until the deadline; never retry after a commit. */
+/**
+ * Retry SQLite attempts on SQLITE_BUSY until the deadline; never retry after a commit.
+ *
+ * @throws {AggregateError} If transaction work and cleanup both fail, or multiple cleanup steps fail.
+ */
 async function runSqliteTransaction<T>(
   connection: Connection,
   callback: (trx: Trx) => Promise<T>
@@ -308,6 +318,8 @@ const insideTransaction = new AsyncLocalStorage<true>()
  *   await trx.from('users').where('id', userId).update({ display_name: 'Sam Example' })
  * })
  * ```
+ *
+ * @throws {AggregateError} If transaction work and cleanup both fail, or multiple cleanup steps fail.
  */
 export async function transaction<T>(db: Database, callback: (trx: Trx) => Promise<T>): Promise<T> {
   const connection = db.connection()

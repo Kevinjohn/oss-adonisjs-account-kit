@@ -1,5 +1,5 @@
 import { DateTime } from 'luxon'
-import { sqlTimestamp } from './timestamps.js'
+import { sqlTimestamp } from './timestamps.ts'
 import { randomUUID } from 'node:crypto'
 import type { Database } from '@adonisjs/lucid/database'
 import {
@@ -8,10 +8,10 @@ import {
   transaction,
   isUniqueViolation,
   isUserEmailUniqueViolation,
-} from './db.js'
-import { finishCommitted, createLifecycleEffect, postCommit, settleCommitted } from './effects.js'
-import { isInvitationRole } from './invitation_input.js'
-import { isEmailShaped, normalizeEmail } from './email.js'
+} from './db.ts'
+import { finishCommitted, createLifecycleEffect, postCommit, settleCommitted } from './effects.ts'
+import { isInvitationRole } from './invitation_input.ts'
+import { isEmailShaped, normalizeEmail } from './email.ts'
 import {
   E_ACCOUNT_KIT_AUTHORIZATION,
   E_ACCOUNT_KIT_EMAIL_ALREADY_REGISTERED,
@@ -19,17 +19,17 @@ import {
   E_ACCOUNT_KIT_INVITATION_PENDING,
   E_ACCOUNT_KIT_INVALID_TOKEN,
   type E_ACCOUNT_KIT_POST_COMMIT,
-} from './errors.js'
-import { isPasswordAllowed } from './password.js'
-import { buildPasswordAttributes, preparePassword } from './password_hashing.js'
-import { mapRegistrationFields } from './registration_fields.js'
-import { toInvitation, type InvitationDatabaseRow } from './invitation_rows.js'
-import { normalizeScope, encodeScopeColumn } from './invitation_scope.js'
-import { applyInvitations, emitInvitationAccepted } from './invitation_match.js'
-import { consumeRows } from './consume_rows.js'
-import { requireUser } from './actor_confirmation.js'
-import { generateToken, hashToken, isTokenShaped } from './tokens.js'
-import { expiresAt } from './ttl.js'
+} from './errors.ts'
+import { isPasswordAllowed } from './password.ts'
+import { buildPasswordAttributes, preparePassword } from './password_hashing.ts'
+import { mapRegistrationFields } from './registration_fields.ts'
+import { toInvitation, type InvitationDatabaseRow } from './invitation_rows.ts'
+import { normalizeScope, encodeScopeColumn } from './invitation_scope.ts'
+import { applyInvitations, emitInvitationAccepted } from './invitation_match.ts'
+import { consumeRows } from './consume_rows.ts'
+import { requireUser } from './actor_confirmation.ts'
+import { generateToken, hashToken, isTokenShaped } from './tokens.ts'
+import { expiresAt } from './ttl.ts'
 import type {
   Invitation,
   AccountUser,
@@ -37,10 +37,10 @@ import type {
   InvitationsInspectInput,
   InvitationsSendInput,
   UserId,
-} from './types.js'
-import type { ServiceDependencies } from './service_dependencies.js'
+} from './types.ts'
+import type { ServiceDependencies } from './service_dependencies.ts'
 
-export { resendInvitation, revokeInvitation, paginateInvitations } from './invitation_management.js'
+export { resendInvitation, revokeInvitation, paginateInvitations } from './invitation_management.ts'
 
 export async function acceptInvitation(
   deps: Pick<ServiceDependencies, 'config' | 'db'>,
@@ -62,7 +62,7 @@ export async function acceptInvitation(
         const candidate = await trx
           .from('account_invitations')
           .where('token_hash', tokenHash)
-          .where('expires_at', '>', sqlTimestamp(trx))
+          .where('expires_at', '>', sqlTimestamp(trx, DateTime.utc()))
           .select('email')
           .first()
         if (!candidate) throw new E_ACCOUNT_KIT_INVALID_TOKEN()
@@ -135,7 +135,7 @@ export async function inspectInvitation(
     .from('account_invitations')
     .select('email', 'role')
     .where('token_hash', hashToken(input.token))
-    .where('expires_at', '>', sqlTimestamp(db))
+    .where('expires_at', '>', sqlTimestamp(db, DateTime.utc()))
     .first()
   return row ? { email: row.email, role: row.role } : null
 }

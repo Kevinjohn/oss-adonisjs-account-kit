@@ -2,18 +2,18 @@ import { AssertionError } from 'node:assert'
 import { test } from '@japa/runner'
 import { column } from '@adonisjs/lucid/orm'
 import { DateTime } from 'luxon'
-import { createLucidAdapter } from '../adapters/lucid.js'
+import { createLucidAdapter } from '../src/adapters/lucid.ts'
 import {
   E_ACCOUNT_KIT_INVALID_CONFIGURATION,
   E_ACCOUNT_KIT_REGISTRATION_EMAIL_ALREADY_REGISTERED,
-} from '../src/errors.js'
-import { transaction } from '../src/db.js'
-import type { Trx, UsersAdapter } from '../src/types.js'
-import type { AdapterContractFixture } from '../testing/adapter_contract.js'
-import { assertUsersAdapterContract } from '../testing/adapter_contract.js'
-import LucidUser from './fixtures/lucid_user.js'
-import { useTestApp } from './helpers/app.js'
-import { contractFixture as sharedContractFixture } from './helpers/adapter_contract_fixture.js'
+} from '../src/errors.ts'
+import { transaction } from '../src/db.ts'
+import type { Trx, UsersAdapter } from '../src/types.ts'
+import type { AdapterContractFixture } from '../src/testing/adapter_contract.ts'
+import { usersAdapterContract } from '../src/testing/adapter_contract.ts'
+import LucidUser from './fixtures/lucid_user.ts'
+import { useTestApp } from './helpers/app.ts'
+import { contractFixture as sharedContractFixture } from './helpers/adapter_contract_fixture.ts'
 
 test.group('maintained Lucid adapter', (group) => {
   const kit = useTestApp(group)
@@ -74,7 +74,7 @@ test.group('maintained Lucid adapter', (group) => {
       registrationData: { fullName: 'Contract User' },
     })
 
-    await assertUsersAdapterContract(contractFixture)
+    await usersAdapterContract(contractFixture)()
 
     assert.equal(
       LucidUser.hashCalls,
@@ -89,11 +89,11 @@ test.group('maintained Lucid adapter', (group) => {
     const rejectsBrokenAdapter = (broken: UsersAdapter, suffix: string) =>
       assert.rejects(
         () =>
-          assertUsersAdapterContract({
+          usersAdapterContract({
             ...contractFixture,
             adapter: broken,
             emailPrefix: `broken-${suffix}-${Date.now()}`,
-          }),
+          })(),
         AssertionError
       )
 
@@ -122,7 +122,7 @@ test.group('maintained Lucid adapter', (group) => {
       'non-normalizing-email-setter'
     )
     // An adapter that checks for the address itself and throws the package's error conforms.
-    await assertUsersAdapterContract({
+    await usersAdapterContract({
       ...contractFixture,
       adapter: brokenAdapter({
         async create(attributes, trx) {
@@ -132,7 +132,7 @@ test.group('maintained Lucid adapter', (group) => {
         },
       }),
       emailPrefix: `prechecked-${Date.now()}`,
-    })
+    })()
   })
 
   test('physically deletes plain models and ignores missing users', async ({ assert }) => {

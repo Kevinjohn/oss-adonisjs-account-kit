@@ -1,4 +1,4 @@
-import type { JsonSchema } from './openapi_types.js'
+import type { JsonSchema } from './openapi_types.ts'
 
 type Strategy = 'session' | 'access_tokens'
 

@@ -3,9 +3,9 @@ import { randomUUID } from 'node:crypto'
 import { link, mkdir, realpath, rename, stat, writeFile } from 'node:fs/promises'
 import fsPromises from 'node:fs/promises'
 import { dirname, join } from 'node:path'
-import type { SetupFileChange, SetupPlan } from './types.js'
-import { E_ACCOUNT_KIT_SETUP_APPLY_INTERRUPTED } from '../errors.js'
-import { readRegularFile, requireSafeSetupPath } from './safe_path.js'
+import type { SetupFileChange, SetupPlan } from './types.ts'
+import { E_ACCOUNT_KIT_SETUP_APPLY_INTERRUPTED } from '../errors.ts'
+import { readRegularFile, requireSafeSetupPath } from './safe_path.ts'
 
 function formatFailureMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error)
@@ -39,7 +39,11 @@ async function assertNoConflict(
   )
 }
 
-/** Apply under a project lock. The caller must keep other editors out of this workspace. */
+/**
+ * Apply under a project lock. The caller must keep other editors out of this workspace.
+ *
+ * @throws {AggregateError} If publication and cleanup both fail, or multiple cleanup steps fail.
+ */
 export async function applySetup(
   root: string,
   plan: SetupPlan,

@@ -1,14 +1,15 @@
 // Builds the Account Kit config from `config/account_kit.ts` and the registered callbacks.
+import { configProvider } from '@adonisjs/core'
 import type { ApplicationService } from '@adonisjs/core/types'
-import { AccountKitCallbackRegistry } from './callback_registry.js'
-import { assertObject } from './config_assert.js'
-import { configInputs, resolveConfig } from './config.js'
-import { E_ACCOUNT_KIT_INVALID_CONFIGURATION } from './errors.js'
-import type { AccountKitCallbacks, AccountKitConfig, ResolvedConfig } from './types.js'
+import { AccountKitCallbackRegistry } from './account_kit_callback_registry.ts'
+import { assertObject } from './config_assert.ts'
+import { resolveConfig, type defineConfig } from './config.ts'
+import { E_ACCOUNT_KIT_INVALID_CONFIGURATION } from './errors.ts'
+import type { AccountKitCallbacks, AccountKitConfig, ResolvedConfig } from './types.ts'
 
 const resolutions = new WeakMap<
   ApplicationService,
-  { config: ResolvedConfig; resolved: Promise<ResolvedConfig> }
+  { config: ReturnType<typeof defineConfig>; resolved: Promise<ResolvedConfig | undefined> }
 >()
 
 function rejectDuplicateSetting(field: string): never {
@@ -51,23 +52,28 @@ function mergeCallbacks(input: AccountKitConfig, callbacks: AccountKitCallbacks)
 export function resolveAccountKitConfig(
   app: ApplicationService
 ): Promise<ResolvedConfig | undefined> {
-  const config = app.config.get<ResolvedConfig | undefined>('account_kit')
+  const config = app.config.get<ReturnType<typeof defineConfig> | undefined>('account_kit')
   if (!config) return Promise.resolve(undefined)
   const memo = resolutions.get(app)
   if (memo?.config === config) return memo.resolved
-  const resolved = (async () => {
-    const registry = await app.container.make(AccountKitCallbackRegistry)
-    const callbacks = await registry.resolve()
-    const input = configInputs.get(config)
-    // A config `defineConfig` did not build is used as it is.
-    if (!input) return config
-    if (!callbacks) {
-      // Runs the checks `defineConfig` deferred; the config it returned stays the one in use.
-      resolveConfig(input, false)
-      return config
-    }
-    return resolveConfig(mergeCallbacks(input, callbacks), false)
-  })()
+  const resolved = configProvider
+    .resolve<ResolvedConfig>(app, config)
+    .then((value) => value ?? undefined)
   resolutions.set(app, { config, resolved })
   return resolved
+}
+
+/** Completes validation after the application has registered its callbacks. */
+export async function resolveRegisteredCallbacks(
+  app: ApplicationService,
+  input: AccountKitConfig,
+  preliminary: ResolvedConfig
+): Promise<ResolvedConfig> {
+  const registry = await app.container.make(AccountKitCallbackRegistry)
+  const callbacks = await registry.resolve()
+  if (!callbacks) {
+    resolveConfig(input, false)
+    return preliminary
+  }
+  return resolveConfig(mergeCallbacks(input, callbacks), false)
 }

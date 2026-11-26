@@ -1,10 +1,10 @@
-import { formatCollisionMessage, doPathsOverlap, type ExistingRoute } from './route_collisions.js'
+import { formatCollisionMessage, doPathsOverlap, type ExistingRoute } from './route_collisions.ts'
 
 export {
   assertManagedRouteCollisions,
   type ExistingRoute,
   type RoutePatternToken,
-} from './route_collisions.js'
+} from './route_collisions.ts'
 import { InvalidArgumentsException } from '@adonisjs/core/exceptions'
 
 /** A group of managed routes you can mount with `registerManagedRoutes`. */

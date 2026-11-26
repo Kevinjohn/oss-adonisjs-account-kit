@@ -1,11 +1,11 @@
 import { test } from '@japa/runner'
-import { transaction } from '../src/db.js'
-import { defineConfig } from '../src/account_kit.js'
+import { transaction } from '../src/db.ts'
+import { resolveConfig as defineConfig } from '../src/config.ts'
 import { DateTime } from 'luxon'
-import { useTestApp } from './helpers/app.js'
-import { accountKit, makeConfig, makeUsersAdapter } from './helpers/fakes.js'
-import { testEngine } from './helpers/dialect.js'
-import { dbTime } from './helpers/db_time.js'
+import { useTestApp } from './helpers/app.ts'
+import { accountKit, makeConfig, makeUsersAdapter } from './helpers/fakes.ts'
+import { testEngine } from './helpers/dialect.ts'
+import { dbTime } from './helpers/db_time.ts'
 
 test.group('managed transaction wrapper', (group) => {
   const kit = useTestApp(group)

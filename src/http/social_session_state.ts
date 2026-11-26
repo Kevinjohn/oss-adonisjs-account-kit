@@ -1,9 +1,9 @@
 import { createHash } from 'node:crypto'
 import type { HttpContext } from '@adonisjs/core/http'
-import { E_ACCOUNT_KIT_SOCIAL_TRANSACTION_INVALID } from '../errors.js'
-import { isSocialProviderName } from '../social_providers.js'
-import type { SocialIntent, SocialProviderName } from '../types.js'
-import { requireSession, type SessionStore } from './session_access.js'
+import { E_ACCOUNT_KIT_SOCIAL_TRANSACTION_INVALID } from '../errors.ts'
+import { isSocialProviderName } from '../social_providers.ts'
+import type { SocialIntent, SocialProviderName } from '../types.ts'
+import { requireSession, type SessionStore } from './session_access.ts'
 
 export interface SessionSocialState {
   verifier: string

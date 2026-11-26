@@ -9,9 +9,9 @@ import {
   parseSetupSource,
   hasSafeEnvironmentGetter,
   unwrapStaticExpression,
-} from './ts_source.js'
-import { resolveEnvironmentNameFromGetter } from './selected_environment.js'
-import { nativeMailTransports } from './shared.js'
+} from './ts_source.ts'
+import { resolveEnvironmentNameFromGetter } from './selected_environment.ts'
+import { nativeMailTransports } from './shared.ts'
 
 export async function classifyMailerSelection(
   text: string,

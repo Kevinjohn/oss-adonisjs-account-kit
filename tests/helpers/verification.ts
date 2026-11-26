@@ -1,7 +1,7 @@
-import type { AccountKitConfig } from '../../src/types.js'
-import type { TestApp } from './app.js'
-import { makeService } from './account_kit_service.js'
-import { insertUser } from './insert_user.js'
+import type { AccountKitConfig } from '../../src/types.ts'
+import type { TestApp } from './app.ts'
+import { makeService } from './account_kit_service.ts'
+import { insertUser } from './insert_user.ts'
 
 /** The user and service helpers the email-verification specs share, bound to one test app. */
 export function verificationHelpers(kit: TestApp) {

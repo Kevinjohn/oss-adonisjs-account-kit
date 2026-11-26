@@ -1,4 +1,4 @@
-import type { SetupInspection } from './types.js'
+import type { SetupInspection } from './types.ts'
 import {
   getDefaultImportName,
   matchDirectObject,
@@ -7,9 +7,9 @@ import {
   getImportedBindingName,
   parseSetupSource,
   inspectTopLevelConfig,
-} from './ts_source.js'
-import { resolveEnvironmentNameFromGetter } from './selected_environment.js'
-import { E_ACCOUNT_KIT_SELECTED_ENVIRONMENT_VALUE } from '../errors.js'
+} from './ts_source.ts'
+import { resolveEnvironmentNameFromGetter } from './selected_environment.ts'
+import { E_ACCOUNT_KIT_SELECTED_ENVIRONMENT_VALUE } from '../errors.ts'
 
 /**
  * Finds the connection a Lucid database config selects, reading `DB_CONNECTION` from the selected

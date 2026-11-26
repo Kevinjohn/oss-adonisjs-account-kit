@@ -71,7 +71,7 @@ application-owned proof route needs equivalent early response headers, including
 failures.
 
 Managed routes default `verificationRequired` to `true`. Routes marked `active` then reject inactive
-accounts. Setup generates `managedAccountMiddleware` for application-owned protected routes with
+accounts. Setup generates `ManagedAccountMiddleware` for application-owned protected routes with
 its `active` option matching `verificationRequired` (true by default). Keep that middleware on
 every route that requires verified accounts or credential-revision checks. If
 `verificationRequired` is deliberately disabled, use the same `active` setting on managed and

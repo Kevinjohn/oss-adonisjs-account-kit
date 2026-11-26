@@ -1,4 +1,4 @@
-import type { SetupInspection } from './types.js'
+import type { SetupInspection } from './types.ts'
 import {
   matchDirectObject,
   getDirectProperty,
@@ -7,7 +7,7 @@ import {
   parseSetupSource,
   inspectTopLevelConfig,
   type SetupSource,
-} from './ts_source.js'
+} from './ts_source.ts'
 import type * as TypeScript from 'typescript'
 
 function getPropertyName(

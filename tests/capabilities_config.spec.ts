@@ -1,9 +1,9 @@
 import { test } from '@japa/runner'
 import { Secret } from '@adonisjs/core/helpers'
-import { defineConfig } from '../src/account_kit.js'
-import type { AccountKitConfig } from '../src/types.js'
-import { useTestApp } from './helpers/app.js'
-import { makeConfig, makeUsersAdapter } from './helpers/fakes.js'
+import { resolveConfig as defineConfig } from '../src/config.ts'
+import type { AccountKitConfig } from '../src/types.ts'
+import { useTestApp } from './helpers/app.ts'
+import { makeConfig, makeUsersAdapter } from './helpers/fakes.ts'
 
 test.group('capability configuration', (group) => {
   const kit = useTestApp(group)

@@ -1,9 +1,9 @@
 import { InvalidArgumentsException, RuntimeException } from '@adonisjs/core/exceptions'
 // Login-method retirement impact: counts accounts that would lose every way to sign in.
-import { requireUserMetadata } from './db.js'
-import { isSocialProviderName } from './social_providers.js'
-import type { SocialProviderName, UserId } from './types.js'
-import type { ServiceDependencies } from './service_dependencies.js'
+import { requireUserMetadata } from './db.ts'
+import { isSocialProviderName } from './social_providers.ts'
+import type { SocialProviderName, UserId } from './types.ts'
+import type { ServiceDependencies } from './service_dependencies.ts'
 
 export async function assessRetirementImpact(
   deps: Pick<ServiceDependencies, 'config' | 'db'>,

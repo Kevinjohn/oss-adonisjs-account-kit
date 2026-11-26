@@ -3,22 +3,22 @@ import { RuntimeException } from '@adonisjs/core/exceptions'
 import { randomUUID } from 'node:crypto'
 import { performance } from 'node:perf_hooks'
 import { DateTime } from 'luxon'
-import { requireAccountAccessDecision } from './account_access_decision.js'
-import { isActiveAccount, buildAccountProjection } from './account_projection.js'
-import { requireAuthentication } from './authentication_config.js'
-import { revision } from './credential_revision.js'
-import { establishCredential } from './credential_issuance.js'
-import { consumeUserToken, lockUser, transaction } from './db.js'
-import { finishCommitted, createLifecycleEffect, postCommit, settleCommitted } from './effects.js'
-import { isEmailShaped, normalizeEmail } from './email.js'
+import { requireAccountAccessDecision } from './account_access_decision.ts'
+import { isActiveAccount, buildAccountProjection } from './account_projection.ts'
+import { requireAuthentication } from './authentication_config.ts'
+import { revision } from './credential_revision.ts'
+import { establishCredential } from './credential_issuance.ts'
+import { consumeUserToken, lockUser, transaction } from './db.ts'
+import { finishCommitted, createLifecycleEffect, postCommit, settleCommitted } from './effects.ts'
+import { isEmailShaped, normalizeEmail } from './email.ts'
 import {
   E_INVALID_CREDENTIALS,
   E_ACCOUNT_KIT_INVALID_INPUT,
   E_ACCOUNT_KIT_INVALID_TOKEN,
-} from './errors.js'
-import { waitForFloor } from './timing.js'
-import { generateToken, hashToken, isTokenShaped } from './tokens.js'
-import { expiresAt } from './ttl.js'
+} from './errors.ts'
+import { waitForFloor } from './timing.ts'
+import { generateToken, hashToken, isTokenShaped } from './tokens.ts'
+import { expiresAt } from './ttl.ts'
 import type {
   AuthenticationGuard,
   CurrentAccount,
@@ -26,12 +26,12 @@ import type {
   MagicLinkInspectInput,
   MagicLinkRequestInput,
   UserId,
-} from './types.js'
-import type { ServiceDependencies } from './service_dependencies.js'
-import { sqlTimestamp } from './timestamps.js'
-import { isClientChallenge, isClientVerifier, verifierMatches } from './client_challenge.js'
+} from './types.ts'
+import type { ServiceDependencies } from './service_dependencies.ts'
+import { sqlTimestamp } from './timestamps.ts'
+import { isClientChallenge, isClientVerifier, verifierMatches } from './client_challenge.ts'
 
-export { deriveClientChallenge } from './client_challenge.js'
+export { deriveClientChallenge } from './client_challenge.ts'
 
 interface LinkRow {
   tokenable_id: UserId
@@ -120,7 +120,7 @@ export async function inspectMagicLink(
     .from('login_link_tokens')
     .select('tokenable_id', 'email')
     .where('hash', hashToken(input.token))
-    .where('expires_at', '>', sqlTimestamp(deps.db))
+    .where('expires_at', '>', sqlTimestamp(deps.db, DateTime.utc()))
     .first()
   if (!row) return false
   const user = await deps.config.users.findById(row.tokenable_id)
@@ -132,6 +132,8 @@ export async function inspectMagicLink(
  * still consumes the link: it may have been forwarded or intercepted, so the owner requests a new
  * one. A link whose address no longer matches the account is refused without being consumed; it
  * can never match again.
+ *
+ * @throws {AggregateError} If work and its transaction or credential cleanup both fail, or multiple cleanup steps fail.
  */
 export async function completeMagicLink<Credential>(
   deps: ServiceDependencies,

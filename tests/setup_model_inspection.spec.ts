@@ -1,11 +1,11 @@
 import { mkdir, readFile, readdir, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { test } from '@japa/runner'
-import { inspectSetup } from '../src/setup/inspect.js'
-import { planSetup } from '../src/setup/plan.js'
-import { applySetup } from '../src/setup/apply.js'
-import { fixture, registerSetupTeardown } from './helpers/setup_project_fixture.js'
-import { stock } from './helpers/native_starter_fixture.js'
+import { inspectSetup } from '../src/setup/inspect.ts'
+import { planSetup } from '../src/setup/plan.ts'
+import { applySetup } from '../src/setup/apply.ts'
+import { fixture, registerSetupTeardown } from './helpers/setup_project_fixture.ts'
+import { stock } from './helpers/native_starter_fixture.ts'
 
 test.group('setup model and schema safety', (group) => {
   registerSetupTeardown(group)

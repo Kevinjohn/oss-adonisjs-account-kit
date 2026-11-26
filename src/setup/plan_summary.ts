@@ -1,14 +1,14 @@
 // Setup planning phase: prerequisites, migration state, readiness and pillar summary of a plan.
-import { matchesAccountKitMigration, migrationNames } from './migration_definitions.js'
+import { matchesAccountKitMigration, migrationNames } from './migration_definitions.ts'
 import type {
   SetupChoices,
   SetupFileChange,
   SetupInspection,
   SetupPlan,
   SetupDiagnostic,
-} from './types.js'
-import { hasEmailFlow } from './shared.js'
-import { socialProviderLabels } from '../social_providers.js'
+} from './types.ts'
+import { hasEmailFlow } from './shared.ts'
+import { socialProviderLabels } from '../social_providers.ts'
 
 export function planSummary({
   choices,

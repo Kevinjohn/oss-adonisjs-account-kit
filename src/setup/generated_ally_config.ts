@@ -1,6 +1,6 @@
 import { RuntimeException } from '@adonisjs/core/exceptions'
-import type { SetupChoices } from './types.js'
-import { requiredEnvHelperLines } from './generated_env_helpers.js'
+import type { SetupChoices } from './types.ts'
+import { requiredEnvHelperLines } from './generated_env_helpers.ts'
 
 export function generateAllyConfigSource(choices: SetupChoices): string {
   if (choices.social.status !== 'enabled')

@@ -3,20 +3,22 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { test } from '@japa/runner'
+import { FileSystem } from '@japa/file-system'
 import { ListLoader } from '@adonisjs/core/ace'
 import Configure from '@adonisjs/core/commands/configure'
 import { IgnitorFactory } from '@adonisjs/core/factories'
-import { migrationNames } from '../configure.js'
+import { migrationNames } from '../configure.ts'
 
 async function createConfigureProject() {
   const root = await mkdtemp(join(tmpdir(), 'account-kit-configure-'))
-  await writeFile(
-    join(root, 'package.json'),
+  const fs = new FileSystem(root)
+  await fs.create(
+    'package.json',
     '{"type":"module","devDependencies":{"@adonisjs/assembler":"8.5.2"}}'
   )
-  await writeFile(join(root, 'tsconfig.json'), '{}')
-  await writeFile(
-    join(root, 'adonisrc.ts'),
+  await fs.create('tsconfig.json', '{}')
+  await fs.create(
+    'adonisrc.ts',
     "import { defineConfig } from '@adonisjs/core/app'\nexport default defineConfig({ providers: [] })\n"
   )
   await symlink(
@@ -59,6 +61,7 @@ async function createConfigureProject() {
   await writeFile(existingMigrationPath, existingMigration)
 
   return {
+    fs,
     root,
     envPath,
     configDirectory,
@@ -90,7 +93,7 @@ test('configures the package idempotently without replacing application-owned fi
     const ignitor = ignitorFor(root)
 
     await ignitor.ace().handle(['configure', '@kevinjohn/adonisjs-account-kit', '--force'])
-    const generatedConfig = await readFile(configPath, 'utf8')
+    const generatedConfig = await project.fs.contents('config/account_kit.ts')
     assert.include(generatedConfig, "from '@kevinjohn/adonisjs-account-kit'")
     assert.include(generatedConfig, "import('#models/user')")
     assert.include(generatedConfig, "import { RuntimeException } from '@adonisjs/core/exceptions'")
@@ -109,7 +112,7 @@ test('configures the package idempotently without replacing application-owned fi
     )
     assert.equal(
       firstEnv.match(
-        /FRONTEND_URL: Env\.schema\.string\.optional\(\{ format: 'url', tld: false \}\)/g
+        /ACCOUNT_KIT_FRONTEND_URL: Env\.schema\.string\.optional\(\{ format: 'url', tld: false \}\)/g
       )?.length,
       1
     )

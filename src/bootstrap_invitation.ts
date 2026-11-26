@@ -1,12 +1,12 @@
 import { RuntimeException } from '@adonisjs/core/exceptions'
 // Reserve the invitation address before writing the approval bound to its replacement.
 import { DateTime } from 'luxon'
-import { E_ACCOUNT_KIT_EMAIL_ALREADY_REGISTERED } from './errors.js'
-import { toInvitation } from './invitation_rows.js'
-import { hashToken } from './tokens.js'
-import { sqlTimestamp } from './timestamps.js'
-import { expiresAt } from './ttl.js'
-import type { Invitation, ResolvedConfig, Trx } from './types.js'
+import { E_ACCOUNT_KIT_EMAIL_ALREADY_REGISTERED } from './errors.ts'
+import { toInvitation } from './invitation_rows.ts'
+import { hashToken } from './tokens.ts'
+import { sqlTimestamp } from './timestamps.ts'
+import { expiresAt } from './ttl.ts'
+import type { Invitation, ResolvedConfig, Trx } from './types.ts'
 
 export async function replaceBootstrapInvitation(
   config: ResolvedConfig,

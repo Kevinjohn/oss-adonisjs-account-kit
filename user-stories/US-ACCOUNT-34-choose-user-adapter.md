@@ -6,7 +6,7 @@ As an application integrator, I want to connect Account Kit to a supported user 
 **Access:** Integrator supplies user adapter; transaction, schema and ID compatibility must match selected database/driver.
 **Entry:** Configure the user adapter in Account Kit; supported adapters include Lucid, Drizzle, Prisma and SQL.
 **Documentation:** [adapters.md](../docs/guide/adapters.md)
-**Source:** [`package.json` adapter exports](../package.json), [Lucid adapter](../adapters/lucid.ts), [SQL adapter](../adapters/sql.ts), [Drizzle adapter](../adapters/drizzle.ts), [Prisma adapter](../adapters/prisma.ts)
+**Source:** [`package.json` adapter exports](../package.json), [Lucid adapter](../src/adapters/lucid.ts), [SQL adapter](../src/adapters/sql.ts), [Drizzle adapter](../src/adapters/drizzle.ts), [Prisma adapter](../src/adapters/prisma.ts)
 **Coverage:** [`tests/drizzle_adapter.spec.ts`](../tests/drizzle_adapter.spec.ts), [`tests/prisma_adapter.spec.ts`](../tests/prisma_adapter.spec.ts), [`tests/sql_adapter.spec.ts`](../tests/sql_adapter.spec.ts)
 
 ## Acceptance criteria
@@ -36,4 +36,4 @@ flowchart TD
  C --> D["Lucid, Drizzle, Prisma or SQL adapter persists application user"]
 ```
 
-**Code references:** [adapter validation](../src/config.ts), [config resolution](../src/config_resolution.ts), [Lucid implementation](../adapters/lucid.ts), [`tests/drizzle_adapter.spec.ts`](../tests/drizzle_adapter.spec.ts), [`tests/prisma_adapter.spec.ts`](../tests/prisma_adapter.spec.ts), [`tests/sql_adapter.spec.ts`](../tests/sql_adapter.spec.ts)
+**Code references:** [adapter validation](../src/config.ts), [config resolution](../src/config_resolution.ts), [Lucid implementation](../src/adapters/lucid.ts), [`tests/drizzle_adapter.spec.ts`](../tests/drizzle_adapter.spec.ts), [`tests/prisma_adapter.spec.ts`](../tests/prisma_adapter.spec.ts), [`tests/sql_adapter.spec.ts`](../tests/sql_adapter.spec.ts)

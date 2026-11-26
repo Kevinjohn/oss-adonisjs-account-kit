@@ -1,14 +1,14 @@
 /** What `registerManagedRoutes` mounted on a router, recorded for documentation and duplicate checks. */
 import type { Router } from '@adonisjs/core/http'
-import type { SocialProviderName } from '../types.js'
-import type { ManagedOpenApiOptions } from './openapi_types.js'
-import type { ManagedRoute } from './routes.js'
+import type { SocialProviderName } from '../types.ts'
+import type { ManagedOpenApiOptions } from './openapi_types.ts'
+import type { ManagedRoute } from './routes.ts'
 
 export type {
   JsonSchema,
   ManagedOpenApiOptions,
   ReplaceableRequestEndpoint,
-} from './openapi_types.js'
+} from './openapi_types.ts'
 
 /**
  * What `registerManagedRoutes` mounted on a router. Read it with `managedRouteRegistration` to

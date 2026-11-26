@@ -1,13 +1,13 @@
 /** Builds an OpenAPI 3.1 document for exactly the managed routes registered on one router. */
-import { managedEndpointSchemas, ref } from './openapi_schemas.js'
-import { buildSharedSchemas } from './openapi_components.js'
+import { managedEndpointSchemas, ref } from './openapi_schemas.ts'
+import { buildSharedSchemas } from './openapi_components.ts'
 import type {
   JsonSchema,
   ManagedOpenApiOptions,
   ReplaceableRequestEndpoint,
-} from './openapi_types.js'
-import type { ManagedRouteRegistration } from './route_registration.js'
-import type { ManagedCapability, ManagedRoute } from './routes.js'
+} from './openapi_types.ts'
+import type { ManagedRouteRegistration } from './route_registration.ts'
+import type { ManagedCapability, ManagedRoute } from './routes.ts'
 import { InvalidArgumentsException } from '@adonisjs/core/exceptions'
 
 export interface ManagedOpenApiInput extends ManagedOpenApiOptions {

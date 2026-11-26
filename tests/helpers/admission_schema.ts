@@ -1,15 +1,15 @@
 import type { Group } from '@japa/runner/core'
-import type { BootOptions, TestApp } from './app.js'
-import { bootTestApp } from './app.js'
-import { clearRows, resetSchema } from './schema.js'
-import { createAdmissionTable, dropAdmissionTable } from './admission_migration.js'
+import type { BootOptions, TestApp } from './app.ts'
+import { bootTestApp } from './app.ts'
+import { clearRows, resetSchema } from './schema.ts'
+import { createAdmissionTable, dropAdmissionTable } from './admission_migration.ts'
 
 export {
   admissionMigrationSuffix,
   createAdmissionTable,
   dropAdmissionTable,
   renderAdmissionMigration,
-} from './admission_migration.js'
+} from './admission_migration.ts'
 
 /**
  * Like `useTestApp`, with the admission table created per group and emptied before each test.

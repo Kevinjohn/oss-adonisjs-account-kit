@@ -1,12 +1,12 @@
 import { test } from '@japa/runner'
-import { E_ACCOUNT_KIT_INVALID_CONFIGURATION } from '../src/errors.js'
-import { defineAdmission } from '../src/admission/config.js'
-import AdmissionProvider from '../src/admission/provider.js'
-import { AccountAdmission } from '../src/admission/service.js'
-import { AccountKit, defineConfig } from '../src/account_kit.js'
-import { bootTestApp } from './helpers/app.js'
-import { allowDecisions } from './helpers/admission.js'
-import { makeConfig, makeUsersAdapter } from './helpers/fakes.js'
+import { E_ACCOUNT_KIT_INVALID_CONFIGURATION } from '../src/errors.ts'
+import { defineConfig as defineAdmissionConfig } from '../src/admission/config.ts'
+import AdmissionProvider from '../providers/account_admission_provider.ts'
+import { AccountAdmission } from '../src/admission/service.ts'
+import { AccountKit, defineConfig } from '../src/account_kit.ts'
+import { bootTestApp } from './helpers/app.ts'
+import { allowDecisions } from './helpers/admission.ts'
+import { makeConfig, makeUsersAdapter } from './helpers/fakes.ts'
 
 test.group('admission provider', () => {
   test('binds one admission service after boot, built on the account service', async ({
@@ -21,7 +21,7 @@ test.group('admission provider', () => {
       )
       app.app.config.set(
         'admission',
-        defineAdmission({ approval: { required: true, authorize: allowDecisions } })
+        defineAdmissionConfig({ approval: { required: true, authorize: allowDecisions } })
       )
       const first = await app.app.container.make(AccountAdmission)
       assert.instanceOf(first, AccountAdmission)

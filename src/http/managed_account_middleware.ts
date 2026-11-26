@@ -1,33 +1,46 @@
 import type { HttpContext } from '@adonisjs/core/http'
-import type { AccountKit } from '../account_kit.js'
-import type { ManagedGuard } from './managed.js'
+import type { AccountKit } from '../account_kit.ts'
+import type { ManagedGuard } from './managed.ts'
+
+interface ManagedAccountMiddlewareOptions<Credential> {
+  kit(): Promise<Pick<AccountKit, 'managedHttp' | 'authentication'>>
+  guard: Pick<ManagedGuard<Credential>, 'current' | 'name' | 'strategy'>
+  active: boolean
+}
 
 /**
  * Apply the same selected guard and package revision check to application-owned routes.
  *
  * @example
  * ```ts
- * import { managedAccountMiddleware } from '@kevinjohn/adonisjs-account-kit/http'
+ * import ManagedAccountMiddleware from '@kevinjohn/adonisjs-account-kit/middleware/managed_account'
  * import app from '@adonisjs/core/services/app'
  * import { AccountKit } from '@kevinjohn/adonisjs-account-kit'
  *
- * const activeAccount = managedAccountMiddleware({
+ * const activeAccount = new ManagedAccountMiddleware({
  *   kit: () => app.container.make(AccountKit),
  *   guard,
  *   active: true,
  * })
  * ```
  */
-export function managedAccountMiddleware<Credential>(options: {
-  kit(): Promise<Pick<AccountKit, 'managedHttp' | 'authentication'>>
-  guard: Pick<ManagedGuard<Credential>, 'current' | 'name' | 'strategy'>
-  active: boolean
-}): (context: HttpContext, next: () => Promise<unknown>) => Promise<unknown> {
-  return async (context, next) => {
-    const kit = await options.kit()
-    kit.managedHttp.assertGuard(options.guard)
-    const input = await options.guard.current(context)
-    if (options.active) await kit.authentication.requireActive(input)
+export default class ManagedAccountMiddleware<Credential> {
+  readonly #options: ManagedAccountMiddlewareOptions<Credential>
+
+  constructor(options: ManagedAccountMiddlewareOptions<Credential>) {
+    this.#options = options
+  }
+
+  /** @example
+   * ```ts
+   * return middleware.handle(ctx, next)
+   * ```
+   */
+  async handle(context: HttpContext, next: () => Promise<unknown>): Promise<unknown> {
+    const kit = await this.#options.kit()
+    kit.managedHttp.assertGuard(this.#options.guard)
+    const input = await this.#options.guard.current(context)
+    if (this.#options.active) await kit.authentication.requireActive(input)
     else await kit.authentication.current(input)
     return next()
   }

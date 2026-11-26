@@ -1,5 +1,5 @@
 import { InvalidArgumentsException } from '@adonisjs/core/exceptions'
-import type { SetupDiagnostic } from './types.js'
+import type { SetupDiagnostic } from './types.ts'
 
 /** Selected environment values read from the process or the application's `.env` files. */
 export type SelectedSetupOrigins = {
@@ -33,7 +33,7 @@ export function addOriginDiagnostics(
   diagnostics: SetupDiagnostic[],
   field: string,
   variable: string,
-  { production, env = process.env, resolvedValue, resolutionError }: OriginDiagnosticOptions
+  { production, env = {}, resolvedValue, resolutionError }: OriginDiagnosticOptions
 ) {
   if (!envName.test(variable)) {
     addSetupDiagnostic(

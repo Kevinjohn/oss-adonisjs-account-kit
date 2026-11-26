@@ -1,4 +1,4 @@
-import type { SetupChoices } from './types.js'
+import type { SetupChoices } from './types.ts'
 
 /** Reviewable starter selection; callers must still supply application-specific values. */
 export function buildDefaultSetupChoices(): SetupChoices {
@@ -36,11 +36,11 @@ export function buildDefaultSetupChoices(): SetupChoices {
     mail: {
       integration: 'adonisjs-mail',
       delivery: 'best-effort',
-      senderEnv: 'ACCOUNT_MAIL_FROM',
+      senderEnv: 'ACCOUNT_KIT_MAIL_FROM',
       transportEnv: 'MAIL_MAILER',
       appName: 'My application',
       backendOriginEnv: 'APP_URL',
-      frontendOriginEnv: 'FRONTEND_URL',
+      frontendOriginEnv: 'ACCOUNT_KIT_FRONTEND_URL',
       destinations: {
         emailVerification: 'account/verification',
         passwordReset: 'account/recovery',

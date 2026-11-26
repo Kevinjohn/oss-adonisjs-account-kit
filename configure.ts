@@ -3,25 +3,25 @@ import {
   E_ACCOUNT_KIT_INVALID_SETUP_SOURCE,
   E_ACCOUNT_KIT_UNSUPPORTED_CONFIG_SHAPE,
   E_ACCOUNT_KIT_UNSUPPORTED_PROVIDERS_CONFIGURATION,
-} from './src/errors.js'
+} from './src/errors.ts'
 import type { CodeTransformer } from '@adonisjs/assembler/code_transformer'
 import { relative, resolve, sep } from 'node:path'
 import type Configure from '@adonisjs/core/commands/configure'
 import type * as TypeScript from 'typescript'
-import { buildMigrationSchema } from './src/setup/migration_definitions.js'
-import { inspectMigrationDirectory } from './src/setup/migration_paths.js'
-import { orderMigrations } from './src/setup/migration_order.js'
-import { readRegularFile } from './src/setup/safe_path.js'
-import { hasRegisteredCommand } from './src/setup/commands_inspection.js'
-import { inspectProviders } from './src/setup/providers_inspection.js'
-import { parseSetupSource, walk, type SetupSource } from './src/setup/ts_source.js'
-import { stubsRoot } from './stubs/main.js'
+import { buildMigrationSchema } from './src/setup/migration_definitions.ts'
+import { inspectMigrationDirectory, migrationStubPath } from './src/setup/migration_paths.ts'
+import { orderMigrations } from './src/setup/migration_order.ts'
+import { readRegularFile } from './src/setup/safe_path.ts'
+import { hasRegisteredCommand } from './src/setup/commands_inspection.ts'
+import { inspectProviders } from './src/setup/providers_inspection.ts'
+import { parseSetupSource, walk, type SetupSource } from './src/setup/ts_source.ts'
+import { stubsRoot } from './stubs/main.ts'
 
 export {
   migrationNames,
   buildMigrationSchema as migrationSchema,
   type UserIdType,
-} from './src/setup/migration_definitions.js'
+} from './src/setup/migration_definitions.ts'
 
 const providerPath = '@kevinjohn/adonisjs-account-kit/account_kit_provider'
 
@@ -244,7 +244,10 @@ export async function configure(command: Configure) {
     await codemods.makeUsingStub(stubsRoot, `migrations/${name}.stub`, {
       migration: {
         ...schema,
-        destination: resolve(root, directory.path, filename),
+        path: migrationStubPath(
+          command.app.migrationsPath(),
+          resolve(root, directory.path, filename)
+        ),
       },
     })
   }
@@ -256,14 +259,14 @@ export async function configure(command: Configure) {
     if (!registeredCommand) rcFile.addCommand('@kevinjohn/adonisjs-account-kit/commands')
   })
 
-  // The generated config builds links from FRONTEND_URL, or APP_URL when it is unset. Declare them
+  // The generated config builds links from ACCOUNT_KIT_FRONTEND_URL, or APP_URL when it is unset. Declare them
   // in start/env.ts so a missing APP_URL fails at boot; defineEnvValidations leaves an existing
   // declaration unchanged.
   await codemods.defineEnvValidations({
     leadingComment: 'Variables for @kevinjohn/adonisjs-account-kit',
     variables: {
       APP_URL: "Env.schema.string({ format: 'url', tld: false })",
-      FRONTEND_URL: "Env.schema.string.optional({ format: 'url', tld: false })",
+      ACCOUNT_KIT_FRONTEND_URL: "Env.schema.string.optional({ format: 'url', tld: false })",
     },
   })
 }

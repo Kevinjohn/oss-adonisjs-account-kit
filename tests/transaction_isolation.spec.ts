@@ -1,9 +1,9 @@
 import { test } from '@japa/runner'
-import { lockRow, transaction } from '../src/db.js'
+import { lockRow, transaction } from '../src/db.ts'
 import type { Database } from '@adonisjs/lucid/database'
-import { useTestApp } from './helpers/app.js'
-import { locksRows } from './helpers/dialect.js'
-import { insertUser } from './helpers/fakes.js'
+import { useTestApp } from './helpers/app.ts'
+import { locksRows } from './helpers/dialect.ts'
+import { insertUser } from './helpers/fakes.ts'
 
 test.group('package transaction isolation', (group) => {
   const kit = useTestApp(group)

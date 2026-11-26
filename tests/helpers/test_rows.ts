@@ -1,4 +1,4 @@
-import type { TestApp } from './app.js'
+import type { TestApp } from './app.ts'
 
 /** Package tables keyed by the user, with the column that holds the user id. */
 export const userTables = [

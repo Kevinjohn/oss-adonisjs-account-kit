@@ -1,11 +1,11 @@
+import ManagedProofHeadersMiddleware from '../src/http/managed_proof_headers_middleware.ts'
 import { test } from '@japa/runner'
-import { managedProofHeadersMiddleware } from '../src/http/proof_headers.js'
 
 test.group('early managed proof headers', () => {
   test('protects every selected proof URL even when later middleware rejects the request', async ({
     assert,
   }) => {
-    const early = managedProofHeadersMiddleware({
+    const early = new ManagedProofHeadersMiddleware({
       prefix: '/api/v1',
       strategy: 'session',
       enabled: ['passwordReset', 'emailVerification', 'emailPasswordManagement', 'invitations'],
@@ -18,7 +18,7 @@ test.group('early managed proof headers', () => {
           response: { header: (name: string, value: string) => (headers[name] = value) },
         } as never
         await assert.rejects(() =>
-          early(context, async () => {
+          early.handle(context, async () => {
             throw new Error('parser or Shield rejected request')
           })
         )
@@ -31,7 +31,7 @@ test.group('early managed proof headers', () => {
   })
 
   test('does not claim excluded or unrelated routes', async ({ assert }) => {
-    const early = managedProofHeadersMiddleware({
+    const early = new ManagedProofHeadersMiddleware({
       prefix: '/api/v1',
       strategy: 'session',
       enabled: ['passwordReset'],
@@ -43,7 +43,7 @@ test.group('early managed proof headers', () => {
       ['POST', '/api/v1/auth/login', false],
     ] as const) {
       const headers: Record<string, string> = {}
-      await early(
+      await early.handle(
         {
           request: { method: () => method, url: () => path },
           response: { header: (name: string, value: string) => (headers[name] = value) },
@@ -57,7 +57,7 @@ test.group('early managed proof headers', () => {
   test('token callback and exchange keep proof headers on early rejection and respect exclusions', async ({
     assert,
   }) => {
-    const early = managedProofHeadersMiddleware({
+    const early = new ManagedProofHeadersMiddleware({
       prefix: '/api/v1',
       strategy: 'access_tokens',
       enabled: ['socialAuthentication'],
@@ -71,7 +71,7 @@ test.group('early managed proof headers', () => {
     ] as const) {
       const headers: Record<string, string> = {}
       await assert.rejects(() =>
-        early(
+        early.handle(
           {
             request: { method: () => method, url: () => path },
             response: { header: (name: string, value: string) => (headers[name] = value) },

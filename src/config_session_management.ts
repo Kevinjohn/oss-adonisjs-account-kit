@@ -1,10 +1,10 @@
 // Resolves and validates the sign-in idle expiry for session management.
 import { DateTime } from 'luxon'
-import { E_ACCOUNT_KIT_INVALID_CONFIGURATION } from './errors.js'
-import { sessionTouchIntervalMs } from './session_registry.js'
-import { computeConfiguredExpiry } from './config_ttl.js'
-import type { AccountKitConfig, ResolvedConfig } from './types.js'
-import { freezeResolved } from './config_freeze.js'
+import { E_ACCOUNT_KIT_INVALID_CONFIGURATION } from './errors.ts'
+import { sessionTouchIntervalMs } from './session_registry.ts'
+import { computeConfiguredExpiry } from './config_ttl.ts'
+import type { AccountKitConfig, ResolvedConfig } from './types.ts'
+import { freezeResolved } from './config_freeze.ts'
 
 export function resolveSessionManagement(
   config: AccountKitConfig

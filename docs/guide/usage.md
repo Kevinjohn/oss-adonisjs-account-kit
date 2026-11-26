@@ -179,7 +179,7 @@ hashing, and transaction-aware reads/writes. Provide `resolveMetadata()` with th
 and `primaryKey: 'id'`, or configure `usersTable` as the metadata fallback. The package acquires
 the PostgreSQL user-row lock centrally from that metadata; SQLite uses its package-owned singleton
 transaction lock. See the [`UsersAdapter` type](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/main/src/types.ts) and the
-[adapter contract suite](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/main/testing/adapter_contract.ts). Review the
+[adapter contract suite](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/main/src/testing/adapter_contract.ts). Review the
 [identity creation contract](identity-creation.md) before enabling creation flows.
 
 ## Authorisation and callbacks {#authorization-and-callbacks}

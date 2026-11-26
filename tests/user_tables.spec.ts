@@ -1,10 +1,10 @@
 import { readFile } from 'node:fs/promises'
 import { test } from '@japa/runner'
-import { migrationNames, migrationSchema } from '../configure.js'
-import { exportedUserColumns, omittedUserColumns } from '../src/account_export_coverage.js'
-import { admissionTable } from '../src/admission/rows.js'
-import { userOwnedRows } from '../src/user_rows.js'
-import { userTables } from './helpers/test_rows.js'
+import { migrationNames, migrationSchema } from '../configure.ts'
+import { exportedUserColumns, omittedUserColumns } from '../src/account_export_coverage.ts'
+import { admissionTable } from '../src/admission/rows.ts'
+import { userOwnedRows } from '../src/user_rows.ts'
+import { userTables } from './helpers/test_rows.ts'
 
 /**
  * User-keyed tables `deleteUserRows` handles outside `userOwnedRows`: sign-in rows only when

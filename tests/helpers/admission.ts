@@ -1,10 +1,10 @@
-import { AccountAdmission } from '../../src/admission/service.js'
-import { defineAdmission } from '../../src/admission/config.js'
-import type { AdmissionConfig } from '../../src/admission/types.js'
-import type { AccountKitConfig, UserId } from '../../src/types.js'
-import type { TestApp } from './app.js'
-import { dbTime } from './db_time.js'
-import { makeService } from './account_kit_service.js'
+import { AccountAdmission } from '../../src/admission/service.ts'
+import { defineConfig } from '../../src/admission/config.ts'
+import type { AdmissionConfig } from '../../src/admission/types.ts'
+import type { AccountKitConfig, UserId } from '../../src/types.ts'
+import type { TestApp } from './app.ts'
+import { dbTime } from './db_time.ts'
+import { makeService } from './account_kit_service.ts'
 
 export const allowDecisions = {
   decide: async () => true,
@@ -25,7 +25,7 @@ export function makeAdmission(
   overrides: Partial<AccountKitConfig> = {}
 ) {
   const service = makeService(kit, overrides)
-  const config = defineAdmission(admission)
+  const config = defineConfig(admission)
   return {
     ...service,
     admissionConfig: config,

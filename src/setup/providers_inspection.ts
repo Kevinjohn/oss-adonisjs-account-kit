@@ -1,5 +1,5 @@
 import type * as TypeScript from 'typescript'
-import { extractLazyImportPath, type SetupSource } from './ts_source.js'
+import { extractLazyImportPath, type SetupSource } from './ts_source.ts'
 
 /**
  * Reads one named property of an object literal, or returns null when the caller cannot read it

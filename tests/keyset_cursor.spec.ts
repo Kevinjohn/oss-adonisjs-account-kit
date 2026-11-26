@@ -1,6 +1,6 @@
 import { test } from '@japa/runner'
-import { E_ACCOUNT_KIT_INVALID_INPUT } from '../src/errors.js'
-import { decodeKeysetCursor, encodeKeysetCursor } from '../src/keyset_cursor.js'
+import { E_ACCOUNT_KIT_INVALID_INPUT } from '../src/errors.ts'
+import { decodeKeysetCursor, encodeKeysetCursor } from '../src/keyset_cursor.ts'
 
 const LITERAL_CURSOR = 'WyIyMDI2LTAxLTAyVDAzOjA0OjA1LjAwMFoiLDdd'
 

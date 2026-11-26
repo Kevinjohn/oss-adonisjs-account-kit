@@ -4,17 +4,17 @@ import {
   E_ACCOUNT_KIT_DELIVERY,
   E_ACCOUNT_KIT_INVALID_TOKEN,
   isCommittedFailure,
-} from '../errors.js'
-import type { CurrentAccount } from '../types.js'
+} from '../errors.ts'
+import type { CurrentAccount } from '../types.ts'
 import {
   applyMappedHeaders,
   mapManagedErrorResponse,
   negotiateRequest,
   type ManagedMessage,
-} from './responses.js'
-import type { AccountKitTranslator } from '../translator.js'
-import type { ManagedEndpointName } from './routes.js'
-import type { ManagedRequest } from './managed_types.js'
+} from './responses.ts'
+import type { AccountKitTranslator } from '../translator.ts'
+import type { ManagedEndpointName } from './routes.ts'
+import type { ManagedRequest } from './managed_types.ts'
 
 /** The request's `@adonisjs/i18n` instance, set by its locale middleware, when the app has one. */
 export function getRequestTranslator(context: HttpContext): AccountKitTranslator | undefined {

@@ -1,18 +1,18 @@
 import { readdir, rm, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { test } from '@japa/runner'
-import { planSetup } from '../src/setup/plan.js'
-import { applySetup } from '../src/setup/apply.js'
-import { withFixture } from './helpers/setup_prerequisites.js'
+import { planSetup } from '../src/setup/plan.ts'
+import { applySetup } from '../src/setup/apply.ts'
+import { withFixture } from './helpers/setup_prerequisites.ts'
 
 test.group('setup mail prerequisites', () => {
   test('maintained Mail validates brand and sender without leaking values', async ({ assert }) => {
     await withFixture(async (choices, state) => {
       choices.mail.integration = 'adonisjs-mail'
       choices.mail.appName = 'Brand\r\nInjected'
-      choices.mail.senderEnv = 'ACCOUNT_MAIL_FROM'
+      choices.mail.senderEnv = 'ACCOUNT_KIT_MAIL_FROM'
       state.files['config/mail.ts'] = 'export default defineConfig({ mailers: {} })'
-      const prior = process.env.ACCOUNT_MAIL_FROM
+      const prior = process.env.ACCOUNT_KIT_MAIL_FROM
       const unsafeSender = (
         diagnostics: Array<{ field: string; message: string; severity: string }>
       ) =>
@@ -22,24 +22,24 @@ test.group('setup mail prerequisites', () => {
             severity === 'error' &&
             message === 'Configured value must be nonblank and safe'
         )
-      process.env.ACCOUNT_MAIL_FROM = 'person@example.test\nInjected'
+      process.env.ACCOUNT_KIT_MAIL_FROM = 'person@example.test\nInjected'
       try {
-        const plan = await planSetup(choices, state)
+        const plan = await planSetup(choices, state, { env: process.env })
         assert.include(
           plan.diagnostics.map(({ field }) => field),
           'mail.appName'
         )
         assert.isTrue(unsafeSender(plan.diagnostics), JSON.stringify(plan.diagnostics))
         assert.isFalse(JSON.stringify(plan.diagnostics).includes('person@example.test'))
-        process.env.ACCOUNT_MAIL_FROM = '   '
-        const blank = await planSetup(choices, state)
+        process.env.ACCOUNT_KIT_MAIL_FROM = '   '
+        const blank = await planSetup(choices, state, { env: process.env })
         assert.isTrue(unsafeSender(blank.diagnostics), JSON.stringify(blank.diagnostics))
-        process.env.ACCOUNT_MAIL_FROM = 'person@example.test'
-        const safe = await planSetup(choices, state)
+        process.env.ACCOUNT_KIT_MAIL_FROM = 'person@example.test'
+        const safe = await planSetup(choices, state, { env: process.env })
         assert.isFalse(unsafeSender(safe.diagnostics), JSON.stringify(safe.diagnostics))
       } finally {
-        if (prior === undefined) delete process.env.ACCOUNT_MAIL_FROM
-        else process.env.ACCOUNT_MAIL_FROM = prior
+        if (prior === undefined) delete process.env.ACCOUNT_KIT_MAIL_FROM
+        else process.env.ACCOUNT_KIT_MAIL_FROM = prior
       }
     })
   })
@@ -47,10 +47,10 @@ test.group('setup mail prerequisites', () => {
   test('sender and transport set only in .env count before the app boots', async ({ assert }) => {
     await withFixture(async (choices, state) => {
       choices.mail.integration = 'adonisjs-mail'
-      choices.mail.senderEnv = 'ACCOUNT_MAIL_FROM'
+      choices.mail.senderEnv = 'ACCOUNT_KIT_MAIL_FROM'
       choices.mail.transportEnv = 'MAIL_MAILER'
-      const prior = { from: process.env.ACCOUNT_MAIL_FROM, mailer: process.env.MAIL_MAILER }
-      delete process.env.ACCOUNT_MAIL_FROM
+      const prior = { from: process.env.ACCOUNT_KIT_MAIL_FROM, mailer: process.env.MAIL_MAILER }
+      delete process.env.ACCOUNT_KIT_MAIL_FROM
       delete process.env.MAIL_MAILER
       const readinessActions = (plan: Awaited<ReturnType<typeof planSetup>>) =>
         plan.diagnostics.filter(
@@ -59,16 +59,16 @@ test.group('setup mail prerequisites', () => {
             message.includes('must be set before readiness')
         )
       try {
-        assert.lengthOf(readinessActions(await planSetup(choices, state)), 2)
+        assert.lengthOf(readinessActions(await planSetup(choices, state, { env: process.env })), 2)
         await writeFile(
           join(state.root, '.env'),
-          'ACCOUNT_MAIL_FROM=person@example.test\nMAIL_MAILER=smtp\n'
+          'ACCOUNT_KIT_MAIL_FROM=person@example.test\nMAIL_MAILER=smtp\n'
         )
-        assert.lengthOf(readinessActions(await planSetup(choices, state)), 0)
+        assert.lengthOf(readinessActions(await planSetup(choices, state, { env: process.env })), 0)
       } finally {
         await rm(join(state.root, '.env'), { force: true })
-        if (prior.from === undefined) delete process.env.ACCOUNT_MAIL_FROM
-        else process.env.ACCOUNT_MAIL_FROM = prior.from
+        if (prior.from === undefined) delete process.env.ACCOUNT_KIT_MAIL_FROM
+        else process.env.ACCOUNT_KIT_MAIL_FROM = prior.from
         if (prior.mailer === undefined) delete process.env.MAIL_MAILER
         else process.env.MAIL_MAILER = prior.mailer
       }
@@ -86,7 +86,7 @@ test.group('setup mail prerequisites', () => {
       try {
         state.files['config/mail.ts'] =
           "import { defineConfig } from '@adonisjs/mail'\nimport env from '#start/env'\nexport default defineConfig({ default: env.get('MAIL_MAILER'), mailers: {} })"
-        const empty = await planSetup(choices, state)
+        const empty = await planSetup(choices, state, { env: process.env })
         assert.isTrue(
           empty.diagnostics.some(
             ({ field, severity }) => field === 'config/mail.ts' && severity === 'error'
@@ -94,7 +94,7 @@ test.group('setup mail prerequisites', () => {
         )
         state.files['config/mail.ts'] =
           "import { defineConfig } from '@adonisjs/mail'\nimport env from '#start/env'\nexport default defineConfig({ default: env.get('MAIL_MAILER'), mailers: { other: customTransport() } })"
-        const wrong = await planSetup(choices, state)
+        const wrong = await planSetup(choices, state, { env: process.env })
         assert.isTrue(
           wrong.diagnostics.some(
             ({ field, severity }) => field === 'config/mail.ts' && severity === 'error'
@@ -102,7 +102,7 @@ test.group('setup mail prerequisites', () => {
         )
         state.files['config/mail.ts'] =
           "import { defineConfig } from '@adonisjs/mail'\nimport env from '#start/env'\nexport default defineConfig({ default: env.get('MAIL_MAILER'), mailers: { smtp: customTransport() } })"
-        const selected = await planSetup(choices, state)
+        const selected = await planSetup(choices, state, { env: process.env })
         assert.isTrue(
           selected.diagnostics.some(
             ({ field, severity }) => field === 'config/mail.ts' && severity === 'action'
@@ -148,7 +148,7 @@ test.group('setup mail prerequisites', () => {
         ]) {
           state.files['config/mail.ts'] =
             `import { defineConfig } from '@adonisjs/mail'\nexport default defineConfig({ default: 'smtp', mailers: { smtp: ${value} } })`
-          const invalid = await planSetup(choices, state)
+          const invalid = await planSetup(choices, state, { env: process.env })
           assert.isTrue(
             invalid.diagnostics.some(
               ({ field, severity, message }) =>
@@ -161,7 +161,7 @@ test.group('setup mail prerequisites', () => {
         }
         state.files['config/mail.ts'] =
           "import { defineConfig } from '@adonisjs/mail'\nimport env from '#start/env'\nimport * as envModule from '#start/env'\nenvModule.default.get = () => 'other'\nexport default defineConfig({ default: env.get('MAIL_MAILER', 'smtp'), mailers: { smtp: customTransport() } })"
-        const ambiguous = await planSetup(choices, state)
+        const ambiguous = await planSetup(choices, state, { env: process.env })
         assert.isTrue(
           ambiguous.diagnostics.some(
             ({ field, severity, message }) =>
@@ -171,7 +171,7 @@ test.group('setup mail prerequisites', () => {
         assert.isFalse(ambiguous.readiness.externalConfigured)
         state.files['config/mail.ts'] =
           "import { defineConfig, transports } from '@adonisjs/mail'\nimport env from '#start/env'\nconst other = await import('#start/env')\nother.default.get = () => 'other'\nexport default defineConfig({ default: env.get('MAIL_MAILER', 'smtp'), mailers: { smtp: transports.smtp({}) } })"
-        const dynamicEnv = await planSetup(choices, state)
+        const dynamicEnv = await planSetup(choices, state, { env: process.env })
         assert.isTrue(
           dynamicEnv.diagnostics.some(
             ({ field, severity }) => field === 'config/mail.ts' && severity === 'error'
@@ -179,7 +179,7 @@ test.group('setup mail prerequisites', () => {
         )
         state.files['config/mail.ts'] =
           "import { defineConfig, transports } from '@adonisjs/mail'\nexport default defineConfig({ default: 'smtp', mailers: { smtp: transports.smtp({}) } })"
-        const native = await planSetup(choices, state)
+        const native = await planSetup(choices, state, { env: process.env })
         assert.isTrue(
           native.diagnostics.some(
             ({ field, severity, message }) =>
@@ -191,7 +191,7 @@ test.group('setup mail prerequisites', () => {
         assert.isFalse(native.readiness.externalConfigured)
         state.files['config/mail.ts'] =
           "import { defineConfig as mailConfig, transports as mailTransport } from '@adonisjs/mail'\nexport default mailConfig({ default: 'smtp', mailers: { smtp: mailTransport.smtp({}) } })"
-        const aliasedNative = await planSetup(choices, state)
+        const aliasedNative = await planSetup(choices, state, { env: process.env })
         assert.isTrue(
           aliasedNative.diagnostics.some(
             ({ field, severity, message }) =>
@@ -202,7 +202,7 @@ test.group('setup mail prerequisites', () => {
         )
         state.files['config/mail.ts'] =
           "import { defineConfig } from '@adonisjs/mail'\nexport default defineConfig({ default: 'smtp', mailers: { smtp: (<any>(() => ({})))! } })"
-        const callable = await planSetup(choices, state)
+        const callable = await planSetup(choices, state, { env: process.env })
         assert.isTrue(
           callable.diagnostics.some(
             ({ field, severity, message }) =>
@@ -222,11 +222,11 @@ test.group('setup mail prerequisites', () => {
     await withFixture(async (choices, state, root) => {
       choices.mail.integration = 'adonisjs-mail'
       choices.mail.transportEnv = 'MAIL_MAILER'
-      choices.mail.senderEnv = 'ACCOUNT_MAIL_FROM'
+      choices.mail.senderEnv = 'ACCOUNT_KIT_MAIL_FROM'
       const previous = process.env.MAIL_MAILER
-      const previousSender = process.env.ACCOUNT_MAIL_FROM
+      const previousSender = process.env.ACCOUNT_KIT_MAIL_FROM
       process.env.MAIL_MAILER = 'smtp'
-      process.env.ACCOUNT_MAIL_FROM = 'person@example.test'
+      process.env.ACCOUNT_KIT_MAIL_FROM = 'person@example.test'
       const cases = [
         "import { defineConfig } from '@adonisjs/mail'\nexport default defineConfig({ default: 'smtp', mailers: { smtp: <any>null } })",
         "import { defineConfig } from '@adonisjs/mail'\nimport env from '#start/env'\nenv.get = () => 'missing'\nexport default defineConfig({ default: env.get('MAIL_MAILER', 'smtp'), mailers: { smtp: () => ({}) } })",
@@ -246,13 +246,13 @@ test.group('setup mail prerequisites', () => {
       try {
         state.files['config/mail.ts'] =
           "import { defineConfig, transports } from '@adonisjs/mail'\nimport env from '#start/env'\nexport default defineConfig({ default: env.get('MAIL_MAILER'), mailers: { smtp: transports.smtp({}) } })"
-        const baselinePlan = await planSetup(choices, state, { apply: true })
+        const baselinePlan = await planSetup(choices, state, { env: process.env, apply: true })
         const baseline = blocking(baselinePlan.diagnostics)
         assert.notInclude(baseline, 'config/mail.ts')
         for (const mail of cases) {
           state.files['config/mail.ts'] = mail
           const before = await readdir(root)
-          const plan = await planSetup(choices, state, { apply: true })
+          const plan = await planSetup(choices, state, { env: process.env, apply: true })
           // The mail configuration adds exactly one blocking field to the fixture's baseline.
           assert.deepEqual(
             blocking(plan.diagnostics).filter((field) => !baseline.includes(field)),
@@ -265,8 +265,8 @@ test.group('setup mail prerequisites', () => {
       } finally {
         if (previous === undefined) delete process.env.MAIL_MAILER
         else process.env.MAIL_MAILER = previous
-        if (previousSender === undefined) delete process.env.ACCOUNT_MAIL_FROM
-        else process.env.ACCOUNT_MAIL_FROM = previousSender
+        if (previousSender === undefined) delete process.env.ACCOUNT_KIT_MAIL_FROM
+        else process.env.ACCOUNT_KIT_MAIL_FROM = previousSender
       }
     })
   })

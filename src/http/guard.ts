@@ -1,10 +1,8 @@
 import type { HttpContext } from '@adonisjs/core/http'
-import type { AuthenticationGuard, UserId } from '../types.js'
-import type { ManagedGuard } from './managed_types.js'
-import { createSessionGuard } from './managed_session_guard.js'
-import { createTokenGuard } from './managed_token_guard.js'
-
-export { managedAccountMiddleware } from './managed_account_middleware.js'
+import type { AuthenticationGuard, UserId } from '../types.ts'
+import type { ManagedGuard } from './managed_types.ts'
+import { createSessionGuard } from './managed_session_guard.ts'
+import { createTokenGuard } from './managed_token_guard.ts'
 
 /** The user fields the managed guard reads. */
 export interface ManagedUser {
@@ -139,7 +137,14 @@ export function createManagedGuard<User>(options: ManagedTokenGuardOptions<User>
    * ```
    */
   logoutCredential(context: HttpContext): Promise<ManagedTokenCredential>
-  /** The plaintext token to return to the client, released once. */
+  /**
+   * The plaintext token to return to the client, released once.
+   *
+   * @example
+   * ```ts
+   * const bearer = tokenGuard.publicCredential(credential)
+   * ```
+   */
   publicCredential(credential: ManagedTokenCredential): string
 }
 export function createManagedGuard<User>(

@@ -11,8 +11,8 @@ import type { Database } from '@adonisjs/lucid/database'
 import type { ApplicationService } from '@adonisjs/core/types'
 import { Hash } from '@adonisjs/core/hash'
 import type { LimiterService } from '@adonisjs/limiter/types'
-import { clearRows, resetSchema } from './schema.js'
-import { dropPostgresFixtureSchema, testClient, testConnection } from './test_connection.js'
+import { clearRows, resetSchema } from './schema.ts'
+import { dropPostgresFixtureSchema, testClient, testConnection } from './test_connection.ts'
 
 export interface TestApp {
   app: ApplicationService

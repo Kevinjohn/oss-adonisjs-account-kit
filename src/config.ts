@@ -1,16 +1,18 @@
+import { configProvider } from '@adonisjs/core'
+import { resolveRegisteredCallbacks } from './config_resolution.ts'
 import { DateTime } from 'luxon'
-import { actionUrlBackendOrigins } from './action_urls.js'
-import { E_ACCOUNT_KIT_CAPABILITY_DISABLED, E_ACCOUNT_KIT_INVALID_CONFIGURATION } from './errors.js'
-import { resolveThrottleBudget } from './config_budget.js'
-import { assertObject } from './config_assert.js'
-import { isSqlIdentifier } from './sql_identifier.js'
-import { capabilities, capabilityRegistry, defaultCapabilities } from './capabilities.js'
-import { resolveAuthentication } from './config_authentication.js'
-import { resolvePasswordPolicy } from './config_password_policy.js'
-import { resolveAccountDeletion } from './config_account_deletion.js'
-import { resolveSessionManagement } from './config_session_management.js'
-import { assertSocialAuthenticationConfig } from './config_social_authentication.js'
-import { computeConfiguredExpiry } from './config_ttl.js'
+import { actionUrlBackendOrigins } from './action_urls.ts'
+import { E_ACCOUNT_KIT_CAPABILITY_DISABLED, E_ACCOUNT_KIT_INVALID_CONFIGURATION } from './errors.ts'
+import { resolveThrottleBudget } from './config_budget.ts'
+import { assertObject } from './config_assert.ts'
+import { isSqlIdentifier } from './sql_identifier.ts'
+import { capabilities, capabilityRegistry, defaultCapabilities } from './capabilities.ts'
+import { resolveAuthentication } from './config_authentication.ts'
+import { resolvePasswordPolicy } from './config_password_policy.ts'
+import { resolveAccountDeletion } from './config_account_deletion.ts'
+import { resolveSessionManagement } from './config_session_management.ts'
+import { assertSocialAuthenticationConfig } from './config_social_authentication.ts'
+import { computeConfiguredExpiry } from './config_ttl.ts'
 import type {
   AccountKitConfig,
   AuthorizationCallbacks,
@@ -18,8 +20,8 @@ import type {
   NotificationCallbacks,
   ResolvedConfig,
   UrlCallbacks,
-} from './types.js'
-import { freezeResolved } from './config_freeze.js'
+} from './types.ts'
+import { freezeResolved } from './config_freeze.ts'
 
 function rejectDisabledCapability(): never {
   throw new E_ACCOUNT_KIT_CAPABILITY_DISABLED('This account capability is disabled')
@@ -64,9 +66,6 @@ function bindCallbacks<T extends object>(container: object | undefined, defaults
   return freezeResolved(result) as T
 }
 
-/** The input behind each config `defineConfig` returned, for `resolveAccountKitConfig`. */
-export const configInputs = new WeakMap<ResolvedConfig, AccountKitConfig>()
-
 /**
  * Validates the Account Kit config and fills in defaults. Throws at boot, with the field name, for
  * a missing callback an enabled capability needs or an out-of-range value. `users`, `authorize` and
@@ -89,17 +88,16 @@ export const configInputs = new WeakMap<ResolvedConfig, AccountKitConfig>()
  * })
  * ```
  */
-export function defineConfig(config: AccountKitConfig): ResolvedConfig {
-  const resolved = resolveConfig(config, true)
-  configInputs.set(resolved, config)
-  return resolved
+export function defineConfig(config: AccountKitConfig) {
+  const preliminary = resolveConfig(config, true)
+  return configProvider.create((app) => resolveRegisteredCallbacks(app, config, preliminary))
 }
 
 /**
  * The checks and defaults of `defineConfig`. With `deferCallbacks`, a field the callback registry
  * can supply is not required yet.
  */
-export function resolveConfig(config: AccountKitConfig, deferCallbacks: boolean): ResolvedConfig {
+export function resolveConfig(config: AccountKitConfig, deferCallbacks = true): ResolvedConfig {
   if (
     !config ||
     typeof config !== 'object' ||

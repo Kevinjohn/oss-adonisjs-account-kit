@@ -1,14 +1,14 @@
 import { mkdir, readFile, rm, symlink, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { test } from '@japa/runner'
-import { inspectSetup } from '../src/setup/inspect.js'
-import { planSetup } from '../src/setup/plan.js'
-import { applySetup } from '../src/setup/apply.js'
-import { migrationContent, requireMigrationTemplatePath } from '../src/setup/migration_source.js'
-import { migrationNames, buildMigrationSchema } from '../src/setup/migration_definitions.js'
-import { requireSetupChoices } from '../src/setup/parse.js'
-import { orderMigrations } from '../src/setup/migration_order.js'
-import { fixture, registerSetupTeardown } from './helpers/setup_project_fixture.js'
+import { inspectSetup } from '../src/setup/inspect.ts'
+import { planSetup } from '../src/setup/plan.ts'
+import { applySetup } from '../src/setup/apply.ts'
+import { migrationContent, requireMigrationTemplatePath } from '../src/setup/migration_source.ts'
+import { migrationNames, buildMigrationSchema } from '../src/setup/migration_definitions.ts'
+import { requireSetupChoices } from '../src/setup/parse.ts'
+import { orderMigrations } from '../src/setup/migration_order.ts'
+import { fixture, registerSetupTeardown } from './helpers/setup_project_fixture.ts'
 
 test.group('guided migration destinations', (group) => {
   registerSetupTeardown(group)

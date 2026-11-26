@@ -1,10 +1,10 @@
 import { DateTime } from 'luxon'
-import type { AccountKit } from '../../src/account_kit.js'
-import { generateToken, hashToken } from '../../src/tokens.js'
-import type { AccountKitConfig, AccountUser } from '../../src/types.js'
-import type { TestApp } from './app.js'
-import { insertUser, type makeNotify, makeService, tokenFrom } from './fakes.js'
-import { dbTime } from './db_time.js'
+import type { AccountKit } from '../../src/account_kit.ts'
+import { generateToken, hashToken } from '../../src/tokens.ts'
+import type { AccountKitConfig, AccountUser } from '../../src/types.ts'
+import type { TestApp } from './app.ts'
+import { insertUser, type makeNotify, makeService, tokenFrom } from './fakes.ts'
+import { dbTime } from './db_time.ts'
 
 /** Fixtures shared by the email, password and profile management specs. */
 export function credentialsFixtures(kit: TestApp) {

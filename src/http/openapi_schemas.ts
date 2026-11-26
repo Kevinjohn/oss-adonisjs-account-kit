@@ -7,8 +7,8 @@ import {
   invitationPageSize,
   invitationRoleLength,
   invitationScopeLength,
-} from '../invitation_input.js'
-import { sensitivePurposes } from '../social_enums.js'
+} from '../invitation_input.ts'
+import { sensitivePurposes } from '../social_enums.ts'
 
 // Permit surrounding whitespace while bounding the text from its first to last non-whitespace character.
 const invitationRolePattern = `^\\s*\\S(?:[\\s\\S]{0,${invitationRoleLength.maxLength - 2}}\\S)?\\s*$`
@@ -70,10 +70,10 @@ import {
   string,
   valid,
   noContent,
-} from './openapi_primitives.js'
-export { ref } from './openapi_primitives.js'
-import type { JsonSchema } from './openapi_types.js'
-import type { ManagedEndpointName } from './routes.js'
+} from './openapi_primitives.ts'
+export { ref } from './openapi_primitives.ts'
+import type { JsonSchema } from './openapi_types.ts'
+import type { ManagedEndpointName } from './routes.ts'
 
 type Strategy = 'session' | 'access_tokens'
 
@@ -512,4 +512,4 @@ export const managedEndpointSchemas: Record<ManagedEndpointName, EndpointSchemas
     success: noContent,
   },
 }
-export { buildSharedSchemas } from './openapi_components.js'
+export { buildSharedSchemas } from './openapi_components.ts'

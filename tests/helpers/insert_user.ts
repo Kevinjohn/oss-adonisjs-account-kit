@@ -1,7 +1,7 @@
-import type { AccountUser } from '../../src/types.js'
-import type { TestApp } from './app.js'
-import { dbTime } from './db_time.js'
-import { makeUsersAdapter, unwrapId } from './users_adapter.js'
+import type { AccountUser } from '../../src/types.ts'
+import type { TestApp } from './app.ts'
+import { dbTime } from './db_time.ts'
+import { makeUsersAdapter, unwrapId } from './users_adapter.ts'
 
 /** Insert a user row directly; `password: null` makes a social-only account. */
 export async function insertUser(

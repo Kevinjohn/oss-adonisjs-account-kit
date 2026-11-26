@@ -1,6 +1,6 @@
 import { test } from '@japa/runner'
 import type { HttpContext } from '@adonisjs/core/http'
-import type { AccountKit } from '../src/account_kit.js'
+import type { AccountKit } from '../src/account_kit.ts'
 import {
   E_ACCOUNT_KIT_AUTHORIZATION,
   E_ACCOUNT_KIT_DELIVERY,
@@ -12,17 +12,17 @@ import {
   E_ACCOUNT_KIT_SOCIAL_TRANSACTION_INVALID,
   E_ACCOUNT_KIT_THROTTLED,
   E_ACCOUNT_KIT_UNVERIFIED_EMAIL,
-} from '../src/errors.js'
-import { registerManagedRoutes, type ManagedRoutesOptions } from '../src/http/managed.js'
-import { generateManagedOpenApi } from '../src/http/openapi.js'
-import { mapManagedErrorResponse } from '../src/http/responses.js'
-import { managedRouteRegistration } from '../src/http/route_registration.js'
-import { signupValidator } from '../src/http/validators.js'
-import type { CurrentAccount } from '../src/types.js'
-import { useTestApp } from './helpers/app.js'
-import { insertUser, makeService, tokenFrom } from './helpers/fakes.js'
-import { fakeManagedHttp } from './helpers/managed_http_fakes.js'
-import { allCapabilities, conformance } from './helpers/openapi.js'
+} from '../src/errors.ts'
+import { registerManagedRoutes, type ManagedRoutesOptions } from '../src/http/managed.ts'
+import { generateManagedOpenApi } from '../src/http/openapi.ts'
+import { mapManagedErrorResponse } from '../src/http/responses.ts'
+import { managedRouteRegistration } from '../src/http/route_registration.ts'
+import { signupValidator } from '../src/http/validators.ts'
+import type { CurrentAccount } from '../src/types.ts'
+import { useTestApp } from './helpers/app.ts'
+import { insertUser, makeService, tokenFrom } from './helpers/fakes.ts'
+import { fakeManagedHttp } from './helpers/managed_http_fakes.ts'
+import { allCapabilities, conformance } from './helpers/openapi.ts'
 
 type Strategy = 'session' | 'access_tokens'
 type Handler = (context: HttpContext) => Promise<unknown>

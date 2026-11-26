@@ -1,10 +1,10 @@
 import { test } from '@japa/runner'
-import { createLucidAdapter } from '../adapters/lucid.js'
-import { transaction } from '../src/db.js'
-import type { UsersAdapter } from '../src/types.js'
-import LucidUser from './fixtures/lucid_user.js'
-import { useTestApp } from './helpers/app.js'
-import { insertUser, makeService, makeUsersAdapter, tokenFrom } from './helpers/fakes.js'
+import { createLucidAdapter } from '../src/adapters/lucid.ts'
+import { transaction } from '../src/db.ts'
+import type { UsersAdapter } from '../src/types.ts'
+import LucidUser from './fixtures/lucid_user.ts'
+import { useTestApp } from './helpers/app.ts'
+import { insertUser, makeService, makeUsersAdapter, tokenFrom } from './helpers/fakes.ts'
 
 type Attrs = Parameters<UsersAdapter['create']>[0]
 

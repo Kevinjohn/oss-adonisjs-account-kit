@@ -4,7 +4,7 @@ import {
   formatMigrationSuffix,
   matchesAccountKitMigration,
   migrationNames,
-} from './migration_definitions.js'
+} from './migration_definitions.ts'
 
 // Other Account Kit migrations depend on the host users table, but not on one another.
 const prerequisites: Record<string, string> = {

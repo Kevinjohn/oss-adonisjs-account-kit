@@ -1,7 +1,7 @@
 import { test } from '@japa/runner'
 import { mock } from 'node:test'
 import { performance } from 'node:perf_hooks'
-import { waitForFloor } from '../src/timing.js'
+import { waitForFloor } from '../src/timing.ts'
 
 test.group('timing floor', () => {
   test('waits until the floor has passed', async ({ assert }) => {

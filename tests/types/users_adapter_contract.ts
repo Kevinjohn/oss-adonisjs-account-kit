@@ -1,4 +1,4 @@
-import type { UsersAdapter } from '../../index.js'
+import type { UsersAdapter } from '../../index.ts'
 
 type Trx = Parameters<UsersAdapter['findById']>[1]
 

@@ -1,3 +1,4 @@
+import logger from '@adonisjs/core/services/logger'
 // Demo configuration: every capability except social sign-in, with emails printed to the log.
 import app from '@adonisjs/core/services/app'
 import env from '#start/env'
@@ -40,6 +41,7 @@ export default defineConfig({
     magicLink: link('magic-link'),
   },
   notify: createLogNotifications({
+    logger: () => logger,
     brandName: 'Demo',
     environment: app.inProduction ? 'production' : 'development',
   }),

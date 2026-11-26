@@ -5,9 +5,9 @@ import {
   invitationSendValidator,
   profileUpdateValidator,
   signupValidator,
-} from '../src/http/validators.js'
-import { E_ACCOUNT_KIT_INVALID_INPUT } from '../src/errors.js'
-import { mapManagedErrorResponse } from '../src/http/responses.js'
+} from '../src/http/validators.ts'
+import { E_ACCOUNT_KIT_INVALID_INPUT } from '../src/errors.ts'
+import { mapManagedErrorResponse } from '../src/http/responses.ts'
 
 test.group('managed request validation', () => {
   test('default field validators preserve configured registration data for service mapping', async ({

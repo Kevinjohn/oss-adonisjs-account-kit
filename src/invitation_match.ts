@@ -1,13 +1,13 @@
 // Consumes the pending invitations for an address core has just confirmed, as the emailed link would.
 import type { DateTime } from 'luxon'
-import { consumeRows } from './consume_rows.js'
-import { createLifecycleEffect, type PostCommitEffect } from './effects.js'
-import { normalizeEmail } from './email.js'
-import { E_ACCOUNT_KIT_INVALID_TOKEN } from './errors.js'
-import { toInvitation, type InvitationDatabaseRow } from './invitation_rows.js'
-import { compareScopes } from './invitation_scope.js'
-import { sqlTimestamp } from './timestamps.js'
-import type { AccountUser, ResolvedConfig, Trx, UserId } from './types.js'
+import { consumeRows } from './consume_rows.ts'
+import { createLifecycleEffect, type PostCommitEffect } from './effects.ts'
+import { normalizeEmail } from './email.ts'
+import { E_ACCOUNT_KIT_INVALID_TOKEN } from './errors.ts'
+import { toInvitation, type InvitationDatabaseRow } from './invitation_rows.ts'
+import { compareScopes } from './invitation_scope.ts'
+import { sqlTimestamp } from './timestamps.ts'
+import type { AccountUser, ResolvedConfig, Trx, UserId } from './types.ts'
 
 /**
  * Run `onInvitationAccepted(user, invitation, trx)` once per consumed row, in ascending `scope`

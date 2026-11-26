@@ -1,26 +1,26 @@
-import { completeRegistration } from './social_registration.js'
-import { lockUser, transaction } from './db.js'
-import { isActiveAccount } from './account_projection.js'
-import { revision } from './credential_revision.js'
-import { redeemSocialHandoff } from './social_handoff.js'
-import { isClientChallenge } from './client_challenge.js'
-import { consumeSocialSensitiveProof, proveSocialPassword } from './social_proofs.js'
+import { completeRegistration } from './social_registration.ts'
+import { lockUser, transaction } from './db.ts'
+import { isActiveAccount } from './account_projection.ts'
+import { revision } from './credential_revision.ts'
+import { redeemSocialHandoff } from './social_handoff.ts'
+import { isClientChallenge } from './client_challenge.ts'
+import { consumeSocialSensitiveProof, proveSocialPassword } from './social_proofs.ts'
 import {
   E_ACCOUNT_KIT_SOCIAL_PROOF_INVALID,
   E_ACCOUNT_KIT_SOCIAL_TRANSACTION_INVALID,
   E_ACCOUNT_KIT_SOCIAL_USER_NOT_FOUND,
   E_ACCOUNT_KIT_UNVERIFIED_EMAIL,
-} from './errors.js'
-import { generateToken, hashToken, isTokenShaped } from './tokens.js'
-import { requireSocialProvider, completeSocialCallback } from './social_callback.js'
-import { listSocialIdentities, unlinkSocialIdentity } from './social_links.js'
+} from './errors.ts'
+import { generateToken, hashToken, isTokenShaped } from './tokens.ts'
+import { requireSocialProvider, completeSocialCallback } from './social_callback.ts'
+import { listSocialIdentities, unlinkSocialIdentity } from './social_links.ts'
 import {
   requireAuthenticatedUser,
   calculateSocialExpiry,
   readSqlTimestamp,
   type Dependencies,
-} from './social_shared.js'
-import { isSensitivePurpose, isSocialBeginIntent } from './social_enums.js'
+} from './social_shared.ts'
+import { isSensitivePurpose, isSocialBeginIntent } from './social_enums.ts'
 import type {
   AuthenticationGuard,
   CurrentAccount,
@@ -32,7 +32,7 @@ import type {
   SocialIdentity,
   SocialProviderName,
   Trx,
-} from './types.js'
+} from './types.ts'
 
 export { consumeSocialSensitiveProof }
 
@@ -153,6 +153,8 @@ export function createSocialIdentityService(deps: Dependencies) {
      * ```ts
      * await kit.socialAuthentication.redeemHandoff({ code, verifier, guard: requestGuard })
      * ```
+     *
+     * @throws {AggregateError} If work and its transaction or credential cleanup both fail, or multiple cleanup steps fail.
      */
     async redeemHandoff<Credential>(input: {
       code: string

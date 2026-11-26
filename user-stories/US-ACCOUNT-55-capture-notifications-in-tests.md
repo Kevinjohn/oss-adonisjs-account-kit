@@ -6,7 +6,7 @@ As an application developer, I want to capture Account Kit notification callback
 **Access:** The helper stores messages only in the current process; it does not deliver mail, persist an outbox or prove recipient delivery.
 **Entry:** Import `captureNotifications` from `@kevinjohn/adonisjs-account-kit/testing/notifications` and pass its `notify` callbacks to Account Kit configuration.
 **Documentation:** [Testing recipe](../docs/recipes/testing.md), [notification guide](../docs/guide/notifications.md)
-**Source:** [`testing/notifications.ts`](../testing/notifications.ts), [`package.json` export](../package.json)
+**Source:** [`src/testing/notifications.ts`](../src/testing/notifications.ts), [`package.json` export](../package.json)
 **Coverage:** [`tests/testing_notifications.spec.ts`](../tests/testing_notifications.spec.ts), [`tests/package_exports.spec.ts`](../tests/package_exports.spec.ts)
 
 ## Acceptance criteria
@@ -48,4 +48,4 @@ flowchart TD
  E -->|clear| L["Empty messages array; no external delivery occurs"]
 ```
 
-**Code references:** [`captureNotifications`](../testing/notifications.ts), [testing recipe](../docs/recipes/testing.md), [`capture helper tests`](../tests/testing_notifications.spec.ts), [`export tests`](../tests/package_exports.spec.ts)
+**Code references:** [`captureNotifications`](../src/testing/notifications.ts), [testing recipe](../docs/recipes/testing.md), [`capture helper tests`](../tests/testing_notifications.spec.ts), [`export tests`](../tests/package_exports.spec.ts)

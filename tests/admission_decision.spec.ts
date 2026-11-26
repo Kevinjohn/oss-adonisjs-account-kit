@@ -1,9 +1,9 @@
 import { test } from '@japa/runner'
-import type { AdmissionConfig } from '../src/admission/types.js'
-import { useAdmissionApp } from './helpers/admission_schema.js'
-import { allowDecisions, makeAdmission, writeAdmissionRow } from './helpers/admission.js'
-import { credentialsFixtures } from './helpers/credentials.js'
-import { insertUser, makeNotify } from './helpers/fakes.js'
+import type { AdmissionConfig } from '../src/admission/types.ts'
+import { useAdmissionApp } from './helpers/admission_schema.ts'
+import { allowDecisions, makeAdmission, writeAdmissionRow } from './helpers/admission.ts'
+import { credentialsFixtures } from './helpers/credentials.ts'
+import { insertUser, makeNotify } from './helpers/fakes.ts'
 
 type Requirement = 'domain' | 'invitation' | 'approval'
 const requirementConfig: Record<Requirement, AdmissionConfig> = {

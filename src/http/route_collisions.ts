@@ -1,4 +1,4 @@
-import type { ManagedRoute } from './routes.js'
+import type { ManagedRoute } from './routes.ts'
 import { InvalidArgumentsException } from '@adonisjs/core/exceptions'
 
 /** A route already registered by the application, checked for collisions with managed routes. */

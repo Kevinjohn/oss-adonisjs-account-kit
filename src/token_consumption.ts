@@ -1,10 +1,11 @@
+import { DateTime } from 'luxon'
 // One-use token consumption: deleting a live token row, under the user's lock when user-bound.
-import { sqlTimestamp } from './timestamps.js'
-import { E_ACCOUNT_KIT_INVALID_TOKEN } from './errors.js'
-import { hashToken } from './tokens.js'
-import { consumeRows } from './consume_rows.js'
-import { lockUser, type UsersStorage } from './user_lock.js'
-import type { AccountUser, Trx, UserId } from './types.js'
+import { sqlTimestamp } from './timestamps.ts'
+import { E_ACCOUNT_KIT_INVALID_TOKEN } from './errors.ts'
+import { hashToken } from './tokens.ts'
+import { consumeRows } from './consume_rows.ts'
+import { lockUser, type UsersStorage } from './user_lock.ts'
+import type { AccountUser, Trx, UserId } from './types.ts'
 
 type TokenTable =
   | 'password_reset_tokens'
@@ -55,7 +56,7 @@ export async function consumeUserTokenHash<Row extends { tokenable_id: UserId }>
   if (!candidate) throw new E_ACCOUNT_KIT_INVALID_TOKEN()
   await lockUser(trx, config, candidate.tokenable_id)
   const user = await config.users.findById(candidate.tokenable_id, trx)
-  const row = await consumeToken<Row>(trx, table, tokenHash, sqlTimestamp(trx))
+  const row = await consumeToken<Row>(trx, table, tokenHash, sqlTimestamp(trx, DateTime.utc()))
   if (!row || row.tokenable_id !== candidate.tokenable_id || !user || !validForUser(row, user))
     throw new E_ACCOUNT_KIT_INVALID_TOKEN()
   return { row, user }

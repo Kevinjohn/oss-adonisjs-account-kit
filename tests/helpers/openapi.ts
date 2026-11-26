@@ -1,9 +1,9 @@
-import type { AccountKit } from '../../src/account_kit.js'
-import { generateManagedOpenApi, type OpenApiDocument } from '../../src/http/openapi.js'
-import { registerManagedRoutes, type ManagedRoutesOptions } from '../../src/http/managed.js'
-import { managedRouteRegistration } from '../../src/http/route_registration.js'
-import type { ManagedCapability } from '../../src/http/routes.js'
-import { fakeManagedHttp } from './managed_http_fakes.js'
+import type { AccountKit } from '../../src/account_kit.ts'
+import { generateManagedOpenApi, type OpenApiDocument } from '../../src/http/openapi.ts'
+import { registerManagedRoutes, type ManagedRoutesOptions } from '../../src/http/managed.ts'
+import { managedRouteRegistration } from '../../src/http/route_registration.ts'
+import type { ManagedCapability } from '../../src/http/routes.ts'
+import { fakeManagedHttp } from './managed_http_fakes.ts'
 
 export {
   compileEmbedded,
@@ -11,7 +11,7 @@ export {
   documentErrors,
   requestSchema,
   responseSchema,
-} from './openapi_validation.js'
+} from './openapi_validation.ts'
 
 /** Every managed capability; a missing one fails to compile. */
 const capabilityFlags: Record<ManagedCapability, true> = {

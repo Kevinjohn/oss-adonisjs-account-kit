@@ -1,11 +1,11 @@
 import { test } from '@japa/runner'
-import { bootTestApp } from './helpers/app.js'
-import { resetSchema } from './helpers/schema.js'
-import { makeService, makeUsersAdapter } from './helpers/fakes.js'
-import { clientChallenge, provider } from './helpers/social_identity.js'
-import { locksRows } from './helpers/dialect.js'
-import { dbTime } from './helpers/db_time.js'
-import type { LifecycleEvent, Trx } from '../src/types.js'
+import { bootTestApp } from './helpers/app.ts'
+import { resetSchema } from './helpers/schema.ts'
+import { makeService, makeUsersAdapter } from './helpers/fakes.ts'
+import { clientChallenge, provider } from './helpers/social_identity.ts'
+import { locksRows } from './helpers/dialect.ts'
+import { dbTime } from './helpers/db_time.ts'
+import type { LifecycleEvent, Trx } from '../src/types.ts'
 
 test.group('social registration SQLite retries', () => {
   for (const entry of ['callback', 'continuation'] as const) {

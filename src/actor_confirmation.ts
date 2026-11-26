@@ -1,11 +1,11 @@
-import { lockUser } from './db.js'
+import { lockUser } from './db.ts'
 import {
   E_ACCOUNT_KIT_IDENTITY_NOT_CONFIRMED,
   E_ACCOUNT_KIT_INVALID_INPUT,
   E_ACCOUNT_KIT_NO_PASSWORD,
-} from './errors.js'
-import { consumeSocialSensitiveProof } from './social_proofs.js'
-import type { AccountUser, ResolvedConfig, SensitivePurpose, Trx, UserId } from './types.js'
+} from './errors.ts'
+import { consumeSocialSensitiveProof } from './social_proofs.ts'
+import type { AccountUser, ResolvedConfig, SensitivePurpose, Trx, UserId } from './types.ts'
 
 /** Load a user by id, or reject the request when the user no longer exists. */
 export async function requireUser(

@@ -1,8 +1,8 @@
 import { test } from '@japa/runner'
-import { lockRow, transaction } from '../src/db.js'
-import { useTestApp } from './helpers/app.js'
-import { resetSchema } from './helpers/schema.js'
-import { locksRows } from './helpers/dialect.js'
+import { lockRow, transaction } from '../src/db.ts'
+import { useTestApp } from './helpers/app.ts'
+import { resetSchema } from './helpers/schema.ts'
+import { locksRows } from './helpers/dialect.ts'
 
 test.group('database helpers', (group) => {
   const kit = useTestApp(group)

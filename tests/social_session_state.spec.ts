@@ -1,12 +1,12 @@
 import { createHash } from 'node:crypto'
 import { test } from '@japa/runner'
 import type { HttpContext } from '@adonisjs/core/http'
-import { E_ACCOUNT_KIT_SOCIAL_TRANSACTION_INVALID } from '../src/errors.js'
+import { E_ACCOUNT_KIT_SOCIAL_TRANSACTION_INVALID } from '../src/errors.ts'
 import {
   forgetSessionState,
   rememberSessionState,
   requireSessionState,
-} from '../src/http/social_session_state.js'
+} from '../src/http/social_session_state.ts'
 
 function sessionContext() {
   const store = new Map<string, unknown>()

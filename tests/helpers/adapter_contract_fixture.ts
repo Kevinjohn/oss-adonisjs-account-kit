@@ -1,11 +1,11 @@
 import assert from 'node:assert/strict'
-import { locksRows } from './dialect.js'
-import { startWithBackendId, waitForDatabaseLockWait } from './lock_coordination.js'
-import { defineConfig } from '../../src/config.js'
-import { lockUser, transaction } from '../../src/db.js'
-import type { UsersAdapter } from '../../src/types.js'
-import type { AdapterContractFixture } from '../../testing/adapter_contract.js'
-import type { TestApp } from './app.js'
+import { locksRows } from './dialect.ts'
+import { startWithBackendId, waitForDatabaseLockWait } from './lock_coordination.ts'
+import { resolveConfig as defineConfig } from '../../src/config.ts'
+import { lockUser, transaction } from '../../src/db.ts'
+import type { UsersAdapter } from '../../src/types.ts'
+import type { AdapterContractFixture } from '../../src/testing/adapter_contract.ts'
+import type { TestApp } from './app.ts'
 
 /** Test hashing: deterministic, and visibly different from the plaintext. */
 export const fakeHash = {

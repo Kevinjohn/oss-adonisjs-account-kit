@@ -1,10 +1,10 @@
 import { DateTime } from 'luxon'
 import { test } from '@japa/runner'
-import { defineConfig } from '../src/account_kit.js'
-import { generateToken, hashToken } from '../src/tokens.js'
-import { useTestApp } from './helpers/app.js'
-import { accountKit, makeConfig, makeNotify, makeUsersAdapter, tokenFrom } from './helpers/fakes.js'
-import { dbTime } from './helpers/db_time.js'
+import { resolveConfig as defineConfig } from '../src/config.ts'
+import { generateToken, hashToken } from '../src/tokens.ts'
+import { useTestApp } from './helpers/app.ts'
+import { accountKit, makeConfig, makeNotify, makeUsersAdapter, tokenFrom } from './helpers/fakes.ts'
+import { dbTime } from './helpers/db_time.ts'
 
 test.group('passwordReset.inspect', (group) => {
   const kit = useTestApp(group)

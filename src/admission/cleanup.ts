@@ -1,6 +1,6 @@
 // Removes a deleted account's admission state inside the deletion transaction.
-import type { AccountUser, Trx } from '../types.js'
-import { admissionTable } from './rows.js'
+import type { AccountUser, Trx } from '../types.ts'
+import { admissionTable } from './rows.ts'
 
 type AccountDeleting = (user: AccountUser, trx: Trx) => Promise<void>
 

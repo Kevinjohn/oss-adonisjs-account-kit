@@ -1,7 +1,7 @@
 import { test } from '@japa/runner'
-import { generateManagedOpenApi } from '../src/http/openapi.js'
-import { managedEndpointSchemas } from '../src/http/openapi_schemas.js'
-import { compileEmbedded, documentErrors, documentFor, registered } from './helpers/openapi.js'
+import { generateManagedOpenApi } from '../src/http/openapi.ts'
+import { managedEndpointSchemas } from '../src/http/openapi_schemas.ts'
+import { compileEmbedded, documentErrors, documentFor, registered } from './helpers/openapi.ts'
 
 function embeddedSchemas(document: ReturnType<typeof documentFor>): unknown[] {
   const schemas: unknown[] = Object.values(document.components.schemas)

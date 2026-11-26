@@ -5,7 +5,7 @@ import type {
   NotificationCallbacks,
   UrlCallbacks,
   UsersAdapter,
-} from './types.js'
+} from './types.ts'
 
 export type RequiredHook =
   | `authorize.${keyof AuthorizationCallbacks}`

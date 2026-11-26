@@ -1,10 +1,10 @@
 // Session sign-in registry: one row per signed-in browser session, keyed by a hashed handle.
 import { DateTime } from 'luxon'
-import { E_ACCOUNT_KIT_INVALID_SESSION } from './errors.js'
-import { generateToken, hashToken } from './tokens.js'
-import { expiresAt } from './ttl.js'
-import type { ResolvedConfig, Trx, UserId } from './types.js'
-import { readIsoTimestamp, sqlTimestamp } from './timestamps.js'
+import { E_ACCOUNT_KIT_INVALID_SESSION } from './errors.ts'
+import { generateToken, hashToken } from './tokens.ts'
+import { expiresAt } from './ttl.ts'
+import type { ResolvedConfig, Trx, UserId } from './types.ts'
+import { readIsoTimestamp, sqlTimestamp } from './timestamps.ts'
 
 export const sessionTable = 'account_sessions'
 

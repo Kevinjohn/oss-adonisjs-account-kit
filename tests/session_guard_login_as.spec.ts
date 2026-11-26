@@ -11,12 +11,12 @@ import type { ResolvedSessionConfig, SessionData } from '@adonisjs/session/types
 import SessionProvider from '@adonisjs/session/session_provider'
 import { ApiClient, ApiRequest } from '@japa/api-client'
 import { test } from '@japa/runner'
-import { defineConfig } from '../src/account_kit.js'
-import { accountKitSessionGuard, type AccountKitSessionGuard } from '../src/auth/session_guard.js'
-import { protectManagedSessionConfig } from '../src/http/session_store_protection.js'
-import type { AccountUser } from '../src/types.js'
-import { useTestApp } from './helpers/app.js'
-import { insertUser, makeConfig, makeUsersAdapter } from './helpers/fakes.js'
+import { defineConfig } from '../src/config.ts'
+import { accountKitSessionGuard, type AccountKitSessionGuard } from '../src/auth/session_guard.ts'
+import { protectManagedSessionConfig } from '../src/http/session_store_protection.ts'
+import type { AccountUser } from '../src/types.ts'
+import { useTestApp } from './helpers/app.ts'
+import { insertUser, makeConfig, makeUsersAdapter } from './helpers/fakes.ts'
 
 declare module '@japa/api-client' {
   interface ApiRequest {
@@ -89,7 +89,7 @@ test.group('accountKitSessionGuard with loginAs', (group) => {
       }
       const guard = auth.use('web')
       const current = await guard.current()
-      const accountKit = await app.container.make('account_kit')
+      const accountKit = await app.container.make('account_kit.manager')
       await accountKit.authentication.logout(guard.forRequest(), undefined, current)
       return ctx.response.noContent()
     })

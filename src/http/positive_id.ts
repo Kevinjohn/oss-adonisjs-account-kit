@@ -1,5 +1,5 @@
 /** Parses a managed route's numeric `:id` parameter in canonical positive decimal form as a safe integer. */
-import { E_ACCOUNT_KIT_INVALID_INPUT } from '../errors.js'
+import { E_ACCOUNT_KIT_INVALID_INPUT } from '../errors.ts'
 
 export function requirePositiveId(value: string, label: string): number {
   const id = Number(value)

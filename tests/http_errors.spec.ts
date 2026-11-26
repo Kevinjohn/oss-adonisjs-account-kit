@@ -1,6 +1,6 @@
 import { readFile } from 'node:fs/promises'
 import { test } from '@japa/runner'
-import * as errors from '../src/errors.js'
+import * as errors from '../src/errors.ts'
 import {
   E_ACCOUNT_KIT,
   E_ACCOUNT_KIT_ADAPTER_CONTRACT,
@@ -13,9 +13,9 @@ import {
   E_ACCOUNT_KIT_POST_COMMIT,
   E_ACCOUNT_KIT_REGISTRATION_EMAIL_ALREADY_REGISTERED,
   E_ACCOUNT_KIT_THROTTLED,
-} from '../src/errors.js'
-import { accountErrorResponse, type AccountErrorResponse } from '../src/error_response.js'
-import { mapManagedErrorResponse } from '../src/http/responses.js'
+} from '../src/errors.ts'
+import { accountErrorResponse, type AccountErrorResponse } from '../src/error_response.ts'
+import { mapManagedErrorResponse } from '../src/http/responses.ts'
 
 const operationFailed = 'E_ACCOUNT_KIT_OPERATION_FAILED'
 

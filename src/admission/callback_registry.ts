@@ -1,6 +1,6 @@
 // Holds the admission callbacks an application provider registers.
-import { CallbackRegistry } from '../callback_registry.js'
-import type { AdmissionCallbacks } from './types.js'
+import { CallbackRegistry } from '../callback_registry.ts'
+import type { AdmissionCallbacks } from './types.ts'
 
 /**
  * Supplies `config/admission.ts` callbacks from an application provider. Resolve it as

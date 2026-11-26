@@ -1,14 +1,14 @@
 // Pages through admission records for an approver.
 import { DateTime } from 'luxon'
-import { E_ACCOUNT_KIT_AUTHORIZATION, E_ACCOUNT_KIT_INVALID_INPUT } from '../errors.js'
-import { readIsoTimestamp, sqlTimestamp } from '../timestamps.js'
-import type { UserId } from '../types.js'
-import { requireApproval } from './capability.js'
-import { decodeKeysetCursor, encodeKeysetCursor } from '../keyset_cursor.js'
-import { evaluateAdmission } from './decision.js'
-import { admissionTable, readAdmissionRow, toAdmissionRecord, type AdmissionRow } from './rows.js'
-import type { AdmissionContext } from './service.js'
-import type { AdmissionApprovalStatus, AdmissionRecord } from './types.js'
+import { E_ACCOUNT_KIT_AUTHORIZATION, E_ACCOUNT_KIT_INVALID_INPUT } from '../errors.ts'
+import { readIsoTimestamp, sqlTimestamp } from '../timestamps.ts'
+import type { UserId } from '../types.ts'
+import { requireApproval } from './capability.ts'
+import { decodeKeysetCursor, encodeKeysetCursor } from '../keyset_cursor.ts'
+import { evaluateAdmission } from './decision.ts'
+import { admissionTable, readAdmissionRow, toAdmissionRecord, type AdmissionRow } from './rows.ts'
+import type { AdmissionContext } from './service.ts'
+import type { AdmissionApprovalStatus, AdmissionRecord } from './types.ts'
 
 const statuses: readonly AdmissionApprovalStatus[] = ['pending', 'approved', 'rejected', 'revoked']
 

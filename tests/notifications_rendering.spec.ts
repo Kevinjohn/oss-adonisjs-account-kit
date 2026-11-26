@@ -3,7 +3,7 @@ import {
   createActionUrls,
   notificationReadiness,
   renderAccountMessage,
-} from '../src/notifications.js'
+} from '../src/notifications.ts'
 
 test.group('maintained notifications', () => {
   test('action links must be present, absolute and plain HTTP(S)', ({ assert }) => {

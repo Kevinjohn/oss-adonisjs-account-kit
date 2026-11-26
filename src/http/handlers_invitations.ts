@@ -1,14 +1,14 @@
 /** Managed handlers for the invitations capability: public inspect/accept and actor send/list/resend/revoke. */
-import type { ManagedEndpointName } from './routes.js'
-import type { ManagedHandler } from './managed_types.js'
-import { requirePositiveId } from './positive_id.js'
-import { buildAccountProjection } from '../account_projection.js'
-import { sendInvalidProofResponse, sendPasswordPolicyErrorResponse } from './response_helpers.js'
+import type { ManagedEndpointName } from './routes.ts'
+import type { ManagedHandler } from './managed_types.ts'
+import { requirePositiveId } from './positive_id.ts'
+import { buildAccountProjection } from '../account_projection.ts'
+import { sendInvalidProofResponse, sendPasswordPolicyErrorResponse } from './response_helpers.ts'
 import {
   invitationAcceptValidator,
   invitationListValidator,
   invitationSendValidator,
-} from './validators.js'
+} from './validators.ts'
 
 export const invitationHandlers = {
   'auth.invitation.inspect': async ({ context, kit, options }) => {

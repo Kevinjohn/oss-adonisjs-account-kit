@@ -1,7 +1,7 @@
 import { test } from '@japa/runner'
 import type { Database } from '@adonisjs/lucid/database'
-import { isUserEmailUniqueViolation } from '../src/unique_violation.js'
-import type { UsersStorage } from '../src/user_lock.js'
+import { isUserEmailUniqueViolation } from '../src/unique_violation.ts'
+import type { UsersStorage } from '../src/user_lock.ts'
 
 /** A database whose only job is to answer the index-lookup query with the given rows. */
 function fakeDb(rows: Array<{ name: string }>, calls: unknown[][] = []) {

@@ -1,9 +1,9 @@
 // The admission command loader; `account-kit:admission:install` registers it in `adonisrc.ts`.
 import { ListLoader } from '@adonisjs/core/ace'
-import ApproveAdmission from './approve.js'
-import RevokeAdmission from './revoke.js'
-import GrantInvitationEvidence from './grant_invitation.js'
-import BootstrapAdmission from './bootstrap.js'
+import ApproveAdmission from './approve.ts'
+import RevokeAdmission from './revoke.ts'
+import GrantInvitationEvidence from './grant_invitation.ts'
+import BootstrapAdmission from './bootstrap.ts'
 
 const loader = new ListLoader([
   ApproveAdmission,

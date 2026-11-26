@@ -1,9 +1,10 @@
+import { migrationStubPath } from '../src/setup/migration_paths.ts'
 import { test } from '@japa/runner'
 import { writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
-import { migrationSchema } from '../configure.js'
-import { useTestApp } from './helpers/app.js'
+import { migrationSchema } from '../configure.ts'
+import { useTestApp } from './helpers/app.ts'
 
 test.group('users migration', (group) => {
   const kit = useTestApp(group)
@@ -15,7 +16,10 @@ test.group('users migration', (group) => {
       source: fileURLToPath(new URL('../stubs', import.meta.url)),
     })
     const prepared = await stub.prepare({
-      migration: { ...migrationSchema('users', 'integer'), destination },
+      migration: {
+        ...migrationSchema('users', 'integer'),
+        path: migrationStubPath(kit.app.migrationsPath(), destination),
+      },
     })
     await writeFile(destination, prepared.contents)
     const module = await import(pathToFileURL(destination).href)

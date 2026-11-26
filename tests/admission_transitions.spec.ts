@@ -1,6 +1,6 @@
 import { test } from '@japa/runner'
-import { E_ACCOUNT_KIT_ADMISSION_DECISION } from '../src/errors.js'
-import { resolveNextApprovalStatus, type AdmissionTransition } from '../src/admission/decisions.js'
+import { E_ACCOUNT_KIT_ADMISSION_DECISION } from '../src/errors.ts'
+import { resolveNextApprovalStatus, type AdmissionTransition } from '../src/admission/decisions.ts'
 
 type Status = 'approved' | 'rejected' | 'revoked'
 

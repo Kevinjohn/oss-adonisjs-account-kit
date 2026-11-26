@@ -1,28 +1,28 @@
 // Lists and revokes the places a user is signed in, for session and access-token guards.
 import { randomUUID } from 'node:crypto'
-import { requireCurrentAccountInTransaction } from './authentication.js'
-import { invalidateChangedCredentials } from './credential_revision.js'
-import { requireAuthentication } from './authentication_config.js'
-import { deleteReturning } from './consume_rows.js'
-import { transaction } from './db.js'
-import { finishCommitted, createLifecycleEffect, postCommit, settleCommitted } from './effects.js'
+import { requireCurrentAccountInTransaction } from './authentication.ts'
+import { invalidateChangedCredentials } from './credential_revision.ts'
+import { requireAuthentication } from './authentication_config.ts'
+import { deleteReturning } from './consume_rows.ts'
+import { transaction } from './db.ts'
+import { finishCommitted, createLifecycleEffect, postCommit, settleCommitted } from './effects.ts'
 import {
   E_ACCOUNT_KIT_CAPABILITY_DISABLED,
   E_ACCOUNT_KIT_INVALID_SESSION,
   E_ACCOUNT_KIT_SESSION_NOT_FOUND,
-} from './errors.js'
-import { recordRevocation } from './session_revocation.js'
-import { sessionTable } from './session_registry.js'
-import { readIsoTimestamp } from './timestamps.js'
-import { hashToken } from './tokens.js'
+} from './errors.ts'
+import { recordRevocation } from './session_revocation.ts'
+import { sessionTable } from './session_registry.ts'
+import { readIsoTimestamp } from './timestamps.ts'
+import { hashToken } from './tokens.ts'
 import type {
   CurrentAccountInput,
   ResolvedAuthenticationConfig,
   SignIn,
   Trx,
   UserId,
-} from './types.js'
-import type { ServiceDependencies } from './service_dependencies.js'
+} from './types.ts'
+import type { ServiceDependencies } from './service_dependencies.ts'
 
 function requireSessionManagement(
   deps: Pick<ServiceDependencies, 'config' | 'db'>

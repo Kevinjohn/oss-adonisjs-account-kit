@@ -1,13 +1,13 @@
 import { randomUUID } from 'node:crypto'
 import { test } from '@japa/runner'
 import { DateTime } from 'luxon'
-import { createSqlUsersAdapter, type SqlUsersAdapterOptions } from '../adapters/sql.js'
-import { E_ACCOUNT_KIT_INVALID_CONFIGURATION } from '../src/errors.js'
-import { transaction } from '../src/db.js'
-import { assertUsersAdapterContract } from '../testing/adapter_contract.js'
-import { useTestApp } from './helpers/app.js'
-import { createAppUsersTable } from './helpers/app_users_table.js'
-import { contractFixture, fakeHash } from './helpers/adapter_contract_fixture.js'
+import { createSqlUsersAdapter, type SqlUsersAdapterOptions } from '../src/adapters/sql.ts'
+import { E_ACCOUNT_KIT_INVALID_CONFIGURATION } from '../src/errors.ts'
+import { transaction } from '../src/db.ts'
+import { usersAdapterContract } from '../src/testing/adapter_contract.ts'
+import { useTestApp } from './helpers/app.ts'
+import { createAppUsersTable } from './helpers/app_users_table.ts'
+import { contractFixture, fakeHash } from './helpers/adapter_contract_fixture.ts'
 
 const fullName = (data: unknown) => {
   const name = (data as { fullName?: unknown }).fullName
@@ -36,7 +36,7 @@ test.group('SQL users adapter', (group) => {
   }
 
   test('passes the adapter contract with integer ids', async () => {
-    await assertUsersAdapterContract(
+    await usersAdapterContract(
       contractFixture(kit, adapter(), {
         table: 'app_users',
         registrationData: { fullName: 'Contract User' },
@@ -46,17 +46,17 @@ test.group('SQL users adapter', (group) => {
           expected: 'Renamed User',
         },
       })
-    )
+    )()
   })
 
   test('passes the adapter contract with generated string ids', async () => {
-    await assertUsersAdapterContract(
+    await usersAdapterContract(
       contractFixture(kit, adapter({ table: 'app_string_users', generateId: randomUUID }), {
         table: 'app_string_users',
         stringIds: true,
         registrationData: { fullName: 'String User' },
       })
-    )
+    )()
   })
 
   test('deletes the user row so account deletion can use it', async ({ assert }) => {

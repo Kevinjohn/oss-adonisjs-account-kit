@@ -3,10 +3,10 @@ import {
   E_ACCOUNT_KIT_DELIVERY,
   E_ACCOUNT_KIT_POST_COMMIT,
   E_ACCOUNT_KIT_SOCIAL_TRANSACTION_INVALID,
-} from '../src/errors.js'
-import { useTestApp } from './helpers/app.js'
-import { makeService, makeUsersAdapter } from './helpers/fakes.js'
-import { clientChallenge, provider } from './helpers/social_identity.js'
+} from '../src/errors.ts'
+import { useTestApp } from './helpers/app.ts'
+import { makeService, makeUsersAdapter } from './helpers/fakes.ts'
+import { clientChallenge, provider } from './helpers/social_identity.ts'
 
 test.group('social registration follow-ups', (group) => {
   const kit = useTestApp(group)

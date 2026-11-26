@@ -1,30 +1,30 @@
-import { pruneExpired, type PruneInput } from './maintenance.js'
-import { E_ACCOUNT_KIT_CAPABILITY_DISABLED } from './errors.js'
+import { pruneExpired, type PruneInput } from './maintenance.ts'
+import { E_ACCOUNT_KIT_CAPABILITY_DISABLED } from './errors.ts'
 import type { Database } from '@adonisjs/lucid/database'
 import type { LimiterService } from '@adonisjs/limiter/types'
 import {
   inspectPasswordReset,
   requestPasswordReset,
   completePasswordReset,
-} from './password_reset.js'
-import { createAuthenticationService } from './authentication.js'
-import { completeMagicLink, inspectMagicLink, requestMagicLink } from './magic_link.js'
-import { createSessionManagementService } from './session_management.js'
-import { register } from './registration.js'
-import { completeVerification, inspectVerification, sendVerification } from './verification.js'
+} from './password_reset.ts'
+import { createAuthenticationService } from './authentication.ts'
+import { completeMagicLink, inspectMagicLink, requestMagicLink } from './magic_link.ts'
+import { createSessionManagementService } from './session_management.ts'
+import { register } from './registration.ts'
+import { completeVerification, inspectVerification, sendVerification } from './verification.ts'
 import {
   changePassword,
   completeEmailChange,
   inspectEmailChange,
   requestEmailChange,
   updateProfile,
-} from './credentials.js'
-import { createThrottler, type Throttler } from './throttle.js'
-import { createManagedHttpService } from './managed_http_service.js'
-import { createSocialIdentityService } from './social_identity.js'
-import { issueStandaloneOperatorInvitation, issueOperatorResetLink } from './operator.js'
-import { exportAccountData } from './account_export.js'
-import { deleteAccount } from './account_deletion.js'
+} from './credentials.ts'
+import { createThrottler, type Throttler } from './throttle.ts'
+import { createManagedHttpService } from './managed_http_service.ts'
+import { createSocialIdentityService } from './social_identity.ts'
+import { issueStandaloneOperatorInvitation, issueOperatorResetLink } from './operator.ts'
+import { exportAccountData } from './account_export.ts'
+import { deleteAccount } from './account_deletion.ts'
 import {
   acceptInvitation,
   inspectInvitation,
@@ -32,7 +32,7 @@ import {
   resendInvitation,
   revokeInvitation,
   sendInvitation,
-} from './invitations.js'
+} from './invitations.ts'
 import type {
   AccountDataInput,
   AccountExport,
@@ -68,9 +68,9 @@ import type {
   VerificationCompleteInput,
   VerificationInspectInput,
   VerificationSendInput,
-} from './types.js'
+} from './types.ts'
 
-export { defineConfig } from './config.js'
+export { defineConfig } from './config.ts'
 
 /**
  * The account service. Resolve it from the container with `app.container.make(AccountKit)`. Each
@@ -89,7 +89,7 @@ export { defineConfig } from './config.js'
  * ```
  */
 export class AccountKit {
-  private readonly deps: {
+  readonly #deps: {
     config: ResolvedConfig
     db: Database
     limiter: LimiterService
@@ -97,7 +97,7 @@ export class AccountKit {
   }
 
   constructor(deps: { config: ResolvedConfig; db: Database; limiter: LimiterService }) {
-    this.deps = {
+    this.#deps = {
       config: deps.config,
       db: deps.db,
       limiter: deps.limiter,
@@ -109,8 +109,8 @@ export class AccountKit {
     }
   }
 
-  private runEnabledCapability<T>(capability: Capability, run: () => Promise<T>): Promise<T> {
-    if (!this.deps.config.enabled.includes(capability))
+  #runEnabledCapability<T>(capability: Capability, run: () => Promise<T>): Promise<T> {
+    if (!this.#deps.config.enabled.includes(capability))
       return Promise.reject(new E_ACCOUNT_KIT_CAPABILITY_DISABLED(`${capability} is disabled`))
     return run()
   }
@@ -126,7 +126,7 @@ export class AccountKit {
      * await kit.maintenance.prune({ batchSize: 100 })
      * ```
      */
-    prune: (input: PruneInput = {}) => pruneExpired(this.deps.db, input),
+    prune: (input: PruneInput = {}) => pruneExpired(this.#deps.db, input),
   }
 
   /**
@@ -135,7 +135,7 @@ export class AccountKit {
    * @internal
    */
   get managedHttp() {
-    return createManagedHttpService(this.deps)
+    return createManagedHttpService(this.#deps)
   }
 
   /**
@@ -147,8 +147,8 @@ export class AccountKit {
     sessions: ReturnType<typeof createSessionManagementService>
   } {
     return {
-      ...createAuthenticationService(this.deps),
-      sessions: createSessionManagementService(this.deps),
+      ...createAuthenticationService(this.#deps),
+      sessions: createSessionManagementService(this.#deps),
     }
   }
 
@@ -164,14 +164,14 @@ export class AccountKit {
      * ```
      */
     register: (input: RegistrationInput): Promise<AccountUser> =>
-      this.runEnabledCapability('registration', () => register(this.deps, input)),
+      this.#runEnabledCapability('registration', () => register(this.#deps, input)),
   }
 
   /** Google and GitHub sign-in, linking and recent proof, for `socialAuthentication`. */
   get socialAuthentication(): ReturnType<typeof createSocialIdentityService> {
-    if (!this.deps.config.enabled.includes('socialAuthentication'))
+    if (!this.#deps.config.enabled.includes('socialAuthentication'))
       throw new E_ACCOUNT_KIT_CAPABILITY_DISABLED('Social authentication is disabled')
-    return createSocialIdentityService(this.deps)
+    return createSocialIdentityService(this.#deps)
   }
 
   /** Passwordless sign-in by an email link bound to the requesting client. */
@@ -186,7 +186,7 @@ export class AccountKit {
      * ```
      */
     request: (input: MagicLinkRequestInput): Promise<void> =>
-      this.runEnabledCapability('magicLinkLogin', () => requestMagicLink(this.deps, input)),
+      this.#runEnabledCapability('magicLinkLogin', () => requestMagicLink(this.#deps, input)),
     /**
      * Checks that the stored link exists, is unexpired, and still matches the account's email and
      * active state. This read-only check does not evaluate `canAccess` or guarantee sign-in.
@@ -197,7 +197,7 @@ export class AccountKit {
      * ```
      */
     inspect: (input: MagicLinkInspectInput): Promise<boolean> =>
-      this.runEnabledCapability('magicLinkLogin', () => inspectMagicLink(this.deps, input)),
+      this.#runEnabledCapability('magicLinkLogin', () => inspectMagicLink(this.#deps, input)),
     /**
      * Uses the link once and signs the user in through `guard`. The verifier must match the
      * challenge sent with the request.
@@ -211,7 +211,9 @@ export class AccountKit {
       input: MagicLinkCompleteInput,
       guard: AuthenticationGuard<Credential>
     ): Promise<{ account: CurrentAccount; credential: Credential }> =>
-      this.runEnabledCapability('magicLinkLogin', () => completeMagicLink(this.deps, input, guard)),
+      this.#runEnabledCapability('magicLinkLogin', () =>
+        completeMagicLink(this.#deps, input, guard)
+      ),
   }
 
   /** Forgot-password links, for `passwordReset`. */
@@ -226,7 +228,7 @@ export class AccountKit {
      * ```
      */
     request: (input: PasswordResetRequestInput): Promise<void> =>
-      this.runEnabledCapability('passwordReset', () => requestPasswordReset(this.deps, input)),
+      this.#runEnabledCapability('passwordReset', () => requestPasswordReset(this.#deps, input)),
     /**
      * Whether a reset link is still usable, without using it up.
      *
@@ -236,7 +238,7 @@ export class AccountKit {
      * ```
      */
     inspect: (input: PasswordResetInspectInput): Promise<boolean> =>
-      this.runEnabledCapability('passwordReset', () => inspectPasswordReset(this.deps, input)),
+      this.#runEnabledCapability('passwordReset', () => inspectPasswordReset(this.#deps, input)),
     /**
      * Uses the link once, sets the new password, ends older sessions and tokens, and sends the
      * completed notice. Throws `E_ACCOUNT_KIT_INVALID_TOKEN` for a bad link.
@@ -247,7 +249,7 @@ export class AccountKit {
      * ```
      */
     reset: (input: PasswordResetCompleteInput): Promise<AccountUser> =>
-      this.runEnabledCapability('passwordReset', () => completePasswordReset(this.deps, input)),
+      this.#runEnabledCapability('passwordReset', () => completePasswordReset(this.#deps, input)),
   }
   /** Account activation links, for `emailVerification`. */
   readonly emailVerification = {
@@ -261,7 +263,7 @@ export class AccountKit {
      * ```
      */
     send: (input: VerificationSendInput): Promise<'sent' | 'already_verified'> =>
-      this.runEnabledCapability('emailVerification', () => sendVerification(this.deps, input)),
+      this.#runEnabledCapability('emailVerification', () => sendVerification(this.#deps, input)),
     /**
      * Whether an activation link is still usable, without using it up.
      *
@@ -271,7 +273,7 @@ export class AccountKit {
      * ```
      */
     inspect: (input: VerificationInspectInput): Promise<boolean> =>
-      this.runEnabledCapability('emailVerification', () => inspectVerification(this.deps, input)),
+      this.#runEnabledCapability('emailVerification', () => inspectVerification(this.#deps, input)),
     /**
      * Uses the link once, confirms the address and sets the password.
      *
@@ -281,7 +283,9 @@ export class AccountKit {
      * ```
      */
     complete: (input: VerificationCompleteInput): Promise<'verified'> =>
-      this.runEnabledCapability('emailVerification', () => completeVerification(this.deps, input)),
+      this.#runEnabledCapability('emailVerification', () =>
+        completeVerification(this.#deps, input)
+      ),
   }
   /** Invitations with roles, for `invitations`. */
   readonly invitations = {
@@ -294,7 +298,7 @@ export class AccountKit {
      * ```
      */
     send: (input: InvitationsSendInput): Promise<Invitation> =>
-      this.runEnabledCapability('invitations', () => sendInvitation(this.deps, input)),
+      this.#runEnabledCapability('invitations', () => sendInvitation(this.#deps, input)),
     /**
      * Lists pending invitations a page at a time; checks `authorize.listInvitations`.
      *
@@ -304,7 +308,7 @@ export class AccountKit {
      * ```
      */
     list: (input: InvitationsListInput): Promise<InvitationPage> =>
-      this.runEnabledCapability('invitations', () => paginateInvitations(this.deps, input)),
+      this.#runEnabledCapability('invitations', () => paginateInvitations(this.#deps, input)),
     /**
      * The email and role from a valid invitation token, or null, without using the link.
      *
@@ -314,7 +318,7 @@ export class AccountKit {
      * ```
      */
     inspect: (input: InvitationsInspectInput): Promise<Pick<Invitation, 'email' | 'role'> | null> =>
-      this.runEnabledCapability('invitations', () => inspectInvitation(this.deps.db, input)),
+      this.#runEnabledCapability('invitations', () => inspectInvitation(this.#deps.db, input)),
     /**
      * Uses the invitation token once, creates the account and runs `onInvitationAccepted` in the
      * same transaction. It does not call an actor authorization callback.
@@ -325,7 +329,7 @@ export class AccountKit {
      * ```
      */
     accept: (input: InvitationsAcceptInput): Promise<AccountUser> =>
-      this.runEnabledCapability('invitations', () => acceptInvitation(this.deps, input)),
+      this.#runEnabledCapability('invitations', () => acceptInvitation(this.#deps, input)),
     /**
      * Replaces the invitation's link and emails it again; checks `authorize.manageInvitation` and
      * `authorize.invite` for the invitation's role.
@@ -336,7 +340,7 @@ export class AccountKit {
      * ```
      */
     resend: (input: InvitationsResendInput): Promise<Invitation> =>
-      this.runEnabledCapability('invitations', () => resendInvitation(this.deps, input)),
+      this.#runEnabledCapability('invitations', () => resendInvitation(this.#deps, input)),
     /**
      * Deletes a pending invitation; checks `authorize.manageInvitation`.
      *
@@ -346,7 +350,7 @@ export class AccountKit {
      * ```
      */
     revoke: (input: InvitationsRevokeInput): Promise<void> =>
-      this.runEnabledCapability('invitations', () => revokeInvitation(this.deps, input)),
+      this.#runEnabledCapability('invitations', () => revokeInvitation(this.#deps, input)),
   }
   /**
    * Operator context only: callers with shell access (Ace commands). No actor authorization and no
@@ -362,8 +366,8 @@ export class AccountKit {
      * ```
      */
     invite: (input: OperatorInviteInput): Promise<OperatorInviteResult> =>
-      this.runEnabledCapability('invitations', () =>
-        issueStandaloneOperatorInvitation(this.deps, input)
+      this.#runEnabledCapability('invitations', () =>
+        issueStandaloneOperatorInvitation(this.#deps, input)
       ),
     /**
      * Issue a password reset link for an address, without the public throttle.
@@ -374,7 +378,7 @@ export class AccountKit {
      * ```
      */
     resetLink: (input: OperatorResetLinkInput): Promise<OperatorResetLinkResult> =>
-      this.runEnabledCapability('passwordReset', () => issueOperatorResetLink(this.deps, input)),
+      this.#runEnabledCapability('passwordReset', () => issueOperatorResetLink(this.#deps, input)),
   }
   /**
    * Account settings, for `emailPasswordManagement`. Changes need the current password, or a recent
@@ -390,7 +394,9 @@ export class AccountKit {
      * ```
      */
     changePassword: (input: ChangePasswordInput): Promise<{ revision: string | null }> =>
-      this.runEnabledCapability('emailPasswordManagement', () => changePassword(this.deps, input)),
+      this.#runEnabledCapability('emailPasswordManagement', () =>
+        changePassword(this.#deps, input)
+      ),
     /**
      * Emails a confirmation link to the new address. The email changes only when it is confirmed.
      *
@@ -400,8 +406,8 @@ export class AccountKit {
      * ```
      */
     requestEmailChange: (input: RequestEmailChangeInput): Promise<void> =>
-      this.runEnabledCapability('emailPasswordManagement', () =>
-        requestEmailChange(this.deps, input)
+      this.#runEnabledCapability('emailPasswordManagement', () =>
+        requestEmailChange(this.#deps, input)
       ),
     /**
      * Updates profile fields, and starts an email change when `email` differs.
@@ -412,7 +418,7 @@ export class AccountKit {
      * ```
      */
     updateProfile: (input: UpdateProfileInput): Promise<AccountUser> =>
-      this.runEnabledCapability('emailPasswordManagement', () => updateProfile(this.deps, input)),
+      this.#runEnabledCapability('emailPasswordManagement', () => updateProfile(this.#deps, input)),
     /**
      * Whether an email-change link is still usable, without using it up.
      *
@@ -422,8 +428,8 @@ export class AccountKit {
      * ```
      */
     inspectEmailChange: (input: InspectEmailChangeInput): Promise<boolean> =>
-      this.runEnabledCapability('emailPasswordManagement', () =>
-        inspectEmailChange(this.deps, input)
+      this.#runEnabledCapability('emailPasswordManagement', () =>
+        inspectEmailChange(this.#deps, input)
       ),
     /**
      * Uses the link once, switches the address, ends older sessions and tokens, and tells the old
@@ -435,8 +441,8 @@ export class AccountKit {
      * ```
      */
     completeEmailChange: (input: CompleteEmailChangeInput): Promise<AccountUser> =>
-      this.runEnabledCapability('emailPasswordManagement', () =>
-        completeEmailChange(this.deps, input)
+      this.#runEnabledCapability('emailPasswordManagement', () =>
+        completeEmailChange(this.#deps, input)
       ),
   }
   /**
@@ -453,7 +459,7 @@ export class AccountKit {
      * ```
      */
     export: (input: AccountDataInput): Promise<AccountExport> =>
-      this.runEnabledCapability('dataExport', () => exportAccountData(this.deps, input)),
+      this.#runEnabledCapability('dataExport', () => exportAccountData(this.#deps, input)),
     /**
      * Deletes the user and every row Account Kit owns, runs `onAccountDeletingTransaction` first,
      * and sends the confirmation email.
@@ -464,6 +470,6 @@ export class AccountKit {
      * ```
      */
     delete: (input: AccountDataInput): Promise<void> =>
-      this.runEnabledCapability('accountDeletion', () => deleteAccount(this.deps, input)),
+      this.#runEnabledCapability('accountDeletion', () => deleteAccount(this.#deps, input)),
   }
 }

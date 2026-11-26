@@ -1,5 +1,5 @@
-import type { SetupChoices } from './types.js'
-import { listManagedExclusions } from './shared.js'
+import type { SetupChoices } from './types.ts'
+import { listManagedExclusions } from './shared.ts'
 
 export function generateManagedGuardSource(choices: SetupChoices): string {
   const auth = choices.authentication!
@@ -20,10 +20,10 @@ export function generateAccessMiddlewareSource(choices: SetupChoices): string {
     "import type { HttpContext } from '@adonisjs/core/http'",
     "import app from '@adonisjs/core/services/app'",
     "import { AccountKit } from '@kevinjohn/adonisjs-account-kit'",
-    "import { managedAccountMiddleware } from '@kevinjohn/adonisjs-account-kit/http'",
+    "import ManagedAccountMiddleware from '@kevinjohn/adonisjs-account-kit/middleware/managed_account'",
     "import { accountKitGuard } from '#services/account_kit_guard'",
     '',
-    'const checkAccess = managedAccountMiddleware({',
+    'const checkAccess = new ManagedAccountMiddleware({',
     '  kit: () => app.container.make(AccountKit),',
     '  guard: accountKitGuard,',
     `  active: ${choices.policy.verificationRequired},`,
@@ -31,7 +31,7 @@ export function generateAccessMiddlewareSource(choices: SetupChoices): string {
     '',
     'export default class AccountKitAccessMiddleware {',
     '  handle(ctx: HttpContext, next: () => Promise<unknown>): Promise<unknown> {',
-    '    return checkAccess(ctx, next)',
+    '    return checkAccess.handle(ctx, next)',
     '  }',
     '}',
     '',
@@ -41,9 +41,9 @@ export function generateAccessMiddlewareSource(choices: SetupChoices): string {
 export function generateProofHeadersMiddlewareSource(choices: SetupChoices): string {
   return [
     "import type { HttpContext } from '@adonisjs/core/http'",
-    "import { managedProofHeadersMiddleware } from '@kevinjohn/adonisjs-account-kit/http'",
+    "import ManagedProofHeadersMiddleware from '@kevinjohn/adonisjs-account-kit/middleware/proof_headers'",
     '',
-    'const applyProofHeaders = managedProofHeadersMiddleware({',
+    'const applyProofHeaders = new ManagedProofHeadersMiddleware({',
     `  prefix: ${JSON.stringify(choices.routePrefix)},`,
     `  strategy: ${JSON.stringify(choices.authentication?.strategy ?? 'session')},`,
     `  enabled: ${JSON.stringify(choices.managed)},`,
@@ -52,7 +52,7 @@ export function generateProofHeadersMiddlewareSource(choices: SetupChoices): str
     '',
     'export default class AccountKitProofHeadersMiddleware {',
     '  handle(ctx: HttpContext, next: () => Promise<unknown>): Promise<unknown> {',
-    '    return applyProofHeaders(ctx, next)',
+    '    return applyProofHeaders.handle(ctx, next)',
     '  }',
     '}',
     '',

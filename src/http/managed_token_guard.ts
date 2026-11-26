@@ -1,9 +1,9 @@
 import type { HttpContext } from '@adonisjs/core/http'
-import { E_ACCOUNT_KIT_ADAPTER_CONTRACT, E_ACCOUNT_KIT_INVALID_SESSION } from '../errors.js'
-import type { UserId } from '../types.js'
-import type { ManagedGuard } from './managed_types.js'
-import type { ManagedTokenGuardOptions, ManagedTokenCredential, ManagedUser } from './guard.js'
-import { markAuthenticated, type MarkableAuthenticator } from './authenticator_mark.js'
+import { E_ACCOUNT_KIT_ADAPTER_CONTRACT, E_ACCOUNT_KIT_INVALID_SESSION } from '../errors.ts'
+import type { UserId } from '../types.ts'
+import type { ManagedGuard } from './managed_types.ts'
+import type { ManagedTokenGuardOptions, ManagedTokenCredential, ManagedUser } from './guard.ts'
+import { markAuthenticated, type MarkableAuthenticator } from './authenticator_mark.ts'
 
 function requireManagedUser(value: unknown): ManagedUser {
   if (!value || typeof value !== 'object') throw new E_ACCOUNT_KIT_INVALID_SESSION()
@@ -69,6 +69,7 @@ export function createTokenGuard<User>(
       return {
         strategy: 'access_tokens',
         name: options.name,
+        /** @throws {AggregateError} If token issuance and deletion both fail. */
         async establish(userId, abilities, expiresIn, issue) {
           const model = await options.loadUser()
           const user = await model.findOrFail(userId)

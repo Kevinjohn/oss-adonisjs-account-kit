@@ -4,11 +4,11 @@ import {
   E_ACCOUNT_KIT_INVALID_TOKEN,
   E_ACCOUNT_KIT_THROTTLED,
   E_ACCOUNT_KIT_USER_NOT_FOUND,
-} from '../src/errors.js'
+} from '../src/errors.ts'
 import { test } from '@japa/runner'
-import type { LifecycleEvent } from '../src/types.js'
-import { useTestApp } from './helpers/app.js'
-import { denyAll, insertUser, makeService, tokenFrom } from './helpers/fakes.js'
+import type { LifecycleEvent } from '../src/types.ts'
+import { useTestApp } from './helpers/app.ts'
+import { denyAll, insertUser, makeService, tokenFrom } from './helpers/fakes.ts'
 
 test.group('operator services', (group) => {
   const kit = useTestApp(group)

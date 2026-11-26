@@ -79,6 +79,13 @@ config to include its backend origin label. If you customised `config/account_ki
 `backendOriginSetting` to `createActionUrls` with the name of the existing backend environment
 variable, such as `PUBLIC_API_URL`, so configuration errors can name it.
 
+### Environment overrides
+
+Setup reads the project’s selected environment files. To supply a value available only in the
+shell, pass `--env=NAME=value`. Repeat the option for each setting. Use `--env=NODE_ENV=production`
+to select a profile and `--env=ENV_PATH=relative/directory` to select another application directory.
+Keep credentials in environment files to avoid exposing them as command arguments.
+
 ## Run setup
 
 Choose your answers interactively, or start from an example choices file:
@@ -97,10 +104,11 @@ Both give the same typed choices. The command previews by default:
 | `--apply`                    | Writes the plan, if it has no conflicts                                                |
 | `--check`                    | Reads the saved choices and checks the current app, without writing                    |
 | `--production`               | Also checks public origins and session security for deployment                         |
+| `--env=NAME=value`           | Override a selected environment value. Repeat for each override                        |
 | `--migration-directory=path` | Name the Lucid migration directory: a dynamic path, or one of several configured paths |
 
 Select the deployment environment before running setup. Inspection and planning use the same
-process environment snapshot, with direct process values taking precedence over the selected
+explicit overrides, which take precedence over the selected
 application `.env` files in AdonisJS loading order. Declare the chosen deployment references in
 your application's `start/env.ts` as appropriate. Generated config imports that module for the
 validated `APP_KEY`; it reads the operator-selected origin and mail variable names from the

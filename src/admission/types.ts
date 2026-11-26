@@ -1,9 +1,9 @@
 // Public types of the admission module.
-import type { AccountUser, AuthorizationContext, UserId } from '../types.js'
+import type { AccountUser, AuthorizationContext, UserId } from '../types.ts'
 
-import type { AdmissionApprovalStatus } from '../admission_decision.js'
+import type { AdmissionApprovalStatus } from '../admission_decision.ts'
 
-export type { AdmissionApprovalStatus, AdmissionDecision } from '../admission_decision.js'
+export type { AdmissionApprovalStatus, AdmissionDecision } from '../admission_decision.ts'
 
 /** Your rules for admission decisions. Each callback must return exactly `true` to allow. */
 export interface AdmissionAuthorizeCallbacks {
@@ -59,7 +59,7 @@ export interface AdmissionConfig {
 
 /**
  * Callbacks an application provider registers through `AdmissionCallbackRegistry` instead of
- * passing them to `defineAdmission`. Each field may come from one place only.
+ * passing them to `defineConfig`. Each field may come from one place only.
  */
 export interface AdmissionCallbacks {
   /** `AdmissionConfig.approval.authorize`. */
@@ -68,7 +68,7 @@ export interface AdmissionCallbacks {
   onAdmissionEvent?: (event: AdmissionEvent) => Promise<void>
 }
 
-/** The admission configuration after `defineAdmission` validated it. */
+/** The admission configuration after `defineConfig` validated it. */
 export interface ResolvedAdmissionConfig {
   domain: { allowed: readonly string[]; includeSubdomains: boolean } | null
   invitation: boolean

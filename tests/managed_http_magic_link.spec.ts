@@ -1,11 +1,11 @@
 import { test } from '@japa/runner'
-import { registerManagedRoutes } from '../src/http/managed.js'
-import { deriveClientChallenge } from '../src/magic_link.js'
-import { hashToken } from '../src/tokens.js'
-import type { AccountKitConfig, UserId } from '../src/types.js'
-import { useTestApp } from './helpers/app.js'
-import { insertUser, makeService, tokenFrom } from './helpers/fakes.js'
-import { fakeManagedHttp, sessionStore, stubGuard } from './helpers/managed_http_fakes.js'
+import { registerManagedRoutes } from '../src/http/managed.ts'
+import { deriveClientChallenge } from '../src/magic_link.ts'
+import { hashToken } from '../src/tokens.ts'
+import type { AccountKitConfig, UserId } from '../src/types.ts'
+import { useTestApp } from './helpers/app.ts'
+import { insertUser, makeService, tokenFrom } from './helpers/fakes.ts'
+import { fakeManagedHttp, sessionStore, stubGuard } from './helpers/managed_http_fakes.ts'
 
 type Validator = { validate(data: unknown): Promise<unknown> }
 

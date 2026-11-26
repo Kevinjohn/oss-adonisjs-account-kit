@@ -10,8 +10,8 @@ import {
   renderAccountMessage,
   type AccountMessageKind,
   type RenderedAccountMessage,
-} from '../src/notifications.js'
-import type { AccountKitTranslator } from '../src/translator.js'
+} from '../src/notifications.ts'
+import type { AccountKitTranslator } from '../src/translator.ts'
 
 /** Output captured before emails became translatable; output without `i18n` must not change. */
 const english: Record<

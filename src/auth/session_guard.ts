@@ -1,3 +1,5 @@
+import { RuntimeException } from '@adonisjs/core/exceptions'
+import { resolveAccountKitConfig } from '../config_resolution.ts'
 // An `@adonisjs/auth` session guard that authenticates through Account Kit.
 import { errors, type symbols } from '@adonisjs/auth'
 import { SessionGuard } from '@adonisjs/auth/session'
@@ -5,15 +7,15 @@ import type { AuthClientResponse, GuardConfigProvider } from '@adonisjs/auth/typ
 import type { SessionUserProviderContract } from '@adonisjs/auth/types/session'
 import type { HttpContext } from '@adonisjs/core/http'
 import type { ApplicationService, ConfigProvider } from '@adonisjs/core/types'
-import { requireAccountAccessDecision } from '../account_access_decision.js'
-import { buildAccountProjection } from '../account_projection.js'
-import { requireAuthentication } from '../authentication_config.js'
-import { establishCredential } from '../credential_issuance.js'
-import { revision } from '../credential_revision.js'
-import { lockUser, transaction } from '../db.js'
-import { E_INVALID_CREDENTIALS, E_ACCOUNT_KIT_INVALID_SESSION } from '../errors.js'
-import { createSessionGuard } from '../http/managed_session_guard.js'
-import type { AuthenticationGuard, CurrentAccountInput, UserId } from '../types.js'
+import { requireAccountAccessDecision } from '../account_access_decision.ts'
+import { buildAccountProjection } from '../account_projection.ts'
+import { requireAuthentication } from '../authentication_config.ts'
+import { establishCredential } from '../credential_issuance.ts'
+import { revision } from '../credential_revision.ts'
+import { lockUser, transaction } from '../db.ts'
+import { E_INVALID_CREDENTIALS, E_ACCOUNT_KIT_INVALID_SESSION } from '../errors.ts'
+import { createSessionGuard } from '../http/managed_session_guard.ts'
+import type { AuthenticationGuard, CurrentAccountInput, UserId } from '../types.ts'
 
 type RealUser<P extends SessionUserProviderContract<unknown>> = P[typeof symbols.PROVIDER_REAL_USER]
 
@@ -92,7 +94,7 @@ export class AccountKitSessionGuard<
         throw new E_ACCOUNT_KIT_INVALID_SESSION()
       if (handle !== undefined && typeof handle !== 'string')
         throw new E_ACCOUNT_KIT_INVALID_SESSION()
-      const kit = await this.#app.container.make('account_kit')
+      const kit = await this.#app.container.make('account_kit.manager')
       await kit.authentication.current({
         userId: (user as { id: UserId }).id,
         ...(stored === undefined ? {} : { revision: stored === '' ? null : stored }),
@@ -118,12 +120,15 @@ export class AccountKitSessionGuard<
    * ```ts
    * const { session } = await guard.authenticateAsClient(user)
    * ```
+   *
+   * @throws {AggregateError} If credential issuance and cleanup both fail, or multiple cleanup steps fail.
    */
   async authenticateAsClient(user: RealUser<UserProvider>): Promise<AuthClientResponse> {
     const guardUser = await this.#provider.createUserForGuard(user)
     const userId = guardUser.getId() as UserId
-    const kit = await this.#app.container.make('account_kit')
-    const deps = kit['deps']
+    const config = await resolveAccountKitConfig(this.#app)
+    if (!config) throw new RuntimeException('Account Kit is missing config/account_kit.ts')
+    const deps = { config, db: await this.#app.container.make('lucid.db') }
     const auth = requireAuthentication(deps.config)
     const verified = await transaction(deps.db, async (trx) => {
       await lockUser(trx, deps.config, userId)

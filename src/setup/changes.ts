@@ -1,7 +1,7 @@
-import type { SetupFileChange, SetupInspection } from './types.js'
+import type { SetupFileChange, SetupInspection } from './types.ts'
 
-export { generateEnvironmentTemplate } from './generated_sources.js'
-export { migrationContent, requireMigrationTemplatePath } from './migration_source.js'
+export { generateEnvironmentTemplate } from './generated_sources.ts'
+export { migrationContent, requireMigrationTemplatePath } from './migration_source.ts'
 
 export function addChange(
   changes: SetupFileChange[],

@@ -1,5 +1,5 @@
 import { test } from '@japa/runner'
-import { generateToken, hashToken, isTokenShaped } from '../src/tokens.js'
+import { generateToken, hashToken, isTokenShaped } from '../src/tokens.ts'
 
 test.group('tokens', () => {
   test('generates distinct 40-byte base64url tokens and hashes them as stable SHA-256 hex', async ({

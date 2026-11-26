@@ -1,13 +1,13 @@
 import { Authenticator, errors, symbols } from '@adonisjs/auth'
 import { configProvider } from '@adonisjs/core'
 import { test } from '@japa/runner'
-import { defineConfig } from '../src/account_kit.js'
-import { accountKitSessionGuard } from '../src/auth/session_guard.js'
-import { E_INVALID_CREDENTIALS, E_ACCOUNT_KIT_INVALID_SESSION } from '../src/errors.js'
-import type { AccountUser, UserId } from '../src/types.js'
-import { useTestApp } from './helpers/app.js'
-import { insertUser, makeConfig, makeUsersAdapter } from './helpers/fakes.js'
-import { protectedContext } from './helpers/protected_context.js'
+import { defineConfig } from '../src/config.ts'
+import { accountKitSessionGuard } from '../src/auth/session_guard.ts'
+import { E_INVALID_CREDENTIALS, E_ACCOUNT_KIT_INVALID_SESSION } from '../src/errors.ts'
+import type { AccountUser, UserId } from '../src/types.ts'
+import { useTestApp } from './helpers/app.ts'
+import { insertUser, makeConfig, makeUsersAdapter } from './helpers/fakes.ts'
+import { protectedContext } from './helpers/protected_context.ts'
 
 test.group('accountKitSessionGuard', (group) => {
   const kit = useTestApp(group, { accountKitProvider: 'source' })

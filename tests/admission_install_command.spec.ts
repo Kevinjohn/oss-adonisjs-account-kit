@@ -1,5 +1,3 @@
-/* eslint-disable @unicorn/no-await-expression-member -- Keep each assertion next to the operation it inspects. */
-
 import { mkdtemp, mkdir, readFile, readdir, rm, symlink, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -8,7 +6,7 @@ import { test } from '@japa/runner'
 import { ListLoader } from '@adonisjs/core/ace'
 import { IgnitorFactory } from '@adonisjs/core/factories'
 import { MigrationRunner } from '@adonisjs/lucid/migration'
-import InstallAdmission from '../commands/admission_install.js'
+import InstallAdmission from '../commands/admission_install.ts'
 
 // Each test runs a full ace command; V8 coverage instrumentation roughly triples its time.
 const commandTimeout = process.env.NODE_V8_COVERAGE ? 30_000 : 10_000
@@ -73,7 +71,7 @@ test.group('admission install command', () => {
 
       const config = await readFile(join(root, 'config', 'admission.ts'), 'utf8')
       assert.include(config, "from '@kevinjohn/adonisjs-account-kit/admission'")
-      assert.include(config, 'defineAdmission(')
+      assert.include(config, 'defineConfig(')
       const rc = await readFile(join(root, 'adonisrc.ts'), 'utf8')
       assert.include(rc, '@kevinjohn/adonisjs-account-kit/admission/provider')
       assert.include(rc, '@kevinjohn/adonisjs-account-kit/admission/commands')
@@ -91,6 +89,7 @@ test.group('admission install command', () => {
       await run()
       assert.equal(await readFile(join(root, 'config', 'admission.ts'), 'utf8'), ownConfig)
       assert.lengthOf(await readdir(join(root, 'database', 'migrations')), 1)
+      // eslint-disable-next-line @unicorn/no-await-expression-member -- Assert the result at the call site.
       const migration = (await readdir(join(root, 'database', 'migrations')))[0]
       const contents = await readFile(join(root, 'database', 'migrations', migration), 'utf8')
       assert.include(contents, "table.integer('user_id').unsigned()")
@@ -137,11 +136,13 @@ export default class extends BaseSchema {
 }`
       )
       await run()
+      // eslint-disable-next-line @unicorn/no-await-expression-member -- Assert the result at the call site.
       assert.deepEqual((await readdir(directory)).sort(), [users, admission])
       assert.deepEqual(await readdir(join(root, 'db/company')), ['prior#review'])
       assert.deepEqual(await readdir(join(root, 'database/migrations')), [])
       const migration = await readFile(join(directory, admission), 'utf8')
       await run()
+      // eslint-disable-next-line @unicorn/no-await-expression-member -- Assert the result at the call site.
       assert.deepEqual((await readdir(directory)).sort(), [users, admission])
       assert.equal(await readFile(join(directory, admission), 'utf8'), migration)
 
@@ -175,6 +176,7 @@ export default class extends BaseSchema {
         )
         await db.table('users').insert({ id: 1 })
         await db.table('account_admissions').insert({ ...dates, user_id: 1 })
+        // eslint-disable-next-line @unicorn/no-await-expression-member -- Assert the result at the call site.
         assert.equal((await db.from('account_admissions').first()).user_id, 1)
       } finally {
         await app.terminate()
@@ -228,10 +230,16 @@ export default class extends BaseSchema {
     try {
       await writeFile(
         join(root, 'config/database.ts'),
-        "import { defineConfig } from '@adonisjs/lucid'\nconst paths = ['database/custom']\nexport default defineConfig({ connection: 'sqlite', connections: { sqlite: { client: 'better-sqlite3', migrations: { paths } } } })"
+        "import { defineConfig } from '@adonisjs/lucid'\nimport env from '#start/env'\nconst paths = ['database/custom']\nexport default defineConfig({ connection: env.get('DB_CONNECTION'), connections: { sqlite: { client: 'better-sqlite3', migrations: { paths } } } })"
       )
+      await mkdir(join(root, 'deployment'))
+      await writeFile(join(root, 'deployment', '.env.production'), 'DB_CONNECTION=sqlite\n')
       process.exitCode = undefined
-      await run('--migration-directory=database/custom')
+      await run(
+        '--env=NODE_ENV=production',
+        '--env=ENV_PATH=deployment',
+        '--migration-directory=database/custom'
+      )
       assert.equal(process.exitCode, 0)
       const written = await readdir(join(root, 'database/custom'))
       assert.lengthOf(written, 1)

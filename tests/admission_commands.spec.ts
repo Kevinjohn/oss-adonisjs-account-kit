@@ -1,22 +1,20 @@
-/* eslint-disable @unicorn/no-await-expression-member -- Keep each assertion next to the operation it inspects. */
-
 import { test } from '@japa/runner'
-import * as coreCommands from '../commands/main.js'
-import ApproveAdmission from '../src/admission/commands/approve.js'
-import RevokeAdmission from '../src/admission/commands/revoke.js'
-import GrantInvitationEvidence from '../src/admission/commands/grant_invitation.js'
-import * as admissionCommands from '../src/admission/commands/main.js'
-import type { AdmissionConfig } from '../src/admission/types.js'
+import * as coreCommands from '../commands/main.ts'
+import ApproveAdmission from '../src/admission/commands/approve.ts'
+import RevokeAdmission from '../src/admission/commands/revoke.ts'
+import GrantInvitationEvidence from '../src/admission/commands/grant_invitation.ts'
+import * as admissionCommands from '../src/admission/commands/main.ts'
+import type { AdmissionConfig } from '../src/admission/types.ts'
 import {
   E_ACCOUNT_KIT_ADMISSION_DECISION,
   E_ACCOUNT_KIT_POST_COMMIT,
   E_ACCOUNT_KIT_USER_NOT_FOUND,
-} from '../src/errors.js'
-import { AccountAdmission } from '../src/admission/service.js'
-import { aceKernel } from './helpers/ace_kernel.js'
-import { useAdmissionApp } from './helpers/admission_schema.js'
-import { allRequirements, makeAdmission } from './helpers/admission.js'
-import { insertUser } from './helpers/fakes.js'
+} from '../src/errors.ts'
+import { AccountAdmission } from '../src/admission/service.ts'
+import { aceKernel } from './helpers/ace_kernel.ts'
+import { useAdmissionApp } from './helpers/admission_schema.ts'
+import { allRequirements, makeAdmission } from './helpers/admission.ts'
+import { insertUser } from './helpers/fakes.ts'
 
 test.group('admission runtime commands', (group) => {
   const kit = useAdmissionApp(group)
@@ -122,8 +120,10 @@ test.group('admission runtime commands', (group) => {
   })
 
   test('the loaders list the install and runtime commands', async ({ assert }) => {
+    // eslint-disable-next-line @unicorn/no-await-expression-member -- Assert the result at the call site.
     const core = (await coreCommands.getMetaData()).map((command) => command.commandName)
     assert.include(core, 'account-kit:admission:install')
+    // eslint-disable-next-line @unicorn/no-await-expression-member -- Assert the result at the call site.
     const runtime = (await admissionCommands.getMetaData()).map((command) => command.commandName)
     assert.sameMembers(runtime, [
       'account-kit:admission:approve',

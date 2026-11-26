@@ -1,5 +1,5 @@
 // Shared guard for config sections that must be non-null, non-array objects.
-import { E_ACCOUNT_KIT_INVALID_CONFIGURATION } from './errors.js'
+import { E_ACCOUNT_KIT_INVALID_CONFIGURATION } from './errors.ts'
 
 /**
  * Throws `account_kit: <name> must be an object` unless the value is a non-null, non-array object.

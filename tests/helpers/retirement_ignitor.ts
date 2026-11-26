@@ -1,9 +1,9 @@
 import { ListLoader } from '@adonisjs/core/ace'
 import { IgnitorFactory } from '@adonisjs/core/factories'
 import { pathToFileURL } from 'node:url'
-import SetupAccountKit from '../../commands/setup.js'
-import RetirementImpact from '../../commands/retirement_impact.js'
-import { AccountKit } from '../../src/account_kit.js'
+import SetupAccountKit from '../../commands/setup.ts'
+import RetirementImpact from '../../commands/retirement_impact.ts'
+import { AccountKit } from '../../src/account_kit.ts'
 
 export function retirementIgnitor(
   root: string,
@@ -22,13 +22,15 @@ export function retirementIgnitor(
 ) {
   const provider = async () => ({
     default: class {
-      constructor(
-        private app: {
-          container: { bindValue: (key: typeof AccountKit, value: AccountKit) => void }
-        }
-      ) {}
+      #app: { container: { bindValue: (key: typeof AccountKit, value: AccountKit) => void } }
+
+      constructor(app: {
+        container: { bindValue: (key: typeof AccountKit, value: AccountKit) => void }
+      }) {
+        this.#app = app
+      }
       register() {
-        this.app.container.bindValue(AccountKit, {
+        this.#app.container.bindValue(AccountKit, {
           authentication: { retirementImpact: impact },
         } as unknown as AccountKit)
       }

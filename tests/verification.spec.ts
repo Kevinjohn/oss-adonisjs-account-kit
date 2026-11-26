@@ -1,17 +1,17 @@
 import { test, timeTravel } from '@japa/runner'
 import { DateTime } from 'luxon'
-import { defineConfig } from '../src/account_kit.js'
+import { resolveConfig as defineConfig } from '../src/config.ts'
 import {
   E_ACCOUNT_KIT_DELIVERY,
   E_ACCOUNT_KIT_INVALID_INPUT,
   E_ACCOUNT_KIT_INVALID_TOKEN,
   E_ACCOUNT_KIT_POST_COMMIT,
   E_ACCOUNT_KIT_THROTTLED,
-} from '../src/errors.js'
-import { lockRow, transaction } from '../src/db.js'
-import { generateToken, hashToken } from '../src/tokens.js'
-import { useTestApp } from './helpers/app.js'
-import { verificationHelpers } from './helpers/verification.js'
+} from '../src/errors.ts'
+import { lockRow, transaction } from '../src/db.ts'
+import { generateToken, hashToken } from '../src/tokens.ts'
+import { useTestApp } from './helpers/app.ts'
+import { verificationHelpers } from './helpers/verification.ts'
 import {
   accountKit,
   insertUser,
@@ -20,10 +20,10 @@ import {
   makeService,
   makeUsersAdapter,
   tokenFrom,
-} from './helpers/fakes.js'
-import { faultAfterCommit } from './helpers/fault_after_commit.js'
-import { locksRows } from './helpers/dialect.js'
-import { dbTime } from './helpers/db_time.js'
+} from './helpers/fakes.ts'
+import { faultAfterCommit } from './helpers/fault_after_commit.ts'
+import { locksRows } from './helpers/dialect.ts'
+import { dbTime } from './helpers/db_time.ts'
 test.group('emailVerification.send', (group) => {
   const kit = useTestApp(group)
 

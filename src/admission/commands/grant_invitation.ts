@@ -1,7 +1,7 @@
 import { BaseCommand, args, flags } from '@adonisjs/core/ace'
-import { completeOperatorCommand, writeResult } from '../../../commands/operator_output.js'
-import { AccountAdmission } from '../service.js'
-import type { AdmissionRecord } from '../types.js'
+import { completeOperatorCommand, writeResult } from '../../../commands/operator_output.ts'
+import { AccountAdmission } from '../service.ts'
+import type { AdmissionRecord } from '../types.ts'
 
 /** Operator invitation evidence for an account that exists already. The role grants nothing. */
 export default class GrantInvitationEvidence extends BaseCommand {

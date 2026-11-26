@@ -1,6 +1,6 @@
 // Unique-violation detection: recognizing duplicate-key errors across MySQL, PostgreSQL and SQLite.
 import type { Database } from '@adonisjs/lucid/database'
-import { requireUserMetadata, type UsersStorage } from './user_lock.js'
+import { requireUserMetadata, type UsersStorage } from './user_lock.ts'
 
 /** The `table.index` a MySQL duplicate-key error names, or undefined for any other error. */
 export function extractMysqlDuplicateKey(error: unknown): string | undefined {

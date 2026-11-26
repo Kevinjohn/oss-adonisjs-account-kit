@@ -1,7 +1,7 @@
 import { DateTime } from 'luxon'
 import { test } from '@japa/runner'
-import { expiresAt } from '../src/ttl.js'
-import { E_ACCOUNT_KIT_INVALID_INPUT } from '../src/errors.js'
+import { expiresAt } from '../src/ttl.ts'
+import { E_ACCOUNT_KIT_INVALID_INPUT } from '../src/errors.ts'
 
 test.group('expiration helper', () => {
   test('adds parsed TTL seconds to a DateTime', async ({ assert }) => {

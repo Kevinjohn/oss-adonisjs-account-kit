@@ -16,6 +16,8 @@ test('every repository path a bin script resolves from its own location exists',
     const source = await readFile(join(repoRoot, script), 'utf8')
     const base = pathToFileURL(join(repoRoot, script))
     for (const [, target] of source.matchAll(/new URL\('(\.\.\/[^']*)', import\.meta\.url\)/g)) {
+      // The prepare marker is created by a successful install and omitted by an ordinary build.
+      if (script === 'bin/prepare.ts' && target === '../build/.prepare-complete') continue
       checked++
       if (!existsSync(fileURLToPath(new URL(target, base)))) missing.push(`${script}: ${target}`)
     }

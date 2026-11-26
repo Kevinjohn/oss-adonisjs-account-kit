@@ -1,3 +1,4 @@
+import { migrationStubPath } from '../src/setup/migration_paths.ts'
 import { randomUUID } from 'node:crypto'
 import { mkdir, readFile, readdir, symlink, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
@@ -33,7 +34,10 @@ async function renderPackageMigration(
   const stubs = await kit.app.stubs.create()
   const stub = await stubs.build(`migrations/${name}.stub`, { source: stubsRoot })
   const prepared = await stub.prepare({
-    migration: { ...migrationSchema(usersTable, userIdType), destination },
+    migration: {
+      ...migrationSchema(usersTable, userIdType),
+      path: migrationStubPath(kit.app.migrationsPath(), destination),
+    },
   })
   return prepared.contents
 }

@@ -8,9 +8,9 @@ import {
   E_ACCOUNT_KIT_INVALID_TOKEN,
   E_ACCOUNT_KIT_NO_PASSWORD,
   E_ACCOUNT_KIT_THROTTLED,
-} from '../src/errors.js'
-import { hashToken } from '../src/tokens.js'
-import { useTestApp } from './helpers/app.js'
+} from '../src/errors.ts'
+import { hashToken } from '../src/tokens.ts'
+import { useTestApp } from './helpers/app.ts'
 import {
   insertUser,
   makeConfig,
@@ -18,9 +18,9 @@ import {
   makeService,
   makeUsersAdapter,
   tokenFrom,
-} from './helpers/fakes.js'
-import { credentialsFixtures } from './helpers/credentials.js'
-import { dbTime } from './helpers/db_time.js'
+} from './helpers/fakes.ts'
+import { credentialsFixtures } from './helpers/credentials.ts'
+import { dbTime } from './helpers/db_time.ts'
 test.group('emailPasswordManagement', (group) => {
   const kit = useTestApp(group)
   const { createUser, service, issueEmailChange } = credentialsFixtures(kit)

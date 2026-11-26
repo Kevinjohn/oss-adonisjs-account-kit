@@ -1,7 +1,7 @@
 // Setup planning phase: limiter store diagnostics.
-import type { SetupInspection, SetupDiagnostic } from './types.js'
-import { addSetupDiagnostic } from './shared.js'
-import { inspectLimiterConfiguration } from './config_inspection.js'
+import type { SetupInspection, SetupDiagnostic } from './types.ts'
+import { addSetupDiagnostic } from './shared.ts'
+import { inspectLimiterConfiguration } from './config_inspection.ts'
 
 export async function planLimiter(
   state: SetupInspection,

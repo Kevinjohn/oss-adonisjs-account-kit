@@ -1,5 +1,5 @@
 // Deletes the recovery tokens and pending social state a credential change must invalidate.
-import type { Trx, UserId } from './types.js'
+import type { Trx, UserId } from './types.ts'
 
 type RecoveryTokenTable = 'password_reset_tokens' | 'email_verification_tokens'
 

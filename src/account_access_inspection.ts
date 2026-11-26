@@ -1,14 +1,14 @@
 import { RuntimeException } from '@adonisjs/core/exceptions'
 // Account access inspection: eligibility and credential revision of one account, read under its lock, with no credential for it.
-import { requireAccountAccessDecision } from './account_access_decision.js'
-import { transaction, requireUserMetadata } from './db.js'
-import { readIsoTimestamp } from './timestamps.js'
-import { requireAuthentication } from './authentication_config.js'
-import { buildAccountProjection } from './account_projection.js'
-import { isUserId } from './user_id.js'
-import { E_ACCOUNT_KIT_ACCOUNT_ACCESS_DENIED, E_ACCOUNT_KIT_INVALID_INPUT } from './errors.js'
-import type { AccountAccessInput, AccountAccessSnapshot } from './types.js'
-import type { ServiceDependencies } from './service_dependencies.js'
+import { requireAccountAccessDecision } from './account_access_decision.ts'
+import { transaction, requireUserMetadata } from './db.ts'
+import { readIsoTimestamp } from './timestamps.ts'
+import { requireAuthentication } from './authentication_config.ts'
+import { buildAccountProjection } from './account_projection.ts'
+import { isUserId } from './user_id.ts'
+import { E_ACCOUNT_KIT_ACCOUNT_ACCESS_DENIED, E_ACCOUNT_KIT_INVALID_INPUT } from './errors.ts'
+import type { AccountAccessInput, AccountAccessSnapshot } from './types.ts'
+import type { ServiceDependencies } from './service_dependencies.ts'
 
 /** Strict read of the witness row: a missing key or undefined value is a fault, SQL null is the initial revision. */
 export function readInspectionRevision(row: Record<string, unknown> | undefined): string | null {

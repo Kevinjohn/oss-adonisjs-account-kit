@@ -1,4 +1,4 @@
-import type { ManagedQuery, ManagedRequestBody } from '../../http/main.js'
+import type { ManagedQuery, ManagedRequestBody } from '../../http/main.ts'
 
 /** The invitation contracts accept the `scope` the validators and handlers accept. */
 export const invitationSendWithScope: ManagedRequestBody<'account.invitation.send'> = {

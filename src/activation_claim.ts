@@ -1,14 +1,14 @@
-import { sqlTimestamp } from './timestamps.js'
+import { sqlTimestamp } from './timestamps.ts'
 import {
   clearPendingSocialIdentities,
   clearRecoveryTokens,
   clearSocialTransactions,
-} from './credential_cleanup.js'
+} from './credential_cleanup.ts'
 import { DateTime } from 'luxon'
-import { isActiveAccount } from './account_projection.js'
-import { consumeUserTokenHash } from './db.js'
-import { matchInvitation } from './invitation_match.js'
-import type { AccountUser, ResolvedConfig, UserId, Trx } from './types.js'
+import { isActiveAccount } from './account_projection.ts'
+import { consumeUserTokenHash } from './db.ts'
+import { matchInvitation } from './invitation_match.ts'
+import type { AccountUser, ResolvedConfig, UserId, Trx } from './types.ts'
 
 export type ActivationRow = {
   tokenable_id: UserId
@@ -53,7 +53,7 @@ export async function activateClaim(
         .where('user_id', userId)
         .where('id', confirmedSocialIdentityId)
         .whereNull('confirmed_at')
-        .update({ confirmed_at: sqlTimestamp(trx) })
+        .update({ confirmed_at: sqlTimestamp(trx, DateTime.utc()) })
     await clearSocialTransactions(trx, userId)
   }
   return invitationIds

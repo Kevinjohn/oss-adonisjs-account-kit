@@ -1,15 +1,15 @@
 import {
   E_ACCOUNT_KIT_IDENTITY_NOT_CONFIRMED,
   E_ACCOUNT_KIT_EMAIL_ALREADY_REGISTERED,
-} from '../src/errors.js'
+} from '../src/errors.ts'
 import { DateTime } from 'luxon'
 import { createHash } from 'node:crypto'
 import { test } from '@japa/runner'
-import { createAllySocialProvider } from '../src/ally_social_provider.js'
-import { useTestApp } from './helpers/app.js'
-import { insertUser, makeService } from './helpers/fakes.js'
-import type { SocialProvider, VerifiedSocialAuthentication } from '../src/types.js'
-import { clientChallenge, current, provider } from './helpers/social_identity.js'
+import { createAllySocialProvider } from '../src/ally_social_provider.ts'
+import { useTestApp } from './helpers/app.ts'
+import { insertUser, makeService } from './helpers/fakes.ts'
+import type { SocialProvider, VerifiedSocialAuthentication } from '../src/types.ts'
+import { clientChallenge, current, provider } from './helpers/social_identity.ts'
 
 test.group('social reauthentication proof atomicity', (group) => {
   const kit = useTestApp(group)

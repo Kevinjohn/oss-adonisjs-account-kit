@@ -1,10 +1,10 @@
 import { test } from '@japa/runner'
 import { MailManager } from '@adonisjs/mail'
 import { JSONTransport } from '@adonisjs/mail/transports/json'
-import { createMailNotifications, type AccountMailService } from '../src/notifications.js'
-import { E_ACCOUNT_KIT_DELIVERY } from '../src/errors.js'
-import { useTestApp } from './helpers/app.js'
-import { insertUser, makeNotify, makeService } from './helpers/fakes.js'
+import { createMailNotifications, type AccountMailService } from '../src/notifications.ts'
+import { E_ACCOUNT_KIT_DELIVERY } from '../src/errors.ts'
+import { useTestApp } from './helpers/app.ts'
+import { insertUser, makeNotify, makeService } from './helpers/fakes.ts'
 
 const user = {
   id: 1,

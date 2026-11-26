@@ -1,9 +1,9 @@
 import { test } from '@japa/runner'
 import type { HttpContext } from '@adonisjs/core/http'
-import { AccountKit } from '../src/account_kit.js'
-import { E_ACCOUNT_KIT_INVALID_SESSION } from '../src/errors.js'
-import { registerManagedRoutes, type ManagedRoutesOptions } from '../src/http/managed.js'
-import { fakeManagedHttp, stubGuard } from './helpers/managed_http_fakes.js'
+import { AccountKit } from '../src/account_kit.ts'
+import { E_ACCOUNT_KIT_INVALID_SESSION } from '../src/errors.ts'
+import { registerManagedRoutes, type ManagedRoutesOptions } from '../src/http/managed.ts'
+import { fakeManagedHttp, stubGuard } from './helpers/managed_http_fakes.ts'
 
 test.group('managed HTTP dispatch', () => {
   test('verification policy can allow inactive accounts while retaining current-account checks', async ({

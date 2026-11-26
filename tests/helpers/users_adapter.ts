@@ -1,8 +1,8 @@
 import { DateTime } from 'luxon'
 import type { Hash } from '@adonisjs/core/hash'
 import type { Database } from '@adonisjs/lucid/database'
-import { sqlTimestamp } from '../../src/timestamps.js'
-import type { AccountUser, Trx, UserId, UsersAdapter } from '../../src/types.js'
+import { sqlTimestamp } from '../../src/timestamps.ts'
+import type { AccountUser, Trx, UserId, UsersAdapter } from '../../src/types.ts'
 
 /** `returning('id')` yields a bare id on SQLite and `{ id }` on PostgreSQL. */
 export const unwrapId = (value: unknown): UserId =>
@@ -39,7 +39,7 @@ export function makeUsersAdapter(db: Database, hash: Hash, usersTable = 'users')
           unverified_email: attrs.unverifiedEmail,
           password: attrs.password === null ? null : await hash.make(attrs.password),
           email_verified_at: null,
-          created_at: sqlTimestamp(trx),
+          created_at: sqlTimestamp(trx, DateTime.utc()),
         })
         .returning('id')
       return (await this.findById(unwrapId(id), trx))!

@@ -1,6 +1,6 @@
 import string from '@adonisjs/core/helpers/string'
 import type { DateTime } from 'luxon'
-import { E_ACCOUNT_KIT_INVALID_INPUT } from './errors.js'
+import { E_ACCOUNT_KIT_INVALID_INPUT } from './errors.ts'
 
 export function expiresAt(now: DateTime, ttl: string | number): DateTime {
   let seconds: number

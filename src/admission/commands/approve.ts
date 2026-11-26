@@ -1,7 +1,7 @@
 import { BaseCommand, args } from '@adonisjs/core/ace'
-import { completeOperatorCommand, writeResult } from '../../../commands/operator_output.js'
-import { AccountAdmission } from '../service.js'
-import type { AdmissionRecord } from '../types.js'
+import { completeOperatorCommand, writeResult } from '../../../commands/operator_output.ts'
+import { AccountAdmission } from '../service.ts'
+import type { AdmissionRecord } from '../types.ts'
 
 /** Operator approval: the first administrator, or recovery of a locked-out one. */
 export default class ApproveAdmission extends BaseCommand {

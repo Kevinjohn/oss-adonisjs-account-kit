@@ -25,7 +25,7 @@ for reset, activation, and email change, and seven days for invitations.
 
 ## User fields and identity state
 
-The maintained Lucid mapping in [`adapters/lucid.ts`](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/main/adapters/lucid.ts)
+The maintained Lucid mapping in [`src/adapters/lucid.ts`](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/main/src/adapters/lucid.ts)
 uses these application user fields:
 
 | Model property    | Database column     | Meaning                                                                                                                            |

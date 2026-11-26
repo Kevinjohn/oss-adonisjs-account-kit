@@ -1,5 +1,5 @@
 import { RuntimeException } from '@adonisjs/core/exceptions'
-import { isSqlIdentifier } from '../sql_identifier.js'
+import { isSqlIdentifier } from '../sql_identifier.ts'
 
 export const migrationNames = [
   'add_account_columns_to_users',

@@ -1,18 +1,16 @@
-/* eslint-disable @unicorn/no-await-expression-member -- Keep database assertions next to the operation they inspect. */
-
 import { test } from '@japa/runner'
-import { useTestApp } from './helpers/app.js'
-import { accessTokenDefaults } from './helpers/access_tokens.js'
-import { insertUser, makeService, tokenFrom, unwrapId } from './helpers/fakes.js'
-import { advanceCredentialRevision } from '../src/credential_revision.js'
-import { transaction } from '../src/db.js'
+import { useTestApp } from './helpers/app.ts'
+import { accessTokenDefaults } from './helpers/access_tokens.ts'
+import { insertUser, makeService, tokenFrom, unwrapId } from './helpers/fakes.ts'
+import { advanceCredentialRevision } from '../src/credential_revision.ts'
+import { transaction } from '../src/db.ts'
 import {
   E_ACCOUNT_KIT_ADAPTER_CONTRACT,
   E_INVALID_CREDENTIALS,
   E_ACCOUNT_KIT_INVALID_SESSION,
   E_ACCOUNT_KIT_POST_COMMIT,
-} from '../src/errors.js'
-import { dbTime } from './helpers/db_time.js'
+} from '../src/errors.ts'
+import { dbTime } from './helpers/db_time.ts'
 
 const sessionGuard = (events: string[] = []) => ({
   strategy: 'session' as const,
@@ -71,6 +69,7 @@ test.group('authentication contract', (group) => {
         await change()
       }
       assert.equal(calls, 1)
+      // eslint-disable-next-line @unicorn/no-await-expression-member -- Assert the result at the call site.
       assert.isNotNull((await kit.db.from('users').where('id', user.id).first()).disabled_at)
     }
   })
@@ -111,9 +110,10 @@ test.group('authentication contract', (group) => {
         strategy: 'session' as const,
         name: 'web',
         guard: 'web',
-        canAccess: async (account: { id: number | string }, trx: import('../src/types.js').Trx) =>
-          !(await trx.from('users').select('disabled_at').where('id', account.id).first())
-            ?.disabled_at,
+        canAccess: async (account: { id: number | string }, trx: import('../src/types.ts').Trx) => {
+          const row = await trx.from('users').select('disabled_at').where('id', account.id).first()
+          return !row?.disabled_at
+        },
       },
     }
     const first = makeService(kit, options).account
@@ -162,9 +162,14 @@ test.group('authentication contract', (group) => {
       authentication: {
         strategy: 'access_tokens',
         guard: 'api',
-        canAccess: async (candidate, trx) =>
-          !(await trx.from('users').select('disabled_at').where('id', candidate.id).first())
-            ?.disabled_at,
+        canAccess: async (candidate, trx) => {
+          const row = await trx
+            .from('users')
+            .select('disabled_at')
+            .where('id', candidate.id)
+            .first()
+          return !row?.disabled_at
+        },
       },
     })
     let issued = 0
@@ -344,12 +349,14 @@ test.group('authentication contract', (group) => {
       await transaction(kit.db, async (trx) => {
         await advanceCredentialRevision(trx, config, user.id)
       })
+      // eslint-disable-next-line @unicorn/no-await-expression-member -- Assert the result at the call site.
       const first = (await kit.db.from('users').where('id', user.id).first()).credentials_changed_at
       await transaction(kit.db, async (trx) => {
         await advanceCredentialRevision(trx, config, user.id)
       })
-      const second = (await kit.db.from('users').where('id', user.id).first())
-        .credentials_changed_at
+      const second =
+        // eslint-disable-next-line @unicorn/no-await-expression-member -- Assert the result at the call site.
+        (await kit.db.from('users').where('id', user.id).first()).credentials_changed_at
       assert.isAbove(new Date(second).getTime(), new Date(first).getTime())
     } finally {
       Date.now = oldNow
@@ -374,6 +381,7 @@ test.group('authentication contract', (group) => {
     })
     assert.lengthOf(await kit.db.from('auth_access_tokens').where('tokenable_id', user.id), 0)
     assert.isNotNull(
+      // eslint-disable-next-line @unicorn/no-await-expression-member -- Assert the result at the call site.
       (await kit.db.from('users').where('id', user.id).first()).credentials_changed_at
     )
   })
@@ -432,6 +440,7 @@ test.group('authentication contract', (group) => {
       'abort'
     )
     assert.lengthOf(await kit.db.from('auth_access_tokens').where('tokenable_id', user.id), 1)
+    // eslint-disable-next-line @unicorn/no-await-expression-member -- Assert the result at the call site.
     assert.isNull((await kit.db.from('users').where('id', user.id).first()).credentials_changed_at)
     assert.isTrue(
       await kit.db.transaction((trx) =>

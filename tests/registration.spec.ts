@@ -1,7 +1,7 @@
-/* eslint-disable @unicorn/no-await-expression-member -- Inspect database results directly in focused registration assertions. */
 import { test } from '@japa/runner'
 import { DateTime } from 'luxon'
-import { AccountKit, defineConfig } from '../src/account_kit.js'
+import { AccountKit } from '../src/account_kit.ts'
+import { resolveConfig as defineConfig } from '../src/config.ts'
 import {
   E_ACCOUNT_KIT_AUTHORIZATION,
   E_ACCOUNT_KIT_CAPABILITY_DISABLED,
@@ -9,16 +9,16 @@ import {
   E_ACCOUNT_KIT_REGISTRATION_EMAIL_ALREADY_REGISTERED,
   E_ACCOUNT_KIT_INVALID_INPUT,
   E_ACCOUNT_KIT_INVALID_TOKEN,
-} from '../src/errors.js'
-import { useTestApp } from './helpers/app.js'
-import { dbTime } from './helpers/db_time.js'
+} from '../src/errors.ts'
+import { useTestApp } from './helpers/app.ts'
+import { dbTime } from './helpers/db_time.ts'
 import {
   insertUser,
   makeConfig,
   makeService,
   makeUsersAdapter,
   tokenFrom,
-} from './helpers/fakes.js'
+} from './helpers/fakes.ts'
 
 test.group('registration', (group) => {
   const kit = useTestApp(group)
@@ -97,6 +97,7 @@ test.group('registration', (group) => {
         E_ACCOUNT_KIT_INVALID_INPUT
       )
     }
+    // eslint-disable-next-line @unicorn/no-await-expression-member -- Assert the result at the call site.
     assert.equal((await kit.db.from('users')).length, 0)
   })
 
@@ -168,6 +169,7 @@ test.group('registration', (group) => {
         }),
       E_ACCOUNT_KIT_CAPABILITY_DISABLED
     )
+    // eslint-disable-next-line @unicorn/no-await-expression-member -- Assert the result at the call site.
     assert.equal((await kit.db.from('users')).length, 0)
   })
 
@@ -275,6 +277,7 @@ test.group('registration', (group) => {
         E_ACCOUNT_KIT_REGISTRATION_EMAIL_ALREADY_REGISTERED
       )
     }
+    // eslint-disable-next-line @unicorn/no-await-expression-member -- Assert the result at the call site.
     assert.equal((await kit.db.from('users')).length, 1)
     assert.equal(E_ACCOUNT_KIT_REGISTRATION_EMAIL_ALREADY_REGISTERED.status, 422)
   })
@@ -333,7 +336,9 @@ test.group('registration', (group) => {
       ).length,
       1
     )
+    // eslint-disable-next-line @unicorn/no-await-expression-member -- Assert the result at the call site.
     assert.equal((await kit.db.from('users')).length, 1)
+    // eslint-disable-next-line @unicorn/no-await-expression-member -- Assert the result at the call site.
     assert.equal((await kit.db.from('email_verification_tokens')).length, 1)
     assert.equal(
       service.recorder.calls.filter((call) => call.method === 'accountActivationProvision').length,
@@ -371,6 +376,7 @@ test.group('registration', (group) => {
     assert.equal(await service.account.emailVerification.send({ userId: row.id }), 'sent')
     assert.lengthOf(activationCalls(), 1)
     assert.equal(
+      // eslint-disable-next-line @unicorn/no-await-expression-member -- Assert the result at the call site.
       (await kit.db.from('email_verification_tokens').where('tokenable_id', row.id).first()).hash,
       committedProof.hash
     )
@@ -384,6 +390,7 @@ test.group('registration', (group) => {
     const deliveredToken = tokenFrom(activationCalls()[1].args[1])
     assert.notEqual(deliveredToken, failedToken)
     assert.notEqual(
+      // eslint-disable-next-line @unicorn/no-await-expression-member -- Assert the result at the call site.
       (await kit.db.from('email_verification_tokens').where('tokenable_id', row.id).first()).hash,
       committedProof.hash
     )

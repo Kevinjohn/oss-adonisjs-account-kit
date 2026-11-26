@@ -1,20 +1,21 @@
+import { DateTime } from 'luxon'
 // Approve, reject and revoke: the approval transitions and who may make them.
 import { randomUUID } from 'node:crypto'
-import { lockUser, transaction } from '../db.js'
+import { lockUser, transaction } from '../db.ts'
 import {
   E_ACCOUNT_KIT_ADMISSION_DECISION,
   E_ACCOUNT_KIT_AUTHORIZATION,
   E_ACCOUNT_KIT_INVALID_INPUT,
   E_ACCOUNT_KIT_USER_NOT_FOUND,
-} from '../errors.js'
-import { sqlTimestamp } from '../timestamps.js'
-import type { AccountUser, Trx, UserId } from '../types.js'
-import { requireApproval } from './capability.js'
-import { evaluateAdmission } from './decision.js'
-import { withAdmissionEvent } from './events.js'
-import { readAdmissionRow, toAdmissionRecord, upsertAdmissionRow } from './rows.js'
-import type { AdmissionContext } from './service.js'
-import type { AdmissionApprovalStatus, AdmissionRecord } from './types.js'
+} from '../errors.ts'
+import { sqlTimestamp } from '../timestamps.ts'
+import type { AccountUser, Trx, UserId } from '../types.ts'
+import { requireApproval } from './capability.ts'
+import { evaluateAdmission } from './decision.ts'
+import { withAdmissionEvent } from './events.ts'
+import { readAdmissionRow, toAdmissionRecord, upsertAdmissionRow } from './rows.ts'
+import type { AdmissionContext } from './service.ts'
+import type { AdmissionApprovalStatus, AdmissionRecord } from './types.ts'
 
 export type AdmissionTransition = 'approve' | 'reject' | 'revoke'
 type Decided = Exclude<AdmissionApprovalStatus, 'pending'>
@@ -53,7 +54,7 @@ export async function applyTransition(
 ): Promise<AdmissionRecord> {
   const row = await readAdmissionRow(trx, subject.id)
   const status = resolveNextApprovalStatus(row?.approval_status ?? null, transition)
-  const now = sqlTimestamp(trx)
+  const now = sqlTimestamp(trx, DateTime.utc())
   const updated = await upsertAdmissionRow(
     trx,
     subject.id,

@@ -11,11 +11,11 @@ import {
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { test } from '@japa/runner'
-import { inspectSetup } from '../src/setup/inspect.js'
-import { planSetup } from '../src/setup/plan.js'
-import { applySetup } from '../src/setup/apply.js'
-import { cleanupRoots, fixture, registerSetupTeardown } from './helpers/setup_project_fixture.js'
-import { withFixture } from './helpers/setup_prerequisites.js'
+import { inspectSetup } from '../src/setup/inspect.ts'
+import { planSetup } from '../src/setup/plan.ts'
+import { applySetup } from '../src/setup/apply.ts'
+import { cleanupRoots, fixture, registerSetupTeardown } from './helpers/setup_project_fixture.ts'
+import { withFixture } from './helpers/setup_prerequisites.ts'
 
 test.group('setup model inspection', (group) => {
   registerSetupTeardown(group)

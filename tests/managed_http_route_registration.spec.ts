@@ -1,9 +1,9 @@
 import { test } from '@japa/runner'
 import type { Router } from '@adonisjs/core/http'
-import { type AccountKit } from '../src/account_kit.js'
-import { registerManagedRoutes } from '../src/http/managed.js'
-import { bootTestApp } from './helpers/app.js'
-import { fakeManagedHttp } from './helpers/managed_http_fakes.js'
+import { type AccountKit } from '../src/account_kit.ts'
+import { registerManagedRoutes } from '../src/http/managed.ts'
+import { bootTestApp } from './helpers/app.ts'
+import { fakeManagedHttp } from './helpers/managed_http_fakes.ts'
 
 test.group('managed HTTP dispatch', () => {
   test('excludes a named route and rejects a second registration before mutating router', ({

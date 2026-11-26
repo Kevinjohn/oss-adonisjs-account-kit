@@ -1,6 +1,6 @@
 // Notification readiness: checks that account email will reach people in an environment.
-import { createActionUrls, requireTrustedOrigin, type ActionUrlOptions } from './action_urls.js'
-import type { Capability, UrlCallbacks } from './types.js'
+import { createActionUrls, requireTrustedOrigin, type ActionUrlOptions } from './action_urls.ts'
+import type { Capability, UrlCallbacks } from './types.ts'
 
 /**
  * What `notificationReadiness` checks: environment, delivery mode, mail transport, origins, enabled

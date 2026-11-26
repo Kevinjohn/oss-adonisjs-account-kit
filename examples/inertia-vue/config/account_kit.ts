@@ -1,3 +1,4 @@
+import logger from '@adonisjs/core/services/logger'
 import type { NotificationCallbacks } from '@kevinjohn/adonisjs-account-kit/types'
 import app from '@adonisjs/core/services/app'
 import env from '#start/env'
@@ -37,6 +38,7 @@ const users = createLucidAdapter(loadUser, {
  * the application's callbacks to `defineConfig` directly.
  */
 export const notifyOverrides: NotificationCallbacks = createLogNotifications({
+  logger: () => logger,
   brandName: 'My App',
   environment,
 })

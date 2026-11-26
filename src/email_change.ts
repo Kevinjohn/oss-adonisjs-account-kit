@@ -1,24 +1,24 @@
 // Email change: inspecting and completing the `email_change` proof.
 import { randomUUID } from 'node:crypto'
-import { sqlTimestamp } from './timestamps.js'
+import { sqlTimestamp } from './timestamps.ts'
 import { DateTime } from 'luxon'
-import { invalidateChangedCredentials } from './credential_revision.js'
-import { consumeUserToken, isUserEmailUniqueViolation, transaction } from './db.js'
-import { finishCommitted, createLifecycleEffect, postCommit, settleCommitted } from './effects.js'
+import { invalidateChangedCredentials } from './credential_revision.ts'
+import { consumeUserToken, isUserEmailUniqueViolation, transaction } from './db.ts'
+import { finishCommitted, createLifecycleEffect, postCommit, settleCommitted } from './effects.ts'
 import {
   E_ACCOUNT_KIT_EMAIL_ALREADY_REGISTERED,
   E_ACCOUNT_KIT_INVALID_TOKEN,
   type E_ACCOUNT_KIT_POST_COMMIT,
-} from './errors.js'
-import { clearRecoveryTokens } from './credential_cleanup.js'
-import { hashToken, isTokenShaped } from './tokens.js'
+} from './errors.ts'
+import { clearRecoveryTokens } from './credential_cleanup.ts'
+import { hashToken, isTokenShaped } from './tokens.ts'
 import type {
   AccountUser,
   CompleteEmailChangeInput,
   InspectEmailChangeInput,
   UserId,
-} from './types.js'
-import type { ServiceDependencies } from './service_dependencies.js'
+} from './types.ts'
+import type { ServiceDependencies } from './service_dependencies.ts'
 
 export async function inspectEmailChange(
   deps: Pick<ServiceDependencies, 'config' | 'db'>,
@@ -29,7 +29,7 @@ export async function inspectEmailChange(
     .from('email_verification_tokens')
     .select('tokenable_id', 'email', 'current_email', 'purpose')
     .where('hash', hashToken(input.token))
-    .where('expires_at', '>', sqlTimestamp(deps.db))
+    .where('expires_at', '>', sqlTimestamp(deps.db, DateTime.utc()))
     .first()
   if (!proof || proof.purpose !== 'email_change') return false
   const user = await deps.config.users.findById(proof.tokenable_id)

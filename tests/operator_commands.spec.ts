@@ -1,18 +1,18 @@
 import { test } from '@japa/runner'
 import { Kernel } from '@adonisjs/core/ace'
-import InviteAccount from '../commands/invite.js'
-import ResetLink from '../commands/reset_link.js'
-import * as commandLoader from '../commands/main.js'
+import InviteAccount from '../commands/invite.ts'
+import ResetLink from '../commands/reset_link.ts'
+import * as commandLoader from '../commands/main.ts'
 import {
   E_ACCOUNT_KIT_EMAIL_ALREADY_REGISTERED,
   E_ACCOUNT_KIT_INVALID_INPUT,
   E_ACCOUNT_KIT_USER_NOT_FOUND,
-} from '../src/errors.js'
-import { AccountKit } from '../src/account_kit.js'
-import type { AccountKitConfig } from '../src/types.js'
-import { aceKernel } from './helpers/ace_kernel.js'
-import { useTestApp, type TestApp } from './helpers/app.js'
-import { insertUser, makeService, tokenFrom } from './helpers/fakes.js'
+} from '../src/errors.ts'
+import { AccountKit } from '../src/account_kit.ts'
+import type { AccountKitConfig } from '../src/types.ts'
+import { aceKernel } from './helpers/ace_kernel.ts'
+import { useTestApp, type TestApp } from './helpers/app.ts'
+import { insertUser, makeService, tokenFrom } from './helpers/fakes.ts'
 
 function kernelFor(kit: TestApp, overrides: Partial<AccountKitConfig> = {}) {
   const service = makeService(kit, overrides)

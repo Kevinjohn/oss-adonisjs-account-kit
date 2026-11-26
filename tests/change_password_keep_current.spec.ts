@@ -1,16 +1,14 @@
-/* eslint-disable @unicorn/no-await-expression-member -- Keep each assertion next to the operation it inspects. */
-
 import { test } from '@japa/runner'
 import { DateTime } from 'luxon'
-import { registerManagedRoutes } from '../src/http/managed.js'
-import { E_ACCOUNT_KIT_INVALID_SESSION, E_ACCOUNT_KIT_POST_COMMIT } from '../src/errors.js'
-import { passwordChangeRevision } from '../src/password_change_revision.js'
-import type { AccountKitConfig, CurrentAccountInput, UserId } from '../src/types.js'
-import { useTestApp } from './helpers/app.js'
-import { accessTokenDefaults } from './helpers/access_tokens.js'
-import { dbTime } from './helpers/db_time.js'
-import { insertUser, makeNotify, makeService, tokenFrom } from './helpers/fakes.js'
-import { fakeManagedHttp, stubGuard } from './helpers/managed_http_fakes.js'
+import { registerManagedRoutes } from '../src/http/managed.ts'
+import { E_ACCOUNT_KIT_INVALID_SESSION, E_ACCOUNT_KIT_POST_COMMIT } from '../src/errors.ts'
+import { passwordChangeRevision } from '../src/password_change_revision.ts'
+import type { AccountKitConfig, CurrentAccountInput, UserId } from '../src/types.ts'
+import { useTestApp } from './helpers/app.ts'
+import { accessTokenDefaults } from './helpers/access_tokens.ts'
+import { dbTime } from './helpers/db_time.ts'
+import { insertUser, makeNotify, makeService, tokenFrom } from './helpers/fakes.ts'
+import { fakeManagedHttp, stubGuard } from './helpers/managed_http_fakes.ts'
 
 type Validator = { validate(data: unknown): Promise<unknown> }
 
@@ -63,6 +61,7 @@ test.group('password change keeps the current session', (group) => {
     assert.isString(revision)
     assert.notEqual(revision, mine.revision)
     const kept = { ...mine, revision }
+    // eslint-disable-next-line @unicorn/no-await-expression-member -- Assert the result at the call site.
     assert.equal((await account.authentication.current(kept)).id, user.id)
     await assert.rejects(() => account.authentication.current(mine), E_ACCOUNT_KIT_INVALID_SESSION)
     await assert.rejects(
@@ -176,6 +175,7 @@ test.group('password change keeps the current token', (group) => {
       left.map((row) => String(row.id)),
       [String(mine.tokenId)]
     )
+    // eslint-disable-next-line @unicorn/no-await-expression-member -- Assert the result at the call site.
     assert.equal((await account.authentication.current(mine)).id, user.id)
     assert.lengthOf(await kit.db.from('auth_access_tokens').where('tokenable_id', other.id), 1)
 
@@ -291,8 +291,10 @@ test.group('managed password change keeps the caller signed in', (group) => {
     assert.deepEqual(changed, { status: 200, body: { changed: true } })
     assert.notEqual(current().revision, mine.revision)
     assert.equal(current().sessionHandle, mine.sessionHandle)
+    // eslint-disable-next-line @unicorn/no-await-expression-member -- Assert the result at the call site.
     assert.equal((await call('GET /api/v1/account/sessions')).status, 200)
     as({ ...other, revision: current().revision })
+    // eslint-disable-next-line @unicorn/no-await-expression-member -- Assert the result at the call site.
     assert.equal((await call('GET /api/v1/account/sessions')).status, 401)
     assert.lengthOf(await kit.db.from('account_sessions'), 1)
   })
@@ -315,6 +317,7 @@ test.group('managed password change keeps the caller signed in', (group) => {
     }).catch((caught: unknown) => caught)
     assert.notDeepEqual(failed, { status: 200, body: { changed: true } })
     assert.notEqual(current().revision, mine.revision)
+    // eslint-disable-next-line @unicorn/no-await-expression-member -- Assert the result at the call site.
     assert.equal((await call('GET /api/v1/account/sessions')).status, 200)
   })
 
@@ -339,6 +342,7 @@ test.group('managed password change keeps the caller signed in', (group) => {
     assert.isString(refreshed[0])
     assert.notEqual(refreshed[0], mine.revision)
     assert.equal(current().revision, refreshed[0])
+    // eslint-disable-next-line @unicorn/no-await-expression-member -- Assert the result at the call site.
     assert.equal((await call('GET /api/v1/account/sessions')).status, 200)
   })
 
@@ -364,17 +368,15 @@ test.group('managed password change keeps the caller signed in', (group) => {
       ids.push(typeof row === 'object' ? (row as { id: number }).id : (row as number))
     }
     as({ userId: user.id, tokenId: ids[0] })
-    assert.equal(
-      (
-        await call('POST /api/v1/account/password', {
-          ...change,
-          newPasswordConfirmation: change.newPassword,
-        })
-      ).status,
-      200
-    )
+    const changeResponse = await call('POST /api/v1/account/password', {
+      ...change,
+      newPasswordConfirmation: change.newPassword,
+    })
+    assert.equal(changeResponse.status, 200)
+    // eslint-disable-next-line @unicorn/no-await-expression-member -- Assert the result at the call site.
     assert.equal((await call('GET /api/v1/account/sessions')).status, 200)
     as({ userId: user.id, tokenId: ids[1] })
+    // eslint-disable-next-line @unicorn/no-await-expression-member -- Assert the result at the call site.
     assert.equal((await call('GET /api/v1/account/sessions')).status, 401)
   })
 })

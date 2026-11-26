@@ -1,5 +1,5 @@
 import type * as TypeScript from 'typescript'
-import { extractLazyImportPath, parseSetupSource, walk } from './ts_source.js'
+import { extractLazyImportPath, parseSetupSource, walk } from './ts_source.ts'
 
 /** Check static lazy-import entries in defineConfig({ commands: [...] }). */
 export async function hasRegisteredCommand(

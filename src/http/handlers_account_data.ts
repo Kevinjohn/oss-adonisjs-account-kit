@@ -1,11 +1,11 @@
 /** Managed handlers for the account export and account deletion capabilities. */
-import { exportFault } from '../account_export.js'
-import { isCommittedFailure } from '../errors.js'
-import type { ManagedEndpointName } from './routes.js'
-import type { ManagedHandler } from './managed_types.js'
-import { logRecoveryDiagnostic } from './response_helpers.js'
-import { endSessionAfterCommit } from './session_end.js'
-import { accountProofValidator } from './validators.js'
+import { exportFault } from '../account_export.ts'
+import { isCommittedFailure } from '../errors.ts'
+import type { ManagedEndpointName } from './routes.ts'
+import type { ManagedHandler } from './managed_types.ts'
+import { logRecoveryDiagnostic } from './response_helpers.ts'
+import { endSessionAfterCommit } from './session_end.ts'
+import { accountProofValidator } from './validators.ts'
 
 export const accountDataHandlers = {
   'account.data.export': async ({ context, kit, actorId, route }) => {

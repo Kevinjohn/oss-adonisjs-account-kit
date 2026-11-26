@@ -1,13 +1,13 @@
 // Setup planning phase: Shield CSRF and session store diagnostics for managed session guards.
-import type { SetupChoices, SetupInspection, SetupDiagnostic } from './types.js'
-import { addSetupDiagnostic } from './shared.js'
-import { classifyShieldCsrfSetting } from './config_inspection.js'
+import type { SetupChoices, SetupInspection, SetupDiagnostic } from './types.ts'
+import { addSetupDiagnostic } from './shared.ts'
+import { classifyShieldCsrfSetting } from './config_inspection.ts'
 import {
   type NativeSessionConfiguration,
   inspectNativeSessionConfiguration,
   unwrapManagedSessionConfig,
-} from './session_config.js'
-import { inspectSelectedSessionStore } from './session_diagnostics.js'
+} from './session_config.ts'
+import { inspectSelectedSessionStore } from './session_diagnostics.ts'
 
 export async function planSession(
   choices: SetupChoices,

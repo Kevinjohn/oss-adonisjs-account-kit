@@ -1,15 +1,15 @@
 import { test } from '@japa/runner'
-import BootstrapAdmission from '../src/admission/commands/bootstrap.js'
+import BootstrapAdmission from '../src/admission/commands/bootstrap.ts'
 import {
   E_ACCOUNT_KIT_BOOTSTRAP_APPROVAL_CHANGED,
   E_ACCOUNT_KIT_INVALID_INPUT,
-} from '../src/errors.js'
-import { withInvitationEvidence } from '../src/admission/invitation_evidence.js'
-import { AccountAdmission } from '../src/admission/service.js'
-import { aceKernel } from './helpers/ace_kernel.js'
-import { useAdmissionApp } from './helpers/admission_schema.js'
-import { allRequirements, makeAdmission } from './helpers/admission.js'
-import { tokenFrom } from './helpers/fakes.js'
+} from '../src/errors.ts'
+import { withInvitationEvidence } from '../src/admission/invitation_evidence.ts'
+import { AccountAdmission } from '../src/admission/service.ts'
+import { aceKernel } from './helpers/ace_kernel.ts'
+import { useAdmissionApp } from './helpers/admission_schema.ts'
+import { allRequirements, makeAdmission } from './helpers/admission.ts'
+import { tokenFrom } from './helpers/fakes.ts'
 
 test.group('admission bootstrap', (group) => {
   const kit = useAdmissionApp(group)

@@ -2,8 +2,8 @@ import { readFile, writeFile } from 'node:fs/promises'
 import { resolve } from 'node:path'
 import { BaseCommand, flags } from '@adonisjs/core/ace'
 import { configProvider } from '@adonisjs/core'
-import { generateManagedOpenApi } from '../src/http/openapi.js'
-import { managedRouteRegistration } from '../src/http/route_registration.js'
+import { generateManagedOpenApi } from '../src/http/openapi.ts'
+import { managedRouteRegistration } from '../src/http/route_registration.ts'
 
 export default class ManagedOpenApi extends BaseCommand {
   static commandName = 'account-kit:openapi'
@@ -37,7 +37,7 @@ export default class ManagedOpenApi extends BaseCommand {
     const host = await readFile(this.app.makePath('package.json'), 'utf8')
       .then((text) => JSON.parse(text) as { name?: string; version?: string })
       .catch(() => ({}) as { name?: string; version?: string })
-    const sessionCookieName = await this.readSessionCookieName()
+    const sessionCookieName = await this.#readSessionCookieName()
     let document
     try {
       document = generateManagedOpenApi({
@@ -64,7 +64,7 @@ export default class ManagedOpenApi extends BaseCommand {
   }
 
   /** `config/session.ts` exports a lazy config provider, so it must be resolved for the name. */
-  private async readSessionCookieName(): Promise<string | undefined> {
+  async #readSessionCookieName(): Promise<string | undefined> {
     const session = this.app.config.get<unknown>('session', undefined)
     const resolved = (await configProvider.resolve(this.app, session)) ?? session
     return (resolved as { cookieName?: string } | undefined)?.cookieName

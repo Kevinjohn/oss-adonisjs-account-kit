@@ -1,12 +1,12 @@
 // Binds the admission service in the container from `config/account_kit.ts` and `config/admission.ts`.
 import type { ApplicationService } from '@adonisjs/core/types'
-import { AccountKit } from '../account_kit.js'
-import { resolveAccountKitConfig } from '../config_resolution.js'
-import { E_ACCOUNT_KIT_INVALID_CONFIGURATION } from '../errors.js'
-import { AdmissionCallbackRegistry } from './callback_registry.js'
-import { resolveAdmissionConfig } from './config.js'
-import { AccountAdmission } from './service.js'
-import type { ResolvedAdmissionConfig } from './types.js'
+import { AccountKit } from '../src/account_kit.ts'
+import { resolveAccountKitConfig } from '../src/config_resolution.ts'
+import { E_ACCOUNT_KIT_INVALID_CONFIGURATION } from '../src/errors.ts'
+import { AdmissionCallbackRegistry } from '../src/admission/callback_registry.ts'
+import { resolveAdmissionConfig } from '../src/admission/config.ts'
+import { AccountAdmission } from '../src/admission/service.ts'
+import type { ResolvedAdmissionConfig } from '../src/admission/types.ts'
 
 declare module '@adonisjs/core/types' {
   interface ContainerBindings {
@@ -15,7 +15,7 @@ declare module '@adonisjs/core/types' {
   }
 }
 
-export default class AdmissionProvider {
+export default class AccountAdmissionProvider {
   constructor(protected app: ApplicationService) {}
 
   register(): void {
@@ -34,7 +34,7 @@ export default class AdmissionProvider {
       if (!config)
         throw new E_ACCOUNT_KIT_INVALID_CONFIGURATION(
           'config/admission.ts',
-          'Invalid "config/admission.ts" file. Make sure it exists and exports defineAdmission(...)'
+          'Invalid "config/admission.ts" file. Make sure it exists and exports defineConfig(...)'
         )
       const registry = await resolver.make(AdmissionCallbackRegistry)
       const callbacks = await registry.resolve()

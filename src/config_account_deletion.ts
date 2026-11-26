@@ -1,7 +1,7 @@
 // Validates the account deletion settings.
-import { E_ACCOUNT_KIT_INVALID_CONFIGURATION } from './errors.js'
-import type { AccountDeletionConfig, AccountKitConfig } from './types.js'
-import { freezeResolved } from './config_freeze.js'
+import { E_ACCOUNT_KIT_INVALID_CONFIGURATION } from './errors.ts'
+import type { AccountDeletionConfig, AccountKitConfig } from './types.ts'
+import { freezeResolved } from './config_freeze.ts'
 
 export function resolveAccountDeletion(config: AccountKitConfig): Required<AccountDeletionConfig> {
   const settings = config.accountDeletion ?? {}

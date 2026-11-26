@@ -1,15 +1,15 @@
 import { readdir, rm, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { test } from '@japa/runner'
-import { inspectSelectedSessionStore } from '../src/setup/session_diagnostics.js'
+import { inspectSelectedSessionStore } from '../src/setup/session_diagnostics.ts'
 import {
   resolveSelectedEnvironment,
   resolveSelectedEnvironmentValue,
-} from '../src/setup/selected_environment_values.js'
-import { inspectSetup } from '../src/setup/inspect.js'
-import { planSetup } from '../src/setup/plan.js'
-import { applySetup } from '../src/setup/apply.js'
-import { fixture, registerSetupTeardown } from './helpers/setup_project_fixture.js'
+} from '../src/setup/selected_environment_values.ts'
+import { inspectSetup } from '../src/setup/inspect.ts'
+import { planSetup } from '../src/setup/plan.ts'
+import { applySetup } from '../src/setup/apply.ts'
+import { fixture, registerSetupTeardown } from './helpers/setup_project_fixture.ts'
 
 test.group('setup config diagnostics', (group) => {
   registerSetupTeardown(group)
@@ -74,7 +74,7 @@ test.group('setup config diagnostics', (group) => {
   }) => {
     const { root, choices } = await fixture()
     choices.mail.integration = 'adonisjs-mail'
-    choices.mail.senderEnv = 'ACCOUNT_MAIL_FROM'
+    choices.mail.senderEnv = 'ACCOUNT_KIT_MAIL_FROM'
     choices.mail.transportEnv = 'MAIL_MAILER'
     choices.mail.delivery = 'durable'
     choices.mail.durableWorkerVerified = true
@@ -123,7 +123,9 @@ test.group('setup config diagnostics', (group) => {
     const previous = process.env.SESSION_DRIVER
     try {
       process.env.SESSION_DRIVER = 'cookie'
-      const plan = await planSetup(choices, await inspectSetup(root))
+      const plan = await planSetup(choices, await inspectSetup(root, { env: process.env }), {
+        env: process.env,
+      })
       assert.isTrue(plan.diagnostics.some((item) => item.message.includes('Cookie-only sessions')))
     } finally {
       if (previous === undefined) delete process.env.SESSION_DRIVER
@@ -140,17 +142,23 @@ test.group('setup config diagnostics', (group) => {
     const previous = process.env.SESSION_DRIVER
     try {
       process.env.SESSION_DRIVER = 'cookie'
-      const cookie = await planSetup(choices, await inspectSetup(root))
+      const cookie = await planSetup(choices, await inspectSetup(root, { env: process.env }), {
+        env: process.env,
+      })
       assert.isTrue(
         cookie.diagnostics.some(
           (item) => item.field === 'config/session.ts' && item.severity === 'error'
         )
       )
       process.env.SESSION_DRIVER = 'memory'
-      const missing = await planSetup(choices, await inspectSetup(root))
+      const missing = await planSetup(choices, await inspectSetup(root, { env: process.env }), {
+        env: process.env,
+      })
       assert.isTrue(missing.diagnostics.some((item) => item.message.includes('not configured')))
       process.env.SESSION_DRIVER = 'database'
-      const database = await planSetup(choices, await inspectSetup(root))
+      const database = await planSetup(choices, await inspectSetup(root, { env: process.env }), {
+        env: process.env,
+      })
       assert.isTrue(
         database.diagnostics.some(
           (item) => item.message.includes('session-table migration') && item.severity === 'action'

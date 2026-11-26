@@ -1,6 +1,6 @@
 import { readFile } from 'node:fs/promises'
 import { test } from '@japa/runner'
-import * as errors from '../src/errors.js'
+import * as errors from '../src/errors.ts'
 import {
   E_INVALID_CREDENTIALS,
   E_ACCOUNT_KIT_INVALID_INPUT,
@@ -9,12 +9,12 @@ import {
   E_ACCOUNT_KIT_INVITATION_MANAGEMENT_DENIED,
   E_ACCOUNT_KIT_POST_COMMIT,
   E_ACCOUNT_KIT_THROTTLED,
-} from '../src/errors.js'
-import { mapManagedErrorResponse, buildProofHeaders } from '../src/http/responses.js'
-import { sendRuleViolationResponse } from '../src/http/response_helpers.js'
+} from '../src/errors.ts'
+import { mapManagedErrorResponse, buildProofHeaders } from '../src/http/responses.ts'
+import { sendRuleViolationResponse } from '../src/http/response_helpers.ts'
 import type { HttpContext } from '@adonisjs/core/http'
-import { requestWithHeaders } from './helpers/managed_http_fakes.js'
-import { accountErrorResponse } from '../src/error_response.js'
+import { requestWithHeaders } from './helpers/managed_http_fakes.ts'
+import { accountErrorResponse } from '../src/error_response.ts'
 
 test.group('managed HTTP responses', () => {
   test('package 422s follow Accept and are never cached', ({ assert }) => {

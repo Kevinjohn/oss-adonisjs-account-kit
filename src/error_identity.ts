@@ -1,7 +1,8 @@
+import type { ProofKind } from './types_error_response.ts'
 // The public identity of an Account Kit error: status, stable code, English message and the
 // committed marker. Both renderers build from it, so the managed routes and the application
 // helper cannot disagree.
-import type { E_ACCOUNT_KIT } from './errors.js'
+import type { E_ACCOUNT_KIT } from './errors.ts'
 import {
   E_ACCOUNT_KIT_AUTHORIZATION,
   E_ACCOUNT_KIT_INVALID_SESSION,
@@ -10,10 +11,7 @@ import {
   E_ACCOUNT_KIT_INVITATION_NOT_FOUND,
   E_ACCOUNT_KIT_POST_COMMIT,
   E_ACCOUNT_KIT_THROTTLED,
-} from './errors.js'
-
-/** The proof an invalid token was for; picks the per-kind invalid-token code. */
-export type ProofKind = 'password' | 'email' | 'invitation' | 'magicLink'
+} from './errors.ts'
 
 export interface PublicIdentity {
   status: number
@@ -92,3 +90,5 @@ export function buildPublicErrorHeaders(
       : {}),
   }
 }
+
+export type { ProofKind } from './types_error_response.ts'

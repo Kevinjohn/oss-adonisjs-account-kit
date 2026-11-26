@@ -3,12 +3,12 @@ import { readdir, writeFile } from 'node:fs/promises'
 import { syncBuiltinESMExports } from 'node:module'
 import { join, sep } from 'node:path'
 import { test } from '@japa/runner'
-import { inspectSetup } from '../src/setup/inspect.js'
-import { planSetup } from '../src/setup/plan.js'
-import { applySetup } from '../src/setup/apply.js'
-import { requireSetupChoices } from '../src/setup/parse.js'
-import { fixture, registerSetupTeardown } from './helpers/setup_project_fixture.js'
-import { withFixture } from './helpers/setup_prerequisites.js'
+import { inspectSetup } from '../src/setup/inspect.ts'
+import { planSetup } from '../src/setup/plan.ts'
+import { applySetup } from '../src/setup/apply.ts'
+import { requireSetupChoices } from '../src/setup/parse.ts'
+import { fixture, registerSetupTeardown } from './helpers/setup_project_fixture.ts'
+import { withFixture } from './helpers/setup_prerequisites.ts'
 
 /** Makes every migration template unreadable until the test's cleanup runs. */
 function failTemplateReads(cleanup: (handler: () => void) => void) {
@@ -44,7 +44,7 @@ test.group('setup choice validation', (group) => {
     social.social = {
       status: 'enabled',
       providers: ['github'],
-      callbackOriginEnv: 'ACCOUNT_SOCIAL_ORIGIN',
+      callbackOriginEnv: 'ACCOUNT_KIT_SOCIAL_ORIGIN',
       callbackPath: '/account/auth/oauth/{provider}/callback',
       credentials: {},
     }
@@ -173,11 +173,14 @@ test.group('setup choice validation', (group) => {
   }) => {
     const { root, choices } = await fixture()
     const previousApp = process.env.APP_URL
-    const previousFrontend = process.env.FRONTEND_URL
+    const previousFrontend = process.env.ACCOUNT_KIT_FRONTEND_URL
     process.env.APP_URL = 'http://account.example.test/root/'
-    process.env.FRONTEND_URL = 'http://account.example.test/'
+    process.env.ACCOUNT_KIT_FRONTEND_URL = 'http://account.example.test/'
     try {
-      const plan = await planSetup(choices, await inspectSetup(root), { production: true })
+      const plan = await planSetup(choices, await inspectSetup(root, { env: process.env }), {
+        env: process.env,
+        production: true,
+      })
       assert.includeMembers(
         plan.diagnostics.map(({ field }) => field),
         ['mail.backendOriginEnv', 'mail.frontendOriginEnv']
@@ -193,8 +196,8 @@ test.group('setup choice validation', (group) => {
     } finally {
       if (previousApp === undefined) delete process.env.APP_URL
       else process.env.APP_URL = previousApp
-      if (previousFrontend === undefined) delete process.env.FRONTEND_URL
-      else process.env.FRONTEND_URL = previousFrontend
+      if (previousFrontend === undefined) delete process.env.ACCOUNT_KIT_FRONTEND_URL
+      else process.env.ACCOUNT_KIT_FRONTEND_URL = previousFrontend
     }
   })
 
@@ -204,7 +207,7 @@ test.group('setup choice validation', (group) => {
     const { root, choices } = await fixture()
     await writeFile(
       join(root, '.env'),
-      'APP_URL=https://accounts.example.test\nFRONTEND_URL=https://app.example.test\n'
+      'APP_URL=https://accounts.example.test\nACCOUNT_KIT_FRONTEND_URL=https://app.example.test\n'
     )
     const plan = await planSetup(choices, await inspectSetup(root), {
       production: true,
@@ -226,14 +229,14 @@ test.group('setup choice validation', (group) => {
     )
   })
 
-  test('resolves named alternate mail origins and preserves process precedence', async ({
+  test('resolves named alternate mail origins and preserves explicit override precedence', async ({
     assert,
   }) => {
     const { root, choices } = await fixture()
     choices.mail.backendOriginEnv = 'ACCOUNT_BACKEND_ORIGIN'
     await writeFile(
       join(root, '.env'),
-      'ACCOUNT_BACKEND_ORIGIN=http://file.example.test\nFRONTEND_URL=https://app.example.test\n'
+      'ACCOUNT_BACKEND_ORIGIN=http://file.example.test\nACCOUNT_KIT_FRONTEND_URL=https://app.example.test\n'
     )
     const plan = await planSetup(choices, await inspectSetup(root), {
       production: true,
@@ -251,7 +254,7 @@ test.group('setup choice validation', (group) => {
     const { root, choices } = await fixture()
     await writeFile(
       join(root, '.env'),
-      'APP_URL=http://accounts.example.test\nFRONTEND_URL=https://app.example.test\n'
+      'APP_URL=http://accounts.example.test\nACCOUNT_KIT_FRONTEND_URL=https://app.example.test\n'
     )
     const plan = await planSetup(choices, await inspectSetup(root), {
       production: true,
@@ -296,7 +299,7 @@ test.group('setup choice validation', (group) => {
     const { root, choices } = await fixture()
     await writeFile(
       join(root, '.env'),
-      'HOST=localhost\nPORT=3333\nAPP_URL=http://${HOST}:${PORT}\nFRONTEND_URL=https://app.example.test\n'
+      'HOST=localhost\nPORT=3333\nAPP_URL=http://${HOST}:${PORT}\nACCOUNT_KIT_FRONTEND_URL=https://app.example.test\n'
     )
     for (const production of [false, true]) {
       const plan = await planSetup(choices, await inspectSetup(root), { production, env: {} })
@@ -321,7 +324,7 @@ test.group('setup choice validation', (group) => {
     }
     await writeFile(
       join(root, '.env'),
-      'APP_URL=https://accounts.example.test\nFRONTEND_URL=https://app.example.test\nSOCIAL_CALLBACK_ORIGIN=https://social.example.test\n'
+      'APP_URL=https://accounts.example.test\nACCOUNT_KIT_FRONTEND_URL=https://app.example.test\nSOCIAL_CALLBACK_ORIGIN=https://social.example.test\n'
     )
     const plan = await planSetup(choices, await inspectSetup(root), { env: {} })
     assert.notInclude(

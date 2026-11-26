@@ -2,9 +2,9 @@ import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import type { Group } from '@japa/runner/core'
-import { buildDefaultSetupChoices } from '../../src/setup/defaults.js'
-import { setupVersions } from './setup_versions.js'
-import { clearSelectorEnv } from './selector_env.js'
+import { buildDefaultSetupChoices } from '../../src/setup/defaults.ts'
+import { setupVersions } from './setup_versions.ts'
+import { clearSelectorEnv } from './selector_env.ts'
 
 export const cleanupRoots: string[] = []
 

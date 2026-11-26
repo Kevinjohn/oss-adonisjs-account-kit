@@ -1,20 +1,17 @@
 import { DateTime } from 'luxon'
 import { test } from '@japa/runner'
-import { lockRow as lockRowSource, transaction as transactionSource } from '../src/db.js'
 import {
   readTimestamp as readTimestampSource,
   sqlTimestamp as sqlTimestampSource,
-} from '../src/timestamps.js'
-import { lockRow, readTimestamp, sqlTimestamp, transaction } from '../transaction/main.js'
-import { useTestApp } from './helpers/app.js'
-import { insertUser } from './helpers/fakes.js'
+} from '../src/timestamps.ts'
+import { readTimestamp, sqlTimestamp, TransactionManager } from '../transaction/main.ts'
+import { useTestApp } from './helpers/app.ts'
+import { insertUser } from './helpers/fakes.ts'
 
 test.group('transaction subpath', (group) => {
   const kit = useTestApp(group)
 
   test('exports the helpers the package uses itself', ({ assert }) => {
-    assert.strictEqual(transaction, transactionSource)
-    assert.strictEqual(lockRow, lockRowSource)
     assert.strictEqual(sqlTimestamp, sqlTimestampSource)
     assert.strictEqual(readTimestamp, readTimestampSource)
   })
@@ -24,8 +21,9 @@ test.group('transaction subpath', (group) => {
   }) => {
     const person = await insertUser(kit)
     const at = DateTime.fromISO('2026-03-04T05:06:07.890Z')
-    const seen = await transaction(kit.db, async (trx) => {
-      await lockRow(trx, 'users', person.id)
+    const transactions = new TransactionManager(kit.db)
+    const seen = await transactions.run(async (trx) => {
+      await transactions.lockRow(trx, 'users', person.id)
       await trx
         .from('users')
         .where('id', person.id)

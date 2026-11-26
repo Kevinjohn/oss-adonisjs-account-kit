@@ -6,7 +6,7 @@ import { test } from '@japa/runner'
 import type Configure from '@adonisjs/core/commands/configure'
 import { RuntimeException } from '@adonisjs/core/exceptions'
 import { CodeTransformer } from '@adonisjs/assembler/code_transformer'
-import { configure, migrationNames, migrationSchema } from '../configure.js'
+import { configure, migrationNames, migrationSchema } from '../configure.ts'
 
 function fakeCommand(
   root: string,

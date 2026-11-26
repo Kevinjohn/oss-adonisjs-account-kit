@@ -1,8 +1,8 @@
 import { RuntimeException } from '@adonisjs/core/exceptions'
 // Deletes single-use rows and returns them, on engines with and without DELETE ... RETURNING.
 import type { Database } from '@adonisjs/lucid/database'
-import { readTimestamp } from './timestamps.js'
-import type { Trx } from './types.js'
+import { readTimestamp } from './timestamps.ts'
+import type { Trx } from './types.ts'
 
 /**
  * Run a `delete ... returning` statement and return the deleted rows. better-sqlite3 returns the

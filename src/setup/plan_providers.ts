@@ -1,14 +1,14 @@
-import type { SetupDiagnostic, SetupFileChange, SetupInspection } from './types.js'
+import type { SetupDiagnostic, SetupFileChange, SetupInspection } from './types.ts'
 import {
   inspectDefaultExportExpression,
   getDirectProperty,
   getImportedBindingName,
   parseSetupSource,
   type SetupSource,
-} from './ts_source.js'
+} from './ts_source.ts'
 import type * as TypeScript from 'typescript'
-import { inspectProviders } from './providers_inspection.js'
-import { addSetupDiagnostic } from './shared.js'
+import { inspectProviders } from './providers_inspection.ts'
+import { addSetupDiagnostic } from './shared.ts'
 
 export async function planArrayImports(
   changes: SetupFileChange[],

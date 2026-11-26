@@ -1,8 +1,8 @@
 import { BaseCommand, args, flags } from '@adonisjs/core/ace'
-import { invitationRoleLength, invitationScopeLength } from '../src/invitation_input.js'
-import { AccountKit } from '../src/account_kit.js'
-import type { OperatorInviteResult } from '../src/types.js'
-import { reportOperatorOutcome, completeOperatorCommand } from './operator_output.js'
+import { invitationRoleLength, invitationScopeLength } from '../src/invitation_input.ts'
+import { AccountKit } from '../src/account_kit.ts'
+import type { OperatorInviteResult } from '../src/types.ts'
+import { reportOperatorOutcome, completeOperatorCommand } from './operator_output.ts'
 
 /** Operator invitation: no actor authorization, replaces the pending invitation for this address and scope. */
 export default class InviteAccount extends BaseCommand {

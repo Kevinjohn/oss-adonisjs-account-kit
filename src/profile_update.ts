@@ -1,27 +1,27 @@
 import { RuntimeException } from '@adonisjs/core/exceptions'
 // Profile update: registration fields, and the address change that issues the `email_change` proof.
 import { randomUUID } from 'node:crypto'
-import { sqlTimestamp } from './timestamps.js'
+import { sqlTimestamp } from './timestamps.ts'
 import { DateTime } from 'luxon'
-import { isActiveAccount } from './account_projection.js'
-import { isUserEmailUniqueViolation, transaction } from './db.js'
-import { finishCommitted, createLifecycleEffect, postCommit, settleCommitted } from './effects.js'
-import { isEmailShaped, normalizeEmail } from './email.js'
+import { isActiveAccount } from './account_projection.ts'
+import { isUserEmailUniqueViolation, transaction } from './db.ts'
+import { finishCommitted, createLifecycleEffect, postCommit, settleCommitted } from './effects.ts'
+import { isEmailShaped, normalizeEmail } from './email.ts'
 import {
   E_ACCOUNT_KIT_EMAIL_ALREADY_REGISTERED,
   E_ACCOUNT_KIT_INVALID_INPUT,
   type E_ACCOUNT_KIT_POST_COMMIT,
-} from './errors.js'
-import { mapRegistrationFields } from './registration_fields.js'
-import { clearRecoveryTokens } from './credential_cleanup.js'
-import { confirmActor, requireUser } from './actor_confirmation.js'
-import { generateToken, hashToken } from './tokens.js'
-import { isRecentIssue, reopenResendOnFailure } from './token_reuse.js'
-import { expiresAt } from './ttl.js'
-import { invalidateChangedCredentials, revision } from './credential_revision.js'
-import { rememberCorrectionRevision } from './profile_correction_revision.js'
-import type { AccountUser, RequestEmailChangeInput, UpdateProfileInput } from './types.js'
-import type { ServiceDependencies } from './service_dependencies.js'
+} from './errors.ts'
+import { mapRegistrationFields } from './registration_fields.ts'
+import { clearRecoveryTokens } from './credential_cleanup.ts'
+import { confirmActor, requireUser } from './actor_confirmation.ts'
+import { generateToken, hashToken } from './tokens.ts'
+import { isRecentIssue, reopenResendOnFailure } from './token_reuse.ts'
+import { expiresAt } from './ttl.ts'
+import { invalidateChangedCredentials, revision } from './credential_revision.ts'
+import { rememberCorrectionRevision } from './profile_correction_revision.ts'
+import type { AccountUser, RequestEmailChangeInput, UpdateProfileInput } from './types.ts'
+import type { ServiceDependencies } from './service_dependencies.ts'
 
 export async function requestEmailChange(
   deps: ServiceDependencies,

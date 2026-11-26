@@ -5,16 +5,16 @@ import {
   type SetupDiagnostic,
   type SetupFeature,
   type SetupInspection,
-} from './types.js'
-import { createActionUrls } from '../notifications.js'
+} from './types.ts'
+import { createActionUrls } from '../notifications.ts'
 import {
   emailDestinations,
   hasEmailFlow,
   envName,
   addSetupDiagnostic,
   addOriginDiagnostics,
-} from './shared.js'
-import type { SelectedSetupOrigins } from './diagnostics.js'
+} from './shared.ts'
+import type { SelectedSetupOrigins } from './diagnostics.ts'
 
 /** Mail integration, environment references, destinations and origins for email flows. */
 export function addMailDiagnostics(

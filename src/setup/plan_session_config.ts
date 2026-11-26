@@ -1,19 +1,19 @@
 // Setup planning phase: wrap or retire the managed session store verification in config/session.ts.
-import type { SetupChoices, SetupDiagnostic, SetupFileChange, SetupInspection } from './types.js'
+import type { SetupChoices, SetupDiagnostic, SetupFileChange, SetupInspection } from './types.ts'
 import {
   inspectDefaultExportExpression,
   getImportedBindingName,
   parseSetupSource,
   type SetupSource,
-} from './ts_source.js'
-import { E_ACCOUNT_KIT_INVALID_SETUP_SOURCE } from '../errors.js'
-import { addSetupDiagnostic } from './shared.js'
+} from './ts_source.ts'
+import { E_ACCOUNT_KIT_INVALID_SETUP_SOURCE } from '../errors.ts'
+import { addSetupDiagnostic } from './shared.ts'
 import {
   type NativeSessionConfiguration,
   inspectNativeSessionConfiguration,
   renderManagedSessionConfig,
   unwrapManagedSessionConfig,
-} from './session_config.js'
+} from './session_config.ts'
 
 export async function planSessionConfigIntegration(
   changes: SetupFileChange[],

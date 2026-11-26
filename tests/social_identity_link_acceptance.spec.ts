@@ -1,10 +1,10 @@
 import { test } from '@japa/runner'
-import { E_ACCOUNT_KIT_SOCIAL_LINK_REFUSED } from '../src/errors.js'
-import { mapManagedErrorResponse } from '../src/http/responses.js'
-import type { AccountUser, SocialLinkProfile } from '../src/types.js'
-import { useTestApp } from './helpers/app.js'
-import { insertUser, makeService } from './helpers/fakes.js'
-import { clientChallenge, current, provider } from './helpers/social_identity.js'
+import { E_ACCOUNT_KIT_SOCIAL_LINK_REFUSED } from '../src/errors.ts'
+import { mapManagedErrorResponse } from '../src/http/responses.ts'
+import type { AccountUser, SocialLinkProfile } from '../src/types.ts'
+import { useTestApp } from './helpers/app.ts'
+import { insertUser, makeService } from './helpers/fakes.ts'
+import { clientChallenge, current, provider } from './helpers/social_identity.ts'
 
 type AcceptLink = (user: AccountUser, profile: SocialLinkProfile) => Promise<void>
 

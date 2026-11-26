@@ -1,41 +1,8 @@
+import type { AdapterContractFixture } from '../types_testing.ts'
 import assert from 'node:assert/strict'
 import { RuntimeException } from '@adonisjs/core/exceptions'
 import { DateTime } from 'luxon'
-import type { Trx, UsersAdapter } from '../src/types.js'
-
-/**
- * What the adapter contract suite needs to test your users adapter: the adapter, a way to run
- * transactions, and probes for stored passwords and row locks.
- */
-export interface AdapterContractFixture {
-  adapter: UsersAdapter
-  /** Run the callback in a transaction and commit it when it returns. */
-  transaction<T>(callback: (trx: Trx) => Promise<T>): Promise<T>
-  /** Return the stored password value so the contract can reject plaintext persistence. */
-  storedPassword(id: number | string): Promise<string | null>
-  /** Check a plaintext password against the stored value, with the application's hasher. */
-  verifyPassword(stored: string, password: string): Promise<boolean>
-  /** Hold the package-owned user lock while an independent writer targets that physical row. */
-  assertLockBlocksWriter(
-    id: number | string,
-    acquireLock: (trx: Trx) => Promise<unknown>
-  ): Promise<void>
-  /** Acquire the package-owned user lock from adapter metadata, not through the adapter. */
-  acquireAccountLock(id: number | string, trx: Trx): Promise<void>
-  emailPrefix?: string
-  registrationData?: unknown
-  /** Set when the adapter stores string ids; the contract then checks they round-trip as strings. */
-  stringIds?: boolean
-  /** Exercise updateRegistrationData: the data to send and a reader for the stored result. */
-  registrationUpdate?: {
-    /** The registration data to send. */
-    data: Record<string, unknown>
-    /** Read the stored registration data back for the given user id. */
-    read(id: number | string): Promise<unknown>
-    /** What `read` should return after the update. */
-    expected: unknown
-  }
-}
+import type { UsersAdapter } from '../types.ts'
 
 function assertSameUser(
   actual: Awaited<ReturnType<UsersAdapter['findById']>>,
@@ -67,15 +34,19 @@ function assertSameUser(
  *
  * @example
  * ```ts
- * import { assertUsersAdapterContract } from '@kevinjohn/adonisjs-account-kit/testing/adapter_contract'
+ * import { usersAdapterContract } from '@kevinjohn/adonisjs-account-kit/testing/adapter_contract'
  * import { test } from '@japa/runner'
  *
  * test('honours the users adapter contract', async () => {
- *   await assertUsersAdapterContract(adapterFixture)
+ *   await usersAdapterContract(adapterFixture)()
  * })
  * ```
  */
-export async function assertUsersAdapterContract(fixture: AdapterContractFixture): Promise<void> {
+export function usersAdapterContract(fixture: AdapterContractFixture): () => Promise<void> {
+  return () => assertContract(fixture)
+}
+
+async function assertContract(fixture: AdapterContractFixture): Promise<void> {
   const prefix =
     fixture.emailPrefix ?? `adapter-${Date.now()}-${Math.random().toString(36).slice(2)}`
   const email = `${prefix}@example.test`
@@ -409,3 +380,5 @@ export async function assertUsersAdapterContract(fixture: AdapterContractFixture
     assertSameUser(await fixture.adapter.findById(created.id), committedVerification)
   }
 }
+
+export type { AdapterContractFixture } from '../types_testing.ts'

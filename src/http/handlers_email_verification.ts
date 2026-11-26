@@ -1,8 +1,8 @@
 /** Managed handlers for the email verification capability: link inspection, completion and resend. */
-import type { ManagedEndpointName } from './routes.js'
-import type { ManagedHandler } from './managed_types.js'
-import { sendInvalidProofResponse, sendPasswordPolicyErrorResponse } from './response_helpers.js'
-import { newPasswordValidator } from './validators.js'
+import type { ManagedEndpointName } from './routes.ts'
+import type { ManagedHandler } from './managed_types.ts'
+import { sendInvalidProofResponse, sendPasswordPolicyErrorResponse } from './response_helpers.ts'
+import { newPasswordValidator } from './validators.ts'
 
 export const emailVerificationHandlers = {
   'auth.emailVerification.inspect': async ({ context, kit, options }) =>

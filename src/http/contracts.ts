@@ -1,6 +1,6 @@
-import type { AccountExport, CurrentAccount, InvitationPage } from '../types.js'
-import type { ManagedEndpointName } from './routes.js'
-import type { SensitivePurpose, SignIn, SocialProviderName } from '../types.js'
+import type { AccountExport, CurrentAccount, InvitationPage } from '../types.ts'
+import type { ManagedEndpointName } from './routes.ts'
+import type { SensitivePurpose, SignIn, SocialProviderName } from '../types.ts'
 
 /** Default request bodies; `:token` and `:id` values are URL path parameters. */
 export interface ManagedRequestBodies {

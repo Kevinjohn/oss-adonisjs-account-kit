@@ -16,8 +16,8 @@ import {
   socialRegistrationValidator,
   socialTokenValidator,
   socialUnlinkValidator,
-} from '../src/http/validators.js'
-import { compileEmbedded, documentFor, requestSchema } from './helpers/openapi.js'
+} from '../src/http/validators.ts'
+import { compileEmbedded, documentFor, requestSchema } from './helpers/openapi.ts'
 
 test.group('managed request schemas match the validators', () => {
   const session = documentFor('session')

@@ -1,7 +1,7 @@
 // Validates a configured TTL at boot, naming the configuration field that holds it.
 import type { DateTime } from 'luxon'
-import { E_ACCOUNT_KIT_INVALID_CONFIGURATION, E_ACCOUNT_KIT_INVALID_INPUT } from './errors.js'
-import { expiresAt } from './ttl.js'
+import { E_ACCOUNT_KIT_INVALID_CONFIGURATION, E_ACCOUNT_KIT_INVALID_INPUT } from './errors.ts'
+import { expiresAt } from './ttl.ts'
 
 export function computeConfiguredExpiry(
   field: string,

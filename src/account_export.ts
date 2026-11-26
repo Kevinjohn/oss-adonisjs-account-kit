@@ -1,17 +1,17 @@
 import { RuntimeException } from '@adonisjs/core/exceptions'
 // The account export: one versioned JSON document of the data Account Kit holds for a user.
 import { DateTime } from 'luxon'
-import { confirmActor } from './actor_confirmation.js'
-import { revision } from './credential_revision.js'
-import { transaction } from './db.js'
-import { settleCommitted } from './effects.js'
-import type { E_ACCOUNT_KIT_POST_COMMIT } from './errors.js'
-import type { AccountDataInput, AccountExport, ResolvedConfig, Trx, UserId } from './types.js'
-import type { ServiceDependencies } from './service_dependencies.js'
-import { readIsoTimestamp, sqlTimestamp } from './timestamps.js'
-import { decodeScopeColumn } from './invitation_scope.js'
-import { packageTables } from './package_tables.js'
-import { isSessionRegistryEnabled } from './session_registry.js'
+import { confirmActor } from './actor_confirmation.ts'
+import { revision } from './credential_revision.ts'
+import { transaction } from './db.ts'
+import { settleCommitted } from './effects.ts'
+import type { E_ACCOUNT_KIT_POST_COMMIT } from './errors.ts'
+import type { AccountDataInput, AccountExport, ResolvedConfig, Trx, UserId } from './types.ts'
+import type { ServiceDependencies } from './service_dependencies.ts'
+import { readIsoTimestamp, sqlTimestamp } from './timestamps.ts'
+import { decodeScopeColumn } from './invitation_scope.ts'
+import { packageTables } from './package_tables.ts'
+import { isSessionRegistryEnabled } from './session_registry.ts'
 
 const faults = new WeakMap<AccountExport, InstanceType<typeof E_ACCOUNT_KIT_POST_COMMIT>>()
 
@@ -42,7 +42,7 @@ async function readPendingAccountOperations(
   trx: Trx,
   userId: UserId
 ): Promise<AccountExport['pending']> {
-  const now = sqlTimestamp(trx)
+  const now = sqlTimestamp(trx, DateTime.utc())
   const reset = await trx
     .from(packageTables.passwordResetTokens)
     .where('tokenable_id', userId)

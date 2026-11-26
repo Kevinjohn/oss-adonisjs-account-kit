@@ -1,10 +1,10 @@
 import { test } from '@japa/runner'
-import { bootTestApp } from './helpers/app.js'
-import { resetSchema } from './helpers/schema.js'
-import { makeService, makeUsersAdapter } from './helpers/fakes.js'
-import { clientChallenge, provider } from './helpers/social_identity.js'
-import { E_ACCOUNT_KIT_SOCIAL_TRANSACTION_INVALID } from '../src/errors.js'
-import { isUserEmailUniqueViolation } from '../src/db.js'
+import { bootTestApp } from './helpers/app.ts'
+import { resetSchema } from './helpers/schema.ts'
+import { makeService, makeUsersAdapter } from './helpers/fakes.ts'
+import { clientChallenge, provider } from './helpers/social_identity.ts'
+import { E_ACCOUNT_KIT_SOCIAL_TRANSACTION_INVALID } from '../src/errors.ts'
+import { isUserEmailUniqueViolation } from '../src/db.ts'
 
 test.group('social registration email collisions', () => {
   for (const entry of ['callback', 'continuation', 'verification hook'] as const) {

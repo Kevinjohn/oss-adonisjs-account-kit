@@ -1,5 +1,5 @@
 import { BaseCommand, flags } from '@adonisjs/core/ace'
-import { pruneExpiredWithScanStatus } from '../src/maintenance.js'
+import { pruneExpiredWithScanStatus } from '../src/maintenance.ts'
 
 export default class PruneAccountKit extends BaseCommand {
   static commandName = 'account-kit:prune'

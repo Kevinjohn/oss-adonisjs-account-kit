@@ -1,5 +1,5 @@
 import { test } from '@japa/runner'
-import { isSqlIdentifier } from '../src/sql_identifier.js'
+import { isSqlIdentifier } from '../src/sql_identifier.ts'
 
 test.group('identifier helper', () => {
   test('isSqlIdentifier accepts plain identifiers and rejects anything else', ({ assert }) => {

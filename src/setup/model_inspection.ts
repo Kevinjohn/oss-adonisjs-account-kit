@@ -3,11 +3,11 @@ import {
   getImportedBindingName,
   unwrapStaticExpression,
   type SetupSource,
-} from './ts_source.js'
+} from './ts_source.ts'
 import type * as TypeScript from 'typescript'
 
-export { inspectClassColumns } from './model_column_inspection.js'
-export type { InspectedColumn } from './model_column_inspection.js'
+export { inspectClassColumns } from './model_column_inspection.ts'
+export type { InspectedColumn } from './model_column_inspection.ts'
 
 /** Keep automatic model inspection within declarations whose class evaluation is understood. */
 export function hasUnsupportedClassRuntime(

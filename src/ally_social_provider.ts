@@ -1,4 +1,4 @@
-import type { SocialProvider } from './types.js'
+import type { SocialProvider } from './types.ts'
 
 /**
  * Adapt one request-scoped Ally driver without importing Ally into service-only consumers.

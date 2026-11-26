@@ -1,9 +1,10 @@
 import { test } from '@japa/runner'
-import { defineAdmission, resolveAdmissionConfig } from '../src/admission/config.js'
-import type { AdmissionConfig } from '../src/admission/types.js'
+import { resolveAdmissionConfig } from '../src/admission/config.ts'
+import { defineConfig } from '../src/admission/config.ts'
+import type { AdmissionConfig } from '../src/admission/types.ts'
 
 const authorize = { decide: async () => true, list: async () => true }
-const define = (config: unknown) => () => defineAdmission(config as AdmissionConfig)
+const define = (config: unknown) => () => defineConfig(config as AdmissionConfig)
 
 test.group('admission config', () => {
   test('requires at least one requirement', ({ assert }) => {
@@ -13,12 +14,12 @@ test.group('admission config', () => {
   })
 
   test('resolves each requirement independently and none by default', ({ assert }) => {
-    assert.deepEqual(defineAdmission({ invitation: { required: true } }), {
+    assert.deepEqual(defineConfig({ invitation: { required: true } }), {
       domain: null,
       invitation: true,
       approval: null,
     })
-    const resolved = defineAdmission({
+    const resolved = defineConfig({
       domain: { allowed: ['example.com', 'mail.example.org'], includeSubdomains: true },
       approval: { required: true, authorize },
     })
@@ -28,9 +29,7 @@ test.group('admission config', () => {
     })
     assert.isFalse(resolved.invitation)
     assert.equal(resolved.approval?.authorize, authorize)
-    assert.isFalse(
-      defineAdmission({ domain: { allowed: ['example.com'] } }).domain!.includeSubdomains
-    )
+    assert.isFalse(defineConfig({ domain: { allowed: ['example.com'] } }).domain!.includeSubdomains)
   })
 
   test('rejects malformed allowed domains', ({ assert }) => {
@@ -77,7 +76,7 @@ test.group('admission config', () => {
 
   test('requires both approval callbacks', ({ assert }) => {
     // A missing `authorize` may still be registered; the provider checks it on first resolution.
-    const deferred = defineAdmission({ approval: { required: true } })
+    const deferred = defineConfig({ approval: { required: true } })
     assert.throws(
       () => resolveAdmissionConfig(deferred, undefined),
       /approval\.authorize must be an object/
@@ -95,7 +94,7 @@ test.group('admission config', () => {
   test('accepts an event hook only as a function', ({ assert }) => {
     const hook = async () => {}
     assert.equal(
-      defineAdmission({ invitation: { required: true }, onAdmissionEvent: hook }).onAdmissionEvent,
+      defineConfig({ invitation: { required: true }, onAdmissionEvent: hook }).onAdmissionEvent,
       hook
     )
     assert.throws(

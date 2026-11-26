@@ -7,21 +7,21 @@ import { MigrationRunner } from '@adonisjs/lucid/migration'
 import { Env } from '@adonisjs/core/env'
 import { pathToFileURL } from 'node:url'
 import ts from 'typescript'
-import { createActionUrls } from '../src/action_urls.js'
-import { createMailNotifications } from '../src/notifications.js'
-import { inspectSetup } from '../src/setup/inspect.js'
-import { planSetup } from '../src/setup/plan.js'
-import { applySetup } from '../src/setup/apply.js'
-import { bootTestApp } from './helpers/app.js'
-import { pruneExpired } from '../src/maintenance.js'
-import { migrationNames } from '../configure.js'
-import { socialRegistrationValidator } from '../src/http/validators.js'
-import { E_ACCOUNT_KIT_INVALID_INPUT } from '../src/errors.js'
-import { mapManagedErrorResponse } from '../src/http/responses.js'
-import { fixture, registerSetupTeardown } from './helpers/setup_project_fixture.js'
-import { withFixture } from './helpers/setup_prerequisites.js'
-import { interactive } from './helpers/interactive_choices.js'
-import { requireSetupChoices } from '../src/setup/parse.js'
+import { createActionUrls } from '../src/action_urls.ts'
+import { createMailNotifications } from '../src/notifications.ts'
+import { inspectSetup } from '../src/setup/inspect.ts'
+import { planSetup } from '../src/setup/plan.ts'
+import { applySetup } from '../src/setup/apply.ts'
+import { bootTestApp } from './helpers/app.ts'
+import { pruneExpired } from '../src/maintenance.ts'
+import { migrationNames } from '../configure.ts'
+import { socialRegistrationValidator } from '../src/http/validators.ts'
+import { E_ACCOUNT_KIT_INVALID_INPUT } from '../src/errors.ts'
+import { mapManagedErrorResponse } from '../src/http/responses.ts'
+import { fixture, registerSetupTeardown } from './helpers/setup_project_fixture.ts'
+import { withFixture } from './helpers/setup_prerequisites.ts'
+import { interactive } from './helpers/interactive_choices.ts'
+import { requireSetupChoices } from '../src/setup/parse.ts'
 
 test.group('setup generated sources', (group) => {
   registerSetupTeardown(group)
@@ -243,7 +243,7 @@ test.group('setup generated sources', (group) => {
     ]) {
       const generated = plan.changes.find((change) => change.path === path)!.content
       const executable = generated.replace(/^import .*\n/gm, '')
-      const stubs = `const app = { container: { make: async () => ({}) } }; class AccountKit {}; const accountKitGuard = {}; const managedAccountMiddleware = () => async (ctx, next) => { ctx.gated = true; return next() }; const managedProofHeadersMiddleware = () => async (ctx, next) => { ctx.gated = true; return next() };\n`
+      const stubs = `const app = { container: { make: async () => ({}) } }; class AccountKit {}; const accountKitGuard = {}; class ManagedAccountMiddleware { async handle(ctx, next) { ctx.gated = true; return next() } }; class ManagedProofHeadersMiddleware extends ManagedAccountMiddleware {};\n`
       const compiled = ts.transpileModule(stubs + executable, {
         compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 },
       }).outputText
@@ -262,7 +262,7 @@ test.group('setup generated sources', (group) => {
   }) => {
     const { root, choices } = await fixture()
     choices.mail.integration = 'adonisjs-mail'
-    choices.mail.senderEnv = 'ACCOUNT_MAIL_FROM'
+    choices.mail.senderEnv = 'ACCOUNT_KIT_MAIL_FROM'
     choices.mail.transportEnv = 'MAIL_MAILER'
     choices.mail.backendOriginEnv = 'PUBLIC_API_URL'
     choices.mail.frontendOriginEnv = 'PUBLIC_WEB_URL'
@@ -284,11 +284,11 @@ test.group('setup generated sources', (group) => {
     }).outputText
     const previous = {
       APP_KEY: process.env.APP_KEY,
-      ACCOUNT_MAIL_FROM: process.env.ACCOUNT_MAIL_FROM,
+      ACCOUNT_KIT_MAIL_FROM: process.env.ACCOUNT_KIT_MAIL_FROM,
       PUBLIC_API_URL: process.env.PUBLIC_API_URL,
       PUBLIC_WEB_URL: process.env.PUBLIC_WEB_URL,
     }
-    process.env.ACCOUNT_MAIL_FROM = 'accounts@example.test'
+    process.env.ACCOUNT_KIT_MAIL_FROM = 'accounts@example.test'
     process.env.PUBLIC_API_URL = 'https://api.example.test'
     delete process.env.PUBLIC_WEB_URL
     try {
@@ -300,7 +300,7 @@ test.group('setup generated sources', (group) => {
         APP_KEY: Env.schema.secret(),
         PUBLIC_API_URL: Env.schema.string({ format: 'url', tld: false }),
         PUBLIC_WEB_URL: Env.schema.string({ format: 'url', tld: false }),
-        ACCOUNT_MAIL_FROM: Env.schema.string(),
+        ACCOUNT_KIT_MAIL_FROM: Env.schema.string(),
       })
       const evaluate = new Function(
         'env',

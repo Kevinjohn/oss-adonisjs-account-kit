@@ -1,13 +1,13 @@
-import type { SetupChoices, SetupFileChange, SetupInspection, SetupDiagnostic } from './types.js'
-import { addSetupDiagnostic } from './shared.js'
-import { recordOwnedChange } from './changes.js'
+import type { SetupChoices, SetupFileChange, SetupInspection, SetupDiagnostic } from './types.ts'
+import { addSetupDiagnostic } from './shared.ts'
+import { recordOwnedChange } from './changes.ts'
 import {
   generateDisabledRoutesSource,
   resolveRouteSource,
   generateManagedGuardSource,
   generateAccessMiddlewareSource,
   generateProofHeadersMiddlewareSource,
-} from './generated_sources.js'
+} from './generated_sources.ts'
 
 export function planManagedFiles(
   choices: SetupChoices,

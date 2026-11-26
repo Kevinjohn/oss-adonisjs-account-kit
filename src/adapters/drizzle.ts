@@ -1,11 +1,10 @@
-import type { SqlUsersAdapter, SqlUsersAdapterOptions } from './sql.js'
-import { E_ACCOUNT_KIT_INVALID_CONFIGURATION } from '../src/errors.js'
-import { createDeferredSqlUsersAdapter } from '../src/deferred_sql_adapter.js'
-import { canonicalUserColumns } from '../src/user_columns.js'
+import type { DrizzleAdapterOptions } from '../types_sql_adapters.ts'
+import type { SqlUsersAdapter } from './sql.ts'
+import { E_ACCOUNT_KIT_INVALID_CONFIGURATION } from '../errors.ts'
+import { createDeferredSqlUsersAdapter } from '../deferred_sql_adapter.ts'
+import { canonicalUserColumns } from '../user_columns.ts'
 
-export type { SqlUsersAdapter, SqlUsersAdapterOptions } from './sql.js'
-
-export type DrizzleAdapterOptions = Omit<SqlUsersAdapterOptions, 'table'>
+export type { SqlUsersAdapter, SqlUsersAdapterOptions } from './sql.ts'
 
 type DrizzleColumn = { name?: unknown; columnType?: unknown }
 
@@ -62,3 +61,5 @@ export function createDrizzleAdapter(
 ): SqlUsersAdapter {
   return createDeferredSqlUsersAdapter(() => requireDrizzleUsersTable(usersTable), options)
 }
+
+export type { DrizzleAdapterOptions } from '../types_sql_adapters.ts'

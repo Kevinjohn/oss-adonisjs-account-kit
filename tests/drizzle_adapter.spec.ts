@@ -1,12 +1,12 @@
 import { test } from '@japa/runner'
 import * as pg from 'drizzle-orm/pg-core'
 import * as sqlite from 'drizzle-orm/sqlite-core'
-import { createDrizzleAdapter } from '../adapters/drizzle.js'
-import { E_ACCOUNT_KIT_INVALID_CONFIGURATION } from '../src/errors.js'
-import { assertUsersAdapterContract } from '../testing/adapter_contract.js'
-import { useTestApp } from './helpers/app.js'
-import { createAppUsersTable } from './helpers/app_users_table.js'
-import { contractFixture, fakeHash } from './helpers/adapter_contract_fixture.js'
+import { createDrizzleAdapter } from '../src/adapters/drizzle.ts'
+import { E_ACCOUNT_KIT_INVALID_CONFIGURATION } from '../src/errors.ts'
+import { usersAdapterContract } from '../src/testing/adapter_contract.ts'
+import { useTestApp } from './helpers/app.ts'
+import { createAppUsersTable } from './helpers/app_users_table.ts'
+import { contractFixture, fakeHash } from './helpers/adapter_contract_fixture.ts'
 
 const pgUsers = pg.pgTable('app_users', {
   id: pg.serial('id').primaryKey(),
@@ -42,12 +42,12 @@ test.group('Drizzle users adapter', (group) => {
     test(`passes the adapter contract with a ${dialect} table definition`, async ({ assert }) => {
       const adapter = createDrizzleAdapter(table, { ...options, db: kit.db })
       assert.deepEqual(await adapter.resolveMetadata(), { table: 'app_users', primaryKey: 'id' })
-      await assertUsersAdapterContract(
+      await usersAdapterContract(
         contractFixture(kit, adapter, {
           table: 'app_users',
           registrationData: { fullName: 'Drizzle User' },
         })
-      )
+      )()
     })
 
   test('table getters remain lazy and their faults are not configuration errors', async ({

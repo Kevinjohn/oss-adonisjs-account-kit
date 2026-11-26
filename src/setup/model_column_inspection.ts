@@ -5,7 +5,7 @@ import {
   hasUnsafeBindingReferences,
   getImportedBindingName,
   type SetupSource,
-} from './ts_source.js'
+} from './ts_source.ts'
 import type * as TypeScript from 'typescript'
 export type InspectedColumn = {
   primary: boolean

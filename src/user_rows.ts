@@ -1,6 +1,6 @@
 // The package-owned rows that belong to one user, and deleting them before the user row.
-import { packageTables } from './package_tables.js'
-import type { ResolvedConfig, Trx, UserId } from './types.js'
+import { packageTables } from './package_tables.ts'
+import type { ResolvedConfig, Trx, UserId } from './types.ts'
 
 /**
  * Package tables with a row per user, in deletion order: handoff codes reference identities.

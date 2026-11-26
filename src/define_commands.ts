@@ -2,7 +2,7 @@
 // when Ace first asks for them, so loading `adonisrc.ts` stays cheap.
 import type { BaseCommand } from '@adonisjs/core/ace'
 import type { CommandMetaData } from '@adonisjs/core/types/ace'
-import { E_ACCOUNT_KIT_INVALID_CONFIGURATION } from './errors.js'
+import { E_ACCOUNT_KIT_INVALID_CONFIGURATION } from './errors.ts'
 
 /** Every command name the package's `./commands` loader registers. */
 export type AccountKitCommandName =

@@ -4,7 +4,7 @@ import {
   isPasswordShaped,
   MAX_PASSWORD_LENGTH,
   MIN_PASSWORD_LENGTH,
-} from '../src/password.js'
+} from '../src/password.ts'
 
 test.group('password helper', () => {
   test('accepts only strings between 8 and 256 UTF-16 units', async ({ assert }) => {

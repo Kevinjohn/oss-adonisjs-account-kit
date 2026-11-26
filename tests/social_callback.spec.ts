@@ -1,5 +1,5 @@
 import { test } from '@japa/runner'
-import { isIdentityConflict } from '../src/social_callback.js'
+import { isIdentityConflict } from '../src/social_callback.ts'
 
 test.group('social identity unique-violation detection', () => {
   test('recognizes the exact provider and subject constraint on each driver', ({ assert }) => {

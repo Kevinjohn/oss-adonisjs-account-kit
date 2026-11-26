@@ -6,14 +6,14 @@ import {
   featureNames,
   userAdapters,
   userIdTypes,
-} from './types.js'
-import { sqlName, addSetupDiagnostic } from './shared.js'
-import { addRoutesDiagnostics } from './validate_routes.js'
-import { addAuthenticationDiagnostics } from './validate_authentication.js'
-import { addPolicyDiagnostics } from './validate_policy.js'
-import { addMailDiagnostics } from './validate_mail.js'
-import { addSocialDiagnostics } from './validate_social.js'
-import type { SelectedSetupOrigins } from './diagnostics.js'
+} from './types.ts'
+import { sqlName, addSetupDiagnostic } from './shared.ts'
+import { addRoutesDiagnostics } from './validate_routes.ts'
+import { addAuthenticationDiagnostics } from './validate_authentication.ts'
+import { addPolicyDiagnostics } from './validate_policy.ts'
+import { addMailDiagnostics } from './validate_mail.ts'
+import { addSocialDiagnostics } from './validate_social.ts'
+import type { SelectedSetupOrigins } from './diagnostics.ts'
 
 export type RetirementOptions = {
   retirementImpact: SetupPlan['retirementImpact']
@@ -23,7 +23,7 @@ export type RetirementOptions = {
 
 export type ValidateOptions = RetirementOptions & {
   production: boolean
-  /** Deployment values read for readiness; defaults to `process.env`. */
+  /** Deployment values read for readiness. */
   env?: NodeJS.ProcessEnv
   selectedOrigins?: SelectedSetupOrigins
 }
@@ -33,7 +33,7 @@ export function collectSetupDiagnostics(
   state: SetupInspection,
   options: ValidateOptions
 ) {
-  const { production, env = process.env, selectedOrigins } = options
+  const { production, env = {}, selectedOrigins } = options
   const diagnostics: SetupDiagnostic[] = []
   if (choices.features.some((x) => !featureNames.includes(x)))
     addSetupDiagnostic(diagnostics, 'features', `Choose from ${featureNames.join(', ')}`)

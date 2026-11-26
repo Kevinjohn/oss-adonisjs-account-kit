@@ -1,5 +1,5 @@
 // Which user-keyed package tables the account export reads, and which it leaves out and why.
-import { packageTables } from './package_tables.js'
+import { packageTables } from './package_tables.ts'
 
 /**
  * The `table.column` entries `exportAccountData` reads. The configured access-token table is not

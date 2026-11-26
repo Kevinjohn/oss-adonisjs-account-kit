@@ -1,22 +1,22 @@
 /** Managed handlers for the magic-link capability: request, link inspection and completion. */
 import type { HttpContext } from '@adonisjs/core/http'
-import { E_ACCOUNT_KIT_INVALID_INPUT, E_ACCOUNT_KIT_INVALID_TOKEN } from '../errors.js'
-import type { ManagedEndpointName } from './routes.js'
-import type { ManagedHandler } from './managed_types.js'
+import { E_ACCOUNT_KIT_INVALID_INPUT, E_ACCOUNT_KIT_INVALID_TOKEN } from '../errors.ts'
+import type { ManagedEndpointName } from './routes.ts'
+import type { ManagedHandler } from './managed_types.ts'
 import {
   sendInvalidProofResponse,
   renderIssuedAccountBody,
   reportCommittedFailure,
   translate,
-} from './response_helpers.js'
-import { magicLinkCompleteValidator, magicLinkRequestValidator } from './validators.js'
-import { deriveClientChallenge } from '../client_challenge.js'
+} from './response_helpers.ts'
+import { magicLinkCompleteValidator, magicLinkRequestValidator } from './validators.ts'
+import { deriveClientChallenge } from '../client_challenge.ts'
 import {
   resolveMagicLinkVerifier,
   acknowledgeMagicLink,
   consumeMagicLink,
-} from './magic_link_session.js'
-import { requireSession } from './session_access.js'
+} from './magic_link_session.ts'
+import { requireSession } from './session_access.ts'
 
 function requireMagicLinkSession(context: HttpContext) {
   return requireSession(

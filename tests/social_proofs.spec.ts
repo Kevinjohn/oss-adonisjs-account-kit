@@ -1,13 +1,13 @@
 import { test } from '@japa/runner'
-import { useTestApp } from './helpers/app.js'
-import { insertUser, makeService, makeUsersAdapter } from './helpers/fakes.js'
+import { useTestApp } from './helpers/app.ts'
+import { insertUser, makeService, makeUsersAdapter } from './helpers/fakes.ts'
 import {
   E_ACCOUNT_KIT_IDENTITY_NOT_CONFIRMED,
   E_ACCOUNT_KIT_SOCIAL_PROOF_INVALID,
   E_ACCOUNT_KIT_THROTTLED,
-} from '../src/errors.js'
-import { current, provider } from './helpers/social_identity.js'
-import type { UserId } from '../src/types.js'
+} from '../src/errors.ts'
+import { current, provider } from './helpers/social_identity.ts'
+import type { UserId } from '../src/types.ts'
 
 test.group('social password proof budget', (group) => {
   const kit = useTestApp(group)

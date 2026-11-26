@@ -5,12 +5,12 @@ import {
   E_ACCOUNT_KIT_EMAIL_ALREADY_REGISTERED,
   E_ACCOUNT_KIT_INVALID_TOKEN,
   E_ACCOUNT_KIT_POST_COMMIT,
-} from '../src/errors.js'
-import { hashToken } from '../src/tokens.js'
-import { useTestApp } from './helpers/app.js'
-import { makeNotify, makeUsersAdapter, tokenFrom } from './helpers/fakes.js'
-import { credentialsFixtures } from './helpers/credentials.js'
-import { dbTime } from './helpers/db_time.js'
+} from '../src/errors.ts'
+import { hashToken } from '../src/tokens.ts'
+import { useTestApp } from './helpers/app.ts'
+import { makeNotify, makeUsersAdapter, tokenFrom } from './helpers/fakes.ts'
+import { credentialsFixtures } from './helpers/credentials.ts'
+import { dbTime } from './helpers/db_time.ts'
 test.group('emailPasswordManagement', (group) => {
   const kit = useTestApp(group)
   const { createUser, service, seedTokens, issueEmailChange } = credentialsFixtures(kit)
@@ -297,8 +297,7 @@ test.group('emailPasswordManagement', (group) => {
     } catch (error) {
       assert.instanceOf(error, E_ACCOUNT_KIT_POST_COMMIT)
       const cause = (error as InstanceType<typeof E_ACCOUNT_KIT_POST_COMMIT>).cause
-      assert.instanceOf(cause, AggregateError)
-      assert.deepEqual((cause as AggregateError).errors, [callbackFailure, noticeFailure])
+      assert.deepEqual(cause, [callbackFailure, noticeFailure])
     }
     const stored = await kit.db.from('users').where('id', user.id).first()
     assert.equal(stored.email, 'new@example.test')
@@ -436,8 +435,7 @@ test.group('emailPasswordManagement', (group) => {
       assert.instanceOf(error, E_ACCOUNT_KIT_POST_COMMIT)
       assert.isTrue((error as InstanceType<typeof E_ACCOUNT_KIT_POST_COMMIT>).committed)
       const cause = (error as InstanceType<typeof E_ACCOUNT_KIT_POST_COMMIT>).cause
-      assert.instanceOf(cause, AggregateError)
-      assert.deepEqual((cause as AggregateError).errors, [failure, observerFailure])
+      assert.deepEqual(cause, [failure, observerFailure])
     }
     assert.lengthOf(recorder.calls, 1)
     assert.lengthOf(await kit.db.from('email_verification_tokens'), 1)

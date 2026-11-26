@@ -1,12 +1,12 @@
 // Validates and defaults the authentication option.
 import { DateTime } from 'luxon'
-import { resolveThrottleBudget } from './config_budget.js'
-import { assertObject } from './config_assert.js'
-import { E_ACCOUNT_KIT_INVALID_CONFIGURATION } from './errors.js'
-import { isSqlIdentifier } from './sql_identifier.js'
-import { computeConfiguredExpiry } from './config_ttl.js'
-import type { AccountKitConfig, ResolvedAuthenticationConfig } from './types.js'
-import { freezeResolved } from './config_freeze.js'
+import { resolveThrottleBudget } from './config_budget.ts'
+import { assertObject } from './config_assert.ts'
+import { E_ACCOUNT_KIT_INVALID_CONFIGURATION } from './errors.ts'
+import { isSqlIdentifier } from './sql_identifier.ts'
+import { computeConfiguredExpiry } from './config_ttl.ts'
+import type { AccountKitConfig, ResolvedAuthenticationConfig } from './types.ts'
+import { freezeResolved } from './config_freeze.ts'
 
 export function resolveAuthentication(
   config: Pick<AccountKitConfig, 'authentication'>

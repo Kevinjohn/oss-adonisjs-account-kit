@@ -53,12 +53,12 @@ and [adapter mapping](../guide/adapters.md#registration-data) for the shared `fu
 import { test } from '@japa/runner'
 import db from '@adonisjs/lucid/services/db'
 import hash from '@adonisjs/core/services/hash'
-import { assertUsersAdapterContract } from '@kevinjohn/adonisjs-account-kit/testing/adapter_contract'
+import { usersAdapterContract } from '@kevinjohn/adonisjs-account-kit/testing/adapter_contract'
 import { users } from '#services/users_adapter'
 
 test('users adapter meets the Account Kit contract', async () => {
   const emailPrefix = `custom-adapter-contract-${Date.now()}`
-  await assertUsersAdapterContract({
+  await usersAdapterContract({
     adapter: users,
     transaction: (callback) => db.transaction(callback),
     storedPassword: async (id) =>
@@ -71,11 +71,11 @@ test('users adapter meets the Account Kit contract', async () => {
       /* hold acquireLock in one transaction and assert a second writer waits */
     },
     emailPrefix,
-  })
+  })()
 })
 ```
 
-See [`testing/adapter_contract.ts`](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/main/testing/adapter_contract.ts) for what each fixture
+See [`src/testing/adapter_contract.ts`](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/main/src/testing/adapter_contract.ts) for what each fixture
 method must do, and [`tests/lucid_adapter.spec.ts`](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/main/tests/lucid_adapter.spec.ts) for a
 complete fixture.
 

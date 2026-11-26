@@ -1,8 +1,8 @@
 // Reads and writes `account_admissions` rows and maps them to records.
 import type { QueryClientContract } from '@adonisjs/lucid/types/database'
-import { readIsoTimestamp } from '../timestamps.js'
-import type { Trx, UserId } from '../types.js'
-import type { AdmissionApprovalStatus, AdmissionRecord } from './types.js'
+import { readIsoTimestamp } from '../timestamps.ts'
+import type { Trx, UserId } from '../types.ts'
+import type { AdmissionApprovalStatus, AdmissionRecord } from './types.ts'
 
 export const admissionTable = 'account_admissions'
 

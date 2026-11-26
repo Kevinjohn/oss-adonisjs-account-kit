@@ -1,8 +1,8 @@
 import { test } from '@japa/runner'
-import { withAdmissionCleanup } from '../src/admission/cleanup.js'
-import { useAdmissionApp } from './helpers/admission_schema.js'
-import { makeAdmission, writeAdmissionRow } from './helpers/admission.js'
-import { insertUser, makeUsersAdapter } from './helpers/fakes.js'
+import { withAdmissionCleanup } from '../src/admission/cleanup.ts'
+import { useAdmissionApp } from './helpers/admission_schema.ts'
+import { makeAdmission, writeAdmissionRow } from './helpers/admission.ts'
+import { insertUser, makeUsersAdapter } from './helpers/fakes.ts'
 
 test.group('admission cleanup on account deletion', (group) => {
   // Foreign keys would hide a missing explicit delete, so this group's table has none.

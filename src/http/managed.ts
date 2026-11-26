@@ -1,27 +1,27 @@
 import type { Router } from '@adonisjs/core/http'
 import type {} from '@adonisjs/core/providers/vinejs_provider'
-import { applyMappedHeaders, mapManagedErrorResponse } from './responses.js'
-import { managedSocialHandlers } from './social.js'
-import { reportCommittedFailure, getRequestTranslator } from './response_helpers.js'
-import { authenticationHandlers } from './handlers_authentication.js'
-import { emailPasswordManagementHandlers } from './handlers_email_password_management.js'
-import { emailVerificationHandlers } from './handlers_email_verification.js'
-import { accountDataHandlers } from './handlers_account_data.js'
-import { invitationHandlers } from './handlers_invitations.js'
-import { magicLinkHandlers } from './handlers_magic_link.js'
-import { passwordResetHandlers } from './handlers_password_reset.js'
-import { registrationHandlers } from './handlers_registration.js'
-import { sessionManagementHandlers } from './handlers_session_management.js'
-import { managedRouteRegistration, recordManagedRegistration } from './route_registration.js'
+import { applyMappedHeaders, mapManagedErrorResponse } from './responses.ts'
+import { managedSocialHandlers } from './social.ts'
+import { reportCommittedFailure, getRequestTranslator } from './response_helpers.ts'
+import { authenticationHandlers } from './handlers_authentication.ts'
+import { emailPasswordManagementHandlers } from './handlers_email_password_management.ts'
+import { emailVerificationHandlers } from './handlers_email_verification.ts'
+import { accountDataHandlers } from './handlers_account_data.ts'
+import { invitationHandlers } from './handlers_invitations.ts'
+import { magicLinkHandlers } from './handlers_magic_link.ts'
+import { passwordResetHandlers } from './handlers_password_reset.ts'
+import { registrationHandlers } from './handlers_registration.ts'
+import { sessionManagementHandlers } from './handlers_session_management.ts'
+import { managedRouteRegistration, recordManagedRegistration } from './route_registration.ts'
 import {
   assertManagedRouteCollisions,
   planManagedRoutes,
   type ManagedEndpointName,
   type ManagedRoute,
-} from './routes.js'
-import { assertManagedRoutesOptions } from './managed_options.js'
-import type { ManagedHandler, ManagedRoutesOptions } from './managed_types.js'
-import { executeManagedRequest } from './managed_execution.js'
+} from './routes.ts'
+import { assertManagedRoutesOptions } from './managed_options.ts'
+import type { ManagedHandler, ManagedRoutesOptions } from './managed_types.ts'
+import { executeManagedRequest } from './managed_execution.ts'
 
 export type {
   ManagedExtensions,
@@ -29,7 +29,7 @@ export type {
   ManagedHandler,
   ManagedRequest,
   ManagedRoutesOptions,
-} from './managed_types.js'
+} from './managed_types.ts'
 import { InvalidArgumentsException } from '@adonisjs/core/exceptions'
 
 /** Flatten committed router definitions into one entry per method for collision checks. */

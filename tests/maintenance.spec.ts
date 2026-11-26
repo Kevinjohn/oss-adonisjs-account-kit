@@ -2,12 +2,12 @@ import { InvalidArgumentsException } from '@adonisjs/core/exceptions'
 import { DateTime } from 'luxon'
 import { test } from '@japa/runner'
 import type { Database } from '@adonisjs/lucid/database'
-import PruneAccountKit from '../commands/prune.js'
-import { pruneExpired } from '../src/maintenance.js'
-import { aceKernel } from './helpers/ace_kernel.js'
-import { useTestApp } from './helpers/app.js'
-import { insertUser } from './helpers/fakes.js'
-import { dbTime } from './helpers/db_time.js'
+import PruneAccountKit from '../commands/prune.ts'
+import { pruneExpired } from '../src/maintenance.ts'
+import { aceKernel } from './helpers/ace_kernel.ts'
+import { useTestApp } from './helpers/app.ts'
+import { insertUser } from './helpers/fakes.ts'
+import { dbTime } from './helpers/db_time.ts'
 
 test.group('expired-token pruning', (group) => {
   const kit = useTestApp(group)

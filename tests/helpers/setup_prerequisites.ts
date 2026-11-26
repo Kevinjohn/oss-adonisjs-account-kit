@@ -1,10 +1,10 @@
 import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { buildDefaultSetupChoices } from '../../src/setup/defaults.js'
-import type { SetupChoices, SetupInspection } from '../../src/setup/types.js'
-import { setupVersions } from './setup_versions.js'
-import { clearSelectorEnv } from './selector_env.js'
+import { buildDefaultSetupChoices } from '../../src/setup/defaults.ts'
+import type { SetupChoices, SetupInspection } from '../../src/setup/types.ts'
+import { setupVersions } from './setup_versions.ts'
+import { clearSelectorEnv } from './selector_env.ts'
 
 export const versions: Record<string, string> = { ...setupVersions, '@adonisjs/mail': '10.0.0' }
 

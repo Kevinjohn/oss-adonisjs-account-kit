@@ -1,6 +1,7 @@
 import { DateTime } from 'luxon'
 import { test } from '@japa/runner'
-import { AccountKit, defineConfig } from '../src/account_kit.js'
+import { AccountKit } from '../src/account_kit.ts'
+import { resolveConfig as defineConfig } from '../src/config.ts'
 import {
   E_ACCOUNT_KIT_AUTHORIZATION,
   E_ACCOUNT_KIT_EMAIL_ALREADY_REGISTERED,
@@ -9,11 +10,11 @@ import {
   E_ACCOUNT_KIT_INVITATION_NOT_FOUND,
   E_ACCOUNT_KIT_INVALID_TOKEN,
   E_ACCOUNT_KIT_POST_COMMIT,
-} from '../src/errors.js'
-import { hashToken } from '../src/tokens.js'
-import { transaction } from '../src/db.js'
-import { useTestApp } from './helpers/app.js'
-import { invitationHelpers } from './helpers/invitations.js'
+} from '../src/errors.ts'
+import { hashToken } from '../src/tokens.ts'
+import { transaction } from '../src/db.ts'
+import { useTestApp } from './helpers/app.ts'
+import { invitationHelpers } from './helpers/invitations.ts'
 import {
   accountKit,
   allowAll,
@@ -22,10 +23,10 @@ import {
   makeNotify,
   makeUsersAdapter,
   tokenFrom,
-} from './helpers/fakes.js'
-import { faultNthCommit } from './helpers/fault_after_commit.js'
-import { lockNotAvailableCode, locksRows } from './helpers/dialect.js'
-import { dbTime } from './helpers/db_time.js'
+} from './helpers/fakes.ts'
+import { faultNthCommit } from './helpers/fault_after_commit.ts'
+import { lockNotAvailableCode, locksRows } from './helpers/dialect.ts'
+import { dbTime } from './helpers/db_time.ts'
 
 test.group('invitations.resend', (group) => {
   const kit = useTestApp(group)

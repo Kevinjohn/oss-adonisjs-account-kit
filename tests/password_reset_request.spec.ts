@@ -1,18 +1,18 @@
 import { Settings } from 'luxon'
 import { performance } from 'node:perf_hooks'
 import { test } from '@japa/runner'
-import { defineConfig } from '../src/account_kit.js'
-import { requestPasswordReset } from '../src/password_reset.js'
-import { hashToken } from '../src/tokens.js'
+import { resolveConfig as defineConfig } from '../src/config.ts'
+import { requestPasswordReset } from '../src/password_reset.ts'
+import { hashToken } from '../src/tokens.ts'
 import {
   E_ACCOUNT_KIT_DELIVERY,
   E_ACCOUNT_KIT_INVALID_INPUT,
   E_ACCOUNT_KIT_POST_COMMIT,
   E_ACCOUNT_KIT_THROTTLED,
-} from '../src/errors.js'
-import type { AccountKitConfig } from '../src/types.js'
-import { useTestApp } from './helpers/app.js'
-import { serviceDependencies } from './helpers/service_dependencies.js'
+} from '../src/errors.ts'
+import type { AccountKitConfig } from '../src/types.ts'
+import { useTestApp } from './helpers/app.ts'
+import { serviceDependencies } from './helpers/service_dependencies.ts'
 import {
   accountKit,
   insertUser,
@@ -21,7 +21,7 @@ import {
   makeService,
   makeUsersAdapter,
   tokenFrom,
-} from './helpers/fakes.js'
+} from './helpers/fakes.ts'
 test.group('passwordReset.request', (group) => {
   const kit = useTestApp(group)
 
@@ -185,9 +185,8 @@ test.group('passwordReset.request', (group) => {
     const combined = await run(true, true)
     assert.instanceOf(combined.error, E_ACCOUNT_KIT_POST_COMMIT)
     const cause = (combined.error as InstanceType<typeof E_ACCOUNT_KIT_POST_COMMIT>).cause
-    assert.instanceOf(cause, AggregateError)
     assert.deepEqual(
-      (cause as AggregateError).errors.map((error: Error) => error.message),
+      (cause as Error[]).map((error: Error) => error.message),
       ['notify.passwordResetProvision failed', 'observer failed']
     )
     for (const { error, user } of [deliveryOnly, observerOnly, combined])

@@ -1,5 +1,5 @@
 import type * as TypeScript from 'typescript'
-import { getDefaultImportName, parseSetupSource, walk, type SetupSource } from './ts_source.js'
+import { getDefaultImportName, parseSetupSource, walk, type SetupSource } from './ts_source.ts'
 
 /** AdonisJS joins a prefix and a pattern without doubled or trailing slashes. */
 function dropSlash(input: string): string {

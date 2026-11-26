@@ -1,11 +1,11 @@
 import { DateTime } from 'luxon'
 import { test } from '@japa/runner'
-import { E_ACCOUNT_KIT_EMAIL_ALREADY_REGISTERED } from '../src/errors.js'
-import { bootTestApp } from './helpers/app.js'
-import { makeService, makeUsersAdapter, tokenFrom } from './helpers/fakes.js'
-import { resetSchema } from './helpers/schema.js'
-import { dbTime } from './helpers/db_time.js'
-import { testEngine } from './helpers/dialect.js'
+import { E_ACCOUNT_KIT_EMAIL_ALREADY_REGISTERED } from '../src/errors.ts'
+import { bootTestApp } from './helpers/app.ts'
+import { makeService, makeUsersAdapter, tokenFrom } from './helpers/fakes.ts'
+import { resetSchema } from './helpers/schema.ts'
+import { dbTime } from './helpers/db_time.ts'
+import { testEngine } from './helpers/dialect.ts'
 
 // The long names exercise PostgreSQL's 63-byte identifier truncation. MySQL refuses identifiers
 // over 64 characters instead, so a users table there must leave room for `_email_unique`.

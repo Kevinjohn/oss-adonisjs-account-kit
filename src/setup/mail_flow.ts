@@ -1,4 +1,4 @@
-import type { SetupChoices, SetupFeature } from './types.js'
+import type { SetupChoices, SetupFeature } from './types.ts'
 
 export const emailDestinations: Partial<
   Record<SetupFeature, keyof SetupChoices['mail']['destinations']>

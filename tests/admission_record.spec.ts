@@ -1,10 +1,10 @@
 import { test } from '@japa/runner'
-import { withInvitationEvidence } from '../src/admission/invitation_evidence.js'
-import type { AdmissionRecord } from '../src/admission/types.js'
-import { useAdmissionApp } from './helpers/admission_schema.js'
-import { makeAdmission, writeAdmissionRow } from './helpers/admission.js'
-import { insertUser } from './helpers/fakes.js'
-import { invitationHelpers } from './helpers/invitations.js'
+import { withInvitationEvidence } from '../src/admission/invitation_evidence.ts'
+import type { AdmissionRecord } from '../src/admission/types.ts'
+import { useAdmissionApp } from './helpers/admission_schema.ts'
+import { makeAdmission, writeAdmissionRow } from './helpers/admission.ts'
+import { insertUser } from './helpers/fakes.ts'
+import { invitationHelpers } from './helpers/invitations.ts'
 
 const invitationOnly = { invitation: { required: true as const } }
 

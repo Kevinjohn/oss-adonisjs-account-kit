@@ -39,7 +39,7 @@ writeFileSync(
 )
 appendFileSync(
   join(appDir, '.env'),
-  '\nACCOUNT_MAIL_FROM=accounts@example.com\nFRONTEND_URL=http://localhost:5173\n'
+  '\nACCOUNT_KIT_MAIL_FROM=accounts@example.com\nACCOUNT_KIT_FRONTEND_URL=http://localhost:5173\n'
 )
 
 // The API choices select authentication, which needs an application-owned access policy.

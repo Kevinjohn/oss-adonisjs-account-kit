@@ -1,14 +1,14 @@
 import { DateTime } from 'luxon'
-import { isEmailShaped, normalizeEmail } from './email.js'
-import { matchInvitation } from './invitation_match.js'
-import { mapRegistrationFields } from './registration_fields.js'
-import { mapSocialIdentityRow } from './social_links.js'
+import { isEmailShaped, normalizeEmail } from './email.ts'
+import { matchInvitation } from './invitation_match.ts'
+import { mapRegistrationFields } from './registration_fields.ts'
+import { mapSocialIdentityRow } from './social_links.ts'
 import {
   E_ACCOUNT_KIT_SOCIAL_EMAIL_MISSING,
   E_ACCOUNT_KIT_SOCIAL_TRANSACTION_INVALID,
-} from './errors.js'
-import { readSqlTimestamp, type Dependencies } from './social_shared.js'
-import type { AccountUser, SocialIdentity, SocialProviderName, Trx, UserId } from './types.js'
+} from './errors.ts'
+import { readSqlTimestamp, type Dependencies } from './social_shared.ts'
+import type { AccountUser, SocialIdentity, SocialProviderName, Trx, UserId } from './types.ts'
 
 export interface ProviderProfile {
   subject: string

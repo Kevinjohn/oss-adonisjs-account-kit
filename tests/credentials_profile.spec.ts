@@ -2,18 +2,18 @@ import { test } from '@japa/runner'
 import {
   E_ACCOUNT_KIT_EMAIL_ALREADY_REGISTERED,
   E_ACCOUNT_KIT_INVALID_INPUT,
-} from '../src/errors.js'
-import { useTestApp } from './helpers/app.js'
+} from '../src/errors.ts'
+import { useTestApp } from './helpers/app.ts'
 import {
   insertUser,
   makeNotify,
   makeService,
   makeUsersAdapter,
   tokenFrom,
-} from './helpers/fakes.js'
-import { credentialsFixtures } from './helpers/credentials.js'
-import { resetSchema } from './helpers/schema.js'
-import { takeCorrectionRevision } from '../src/profile_correction_revision.js'
+} from './helpers/fakes.ts'
+import { credentialsFixtures } from './helpers/credentials.ts'
+import { resetSchema } from './helpers/schema.ts'
+import { takeCorrectionRevision } from '../src/profile_correction_revision.ts'
 test.group('emailPasswordManagement', (group) => {
   const kit = useTestApp(group)
   const { createUser, service } = credentialsFixtures(kit)

@@ -1,25 +1,25 @@
 import { performance } from 'node:perf_hooks'
 import { DateTime, Settings } from 'luxon'
 import { test } from '@japa/runner'
-import { defineConfig } from '../src/account_kit.js'
+import { resolveConfig as defineConfig } from '../src/config.ts'
 import {
   E_ACCOUNT_KIT_CAPABILITY_DISABLED,
   E_ACCOUNT_KIT_DELIVERY,
   E_ACCOUNT_KIT_INVALID_INPUT,
   E_ACCOUNT_KIT_POST_COMMIT,
   E_ACCOUNT_KIT_THROTTLED,
-} from '../src/errors.js'
-import { deriveClientChallenge } from '../src/magic_link.js'
-import { hashToken } from '../src/tokens.js'
-import type { AccountKitConfig, AccountUser, LifecycleEvent, UserId } from '../src/types.js'
-import { useTestApp } from './helpers/app.js'
+} from '../src/errors.ts'
+import { deriveClientChallenge } from '../src/magic_link.ts'
+import { hashToken } from '../src/tokens.ts'
+import type { AccountKitConfig, AccountUser, LifecycleEvent, UserId } from '../src/types.ts'
+import { useTestApp } from './helpers/app.ts'
 import {
   insertUser,
   makeConfig,
   makeService,
   makeUsersAdapter,
   tokenFrom,
-} from './helpers/fakes.js'
+} from './helpers/fakes.ts'
 
 const verifier = 'v'.repeat(43)
 const challenge = deriveClientChallenge(verifier)

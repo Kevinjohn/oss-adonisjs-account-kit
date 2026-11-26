@@ -1,13 +1,13 @@
 import { realpath } from 'node:fs/promises'
-import { readRegularFile } from './safe_path.js'
-import type { SetupChoices, SetupInspection } from './types.js'
-import { requireSetupChoices } from './parse.js'
-import { inspectGuards } from './guard_inspection.js'
-import { inspectDatabaseKind } from './database_inspection.js'
-import { readStaticRouteDefinitions } from './route_inspection.js'
-import { readInstalledPackageVersions } from './installed_packages.js'
-import { resolveDefaultMigrationDirectory, inspectMigrationDirectory } from './migration_paths.js'
-import { E_ACCOUNT_KIT_MIGRATION_DIRECTORY } from '../errors.js'
+import { readRegularFile } from './safe_path.ts'
+import type { SetupChoices, SetupInspection } from './types.ts'
+import { requireSetupChoices } from './parse.ts'
+import { inspectGuards } from './guard_inspection.ts'
+import { inspectDatabaseKind } from './database_inspection.ts'
+import { readStaticRouteDefinitions } from './route_inspection.ts'
+import { readInstalledPackageVersions } from './installed_packages.ts'
+import { resolveDefaultMigrationDirectory, inspectMigrationDirectory } from './migration_paths.ts'
+import { E_ACCOUNT_KIT_MIGRATION_DIRECTORY } from '../errors.ts'
 
 const inspectedFiles = [
   'package.json',

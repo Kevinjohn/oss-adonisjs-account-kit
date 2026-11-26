@@ -1,18 +1,10 @@
-import type { SqlUsersAdapter, SqlUsersAdapterOptions } from './sql.js'
-import { E_ACCOUNT_KIT_INVALID_CONFIGURATION } from '../src/errors.js'
-import { createDeferredSqlUsersAdapter } from '../src/deferred_sql_adapter.js'
-import { canonicalUserColumns } from '../src/user_columns.js'
+import type { PrismaModelDefinition, PrismaAdapterOptions } from '../types_sql_adapters.ts'
+import type { SqlUsersAdapter } from './sql.ts'
+import { E_ACCOUNT_KIT_INVALID_CONFIGURATION } from '../errors.ts'
+import { createDeferredSqlUsersAdapter } from '../deferred_sql_adapter.ts'
+import { canonicalUserColumns } from '../user_columns.ts'
 
-export type { SqlUsersAdapter, SqlUsersAdapterOptions } from './sql.js'
-
-export type PrismaAdapterOptions = Omit<SqlUsersAdapterOptions, 'table'>
-
-/** The parts of a Prisma DMMF model the adapter reads, as in `Prisma.dmmf.datamodel.models`. */
-export interface PrismaModelDefinition {
-  name: string
-  dbName?: string | null
-  fields: ReadonlyArray<{ name: string; dbName?: string | null; kind: string }>
-}
+export type { SqlUsersAdapter, SqlUsersAdapterOptions } from './sql.ts'
 
 /** Resolve `@@map` and `@map` and check the user columns. */
 function requirePrismaUsersTable(model: PrismaModelDefinition): string {
@@ -54,3 +46,5 @@ export function createPrismaAdapter(
 ): SqlUsersAdapter {
   return createDeferredSqlUsersAdapter(() => requirePrismaUsersTable(model), options)
 }
+
+export type { PrismaModelDefinition, PrismaAdapterOptions } from '../types_sql_adapters.ts'

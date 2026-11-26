@@ -4,7 +4,7 @@ import {
   getImportedBindingName,
   parseSetupSource,
   type SetupSource,
-} from './ts_source.js'
+} from './ts_source.ts'
 
 export async function classifyShieldCsrfSetting(
   text: string

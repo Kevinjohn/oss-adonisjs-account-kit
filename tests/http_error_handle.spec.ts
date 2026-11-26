@@ -3,9 +3,9 @@ import type { HttpContext } from '@adonisjs/core/http'
 import {
   E_ACCOUNT_KIT_INVITATION_MANAGEMENT_DENIED,
   E_ACCOUNT_KIT_THROTTLED,
-} from '../src/errors.js'
-import { renderAccountKitError } from '../src/http/responses.js'
-import { fakeManagedHttp } from './helpers/managed_http_fakes.js'
+} from '../src/errors.ts'
+import { renderAccountKitError } from '../src/http/responses.ts'
+import { fakeManagedHttp } from './helpers/managed_http_fakes.ts'
 
 /** A fake context that records the status and body the response was sent with. */
 function recordingContext(accept?: string) {

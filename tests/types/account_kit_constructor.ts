@@ -1,4 +1,4 @@
-import type { AccountKit } from '../../index.js'
+import type { AccountKit } from '../../index.ts'
 
 type Dependencies = ConstructorParameters<typeof AccountKit>[0]
 

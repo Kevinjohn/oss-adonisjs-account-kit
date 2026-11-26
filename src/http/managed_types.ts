@@ -1,10 +1,10 @@
 import type { HttpContext } from '@adonisjs/core/http'
-import type { AccountKit } from '../account_kit.js'
-import type { AuthenticationGuard, CurrentAccount, CurrentAccountInput } from '../types.js'
-import type { ManagedMessage } from './responses.js'
-import type { ManagedSocialExtension } from './social.js'
-import type { ManagedOpenApiOptions } from './route_registration.js'
-import type { ManagedCapability, ManagedEndpointName, ManagedRoute } from './routes.js'
+import type { AccountKit } from '../account_kit.ts'
+import type { AuthenticationGuard, CurrentAccount, CurrentAccountInput } from '../types.ts'
+import type { ManagedMessage } from './responses.ts'
+import type { ManagedSocialExtension } from './social.ts'
+import type { ManagedOpenApiOptions } from './route_registration.ts'
+import type { ManagedCapability, ManagedEndpointName, ManagedRoute } from './routes.ts'
 
 /** Connects the managed routes to your existing guard. `createManagedGuard` builds one. */
 export interface ManagedGuard<Credential> {
