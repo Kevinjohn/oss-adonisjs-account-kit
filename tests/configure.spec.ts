@@ -42,6 +42,19 @@ async function createConfigureProject() {
       })
       .create(pathToFileURL(`${rootDirectory}/`), { importer })
 
+  const kernelPath = join(root, 'start', 'kernel.ts')
+  await fs.create(
+    'start/kernel.ts',
+    [
+      "import server from '@adonisjs/core/services/server'",
+      'server.use([',
+      "  () => import('@adonisjs/core/bodyparser_middleware'),",
+      "  () => import('@adonisjs/shield/shield_middleware'),",
+      '])',
+      '',
+    ].join('\n')
+  )
+
   const envPath = join(root, 'start', 'env.ts')
   await mkdir(join(root, 'start'), { recursive: true })
   await writeFile(
@@ -64,6 +77,7 @@ async function createConfigureProject() {
     fs,
     root,
     envPath,
+    kernelPath,
     configDirectory,
     migrationsDirectory,
     configPath,
@@ -80,6 +94,7 @@ test('configures the package idempotently without replacing application-owned fi
   const {
     root,
     envPath,
+    kernelPath,
     migrationsDirectory,
     configPath,
     existingMigrationPath,
@@ -117,6 +132,14 @@ test('configures the package idempotently without replacing application-owned fi
       1
     )
     assert.equal(await readFile(existingMigrationPath, 'utf8'), existingMigration)
+    const proofMiddleware = '@kevinjohn/adonisjs-account-kit/middleware/proof_headers'
+    const firstKernel = await readFile(kernelPath, 'utf8')
+    assert.equal(firstKernel.split(proofMiddleware).length - 1, 1)
+    assert.isBelow(
+      firstKernel.indexOf(proofMiddleware),
+      firstKernel.indexOf('bodyparser_middleware')
+    )
+    assert.isBelow(firstKernel.indexOf(proofMiddleware), firstKernel.indexOf('shield_middleware'))
 
     const firstMigrationFiles = await readdir(migrationsDirectory)
     let migrationFiles = firstMigrationFiles.sort()
@@ -183,6 +206,7 @@ test('configures the package idempotently without replacing application-owned fi
     )
     const secondEnv = await readFile(envPath, 'utf8')
     assert.equal(secondEnv, firstEnv)
+    assert.equal(await readFile(kernelPath, 'utf8'), firstKernel)
     const secondRcContents = await readFile(join(root, 'adonisrc.ts'), 'utf8')
     assert.equal(
       secondRcContents.match(

@@ -1,6 +1,7 @@
 import type { HttpContext } from '@adonisjs/core/http'
-import { planManagedRoutes, type ManagedRouteSelection } from './routes.ts'
+import { planManagedRoutes, type ManagedRoute, type ManagedRouteSelection } from './routes.ts'
 import { applyProofHeaders } from './proof_headers.ts'
+import { managedRouteRegistration } from './route_registration.ts'
 
 function matchesPath(pattern: string, path: string): boolean {
   const splitPathSegments = (value: string) => value.replace(/\/+$/, '').split('/').filter(Boolean)
@@ -35,10 +36,11 @@ function matchesPath(pattern: string, path: string): boolean {
  * ```
  */
 export default class ManagedProofHeadersMiddleware {
-  readonly #proofs: ReturnType<typeof planManagedRoutes>
+  readonly #proofs: readonly ManagedRoute[] | undefined
 
-  constructor(selection: ManagedRouteSelection) {
-    this.#proofs = planManagedRoutes(selection).filter((route) => route.proof)
+  // AdonisJS resolves lazy middleware as a class with no required constructor arguments.
+  constructor(selection: ManagedRouteSelection | undefined = undefined) {
+    this.#proofs = selection && planManagedRoutes(selection).filter((route) => route.proof)
   }
 
   /** @example
@@ -49,7 +51,14 @@ export default class ManagedProofHeadersMiddleware {
   async handle(context: HttpContext, next: () => Promise<unknown>): Promise<unknown> {
     const method = context.request.method()
     const path = context.request.url().split('?')[0]
-    if (this.#proofs.some((route) => route.method === method && matchesPath(route.path, path)))
+    const routes =
+      this.#proofs ??
+      managedRouteRegistration(await context.containerResolver.make('router'))?.routes
+    if (
+      routes?.some(
+        (route) => route.proof && route.method === method && matchesPath(route.path, path)
+      )
+    )
       applyProofHeaders(context.response)
     return next()
   }
