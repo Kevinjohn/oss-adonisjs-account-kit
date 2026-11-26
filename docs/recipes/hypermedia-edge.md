@@ -114,6 +114,10 @@ pnpm --dir examples/hypermedia test
 pnpm test:recipe -- --recipe=hypermedia-password-reset
 ```
 
+When copying the acceptance spec into an application, also copy its
+[test helper](../../examples/hypermedia/tests/helpers/recipes_hypermedia_password_reset.ts)
+into `tests/helpers/`. The recipe harness copies both files.
+
 ## Clean application check
 
 **4 November 2026.** The fresh pinned-starter harness passed the original login baseline (1/1)
@@ -124,7 +128,7 @@ Chromium and local notification capture; the earlier dated records below remain 
 
 Historical verification on 22 October 2026 predates the supplementary recovery and method-boundary
 changes validated above. After configuration, apply `hypermedia-password-reset.patch` from the
-[matching Account Kit revision](../guide/password-reset-existing-app.md#recipe-patches). The [acceptance spec](../../examples/hypermedia/tests/recipes/hypermedia-password-reset.spec.ts)
+[matching Account Kit revision](../guide/password-reset-existing-app.md#recipe-patches). The [acceptance spec](../../examples/hypermedia/tests/recipes/hypermedia_password_reset.spec.ts)
 uses the pinned starter's native login, dashboard, forms and CSRF protection. The scaffold command is:
 
 ```sh

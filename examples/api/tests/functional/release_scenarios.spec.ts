@@ -1,28 +1,13 @@
-import { randomUUID } from 'node:crypto'
-import { test } from '@japa/runner'
-import { DateTime } from 'luxon'
-import db from '@adonisjs/lucid/services/db'
 import User from '#models/user'
 import { notifications } from '#services/account_kit_notifications'
+import { grantAdmittedOwner } from '#tests/helpers/admission'
 import { cookies } from '#tests/helpers/cookies'
 import { truncateDatabase } from '#tests/helpers/database'
-import { grantAdmittedOwner } from '#tests/helpers/admission'
-
-function bearerFromLogin(response: { body(): unknown }): string {
-  const body = response.body()
-  if (typeof body !== 'object' || body === null || !('data' in body)) {
-    throw new Error('Login response is missing its data envelope')
-  }
-  const data = body.data
-  if (typeof data !== 'object' || data === null || !('token' in data)) {
-    throw new Error('Token login response is missing its token')
-  }
-  const token = data.token
-  if (typeof token !== 'string' || token.length === 0) {
-    throw new Error('Token login response contains an invalid token')
-  }
-  return token
-}
+import { bearerFromLogin } from '#tests/helpers/functional_release_scenarios'
+import db from '@adonisjs/lucid/services/db'
+import { test } from '@japa/runner'
+import { DateTime } from 'luxon'
+import { randomUUID } from 'node:crypto'
 
 test.group('Release scenarios', (group) => {
   group.each.setup(truncateDatabase)

@@ -1,16 +1,10 @@
 /* eslint-disable @unicorn/no-await-expression-member -- Browser actions are asserted beside their results. */
-import limiter from '@adonisjs/limiter/services/main'
-import { test } from '@japa/runner'
-import { Session } from '@adonisjs/session'
 import User from '#models/user'
+import { oldInputFromFlash, origin } from '#tests/helpers/browser_native_form_validation'
+import limiter from '@adonisjs/limiter/services/main'
+import { Session } from '@adonisjs/session'
+import { test } from '@japa/runner'
 import { setupAccountDatabase } from '../helpers/account_database.js'
-
-/** Session.commit flattens input fields beside the framework validation bags. */
-function oldInputFromFlash(flash: Record<string, unknown>) {
-  return Object.fromEntries(
-    Object.entries(flash).filter(([key]) => !['errorsBag', 'inputErrorsBag'].includes(key))
-  )
-}
 
 test.group('native form validation', (group) => {
   group.each.setup(setupAccountDatabase)
@@ -124,8 +118,6 @@ test.group('native form validation', (group) => {
   })
 })
 
-const origin = process.env.APP_URL!
-
 test.group('native form validation and theme controls', (group) => {
   group.each.setup(async () => {
     const cleanup = await setupAccountDatabase()
@@ -177,7 +169,7 @@ test.group('native form validation and theme controls', (group) => {
         assert.equal(response.status(), 302)
         assert.equal(new URL(response.headers().location, origin).pathname, `/${route}`)
         await page.goto(`/${route}`)
-        await page.getByText('Enter your email address.').waitFor()
+        await page.getByText('Enter your email address.', { exact: false }).waitFor()
         assert.equal(
           await page.getByLabel('Email', { exact: true }).getAttribute('aria-invalid'),
           'true'

@@ -25,9 +25,15 @@ The acceptance callback inserts the invitation's permitted role for the newly cr
 | `config/account_kit.ts`                                 | Patch                 | Enables invitations and validates `fullName` in `registration.mapFields` and assigns it to the Lucid model through `mapRegistrationData`, alongside authorisation, delivery, and role assignment. |
 | `tests/functional/` (copied spec)                       | Acceptance spec       | Exercises policy, acceptance, and replay against the scaffold.                                                                                                                                    |
 
-The invitation proof middleware must run in the server stack before the router body parser, so malformed proof submissions retain private-cache and referrer headers. Copy the middleware and its kernel registration with the proof routes. Copy the committed [acceptance spec](../../examples/api/tests/recipes/invitations-existing-app.spec.ts) into the application’s `tests/functional/` directory.
+The invitation proof middleware must run in the server stack before the router body parser, so malformed proof submissions retain private-cache and referrer headers. Copy the middleware and its kernel registration with the proof routes. Copy the committed [acceptance spec](../../examples/api/tests/recipes/invitations_existing_app.spec.ts) into the application’s `tests/functional/` directory.
 
 Keep the `owner` role assignment inside the application's trusted provisioning process. Copy the migration, policy, controller, routes, and acceptance callback as a unit. Adapt `registration.mapFields` to validate the profile fields your existing user model requires, then map those fields onto the Lucid model with `mapRegistrationData`; preserve any other application registration fields. Replace only the local delivery callback with the application's mail transport. The acceptance test and local capture service are development evidence, not a delivery provider.
+
+When copying the acceptance spec into an application, also copy its
+[test helper](../../examples/api/tests/helpers/recipes_invitations_existing_app.ts)
+into `tests/helpers/`. The recipe harness copies both files.
+Current scaffold runs select `pnpm test --files=invitations_existing_app.spec.ts`;
+dated evidence below retains the filename used by its recorded revision.
 
 ## Failure and recovery evidence
 

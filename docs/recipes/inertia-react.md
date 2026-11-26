@@ -128,10 +128,15 @@ flash without submitted secrets, unchanged credentials before correction, and an
 browser request with no Referer. The 4 November clean-application check below verifies this matrix.
 
 Every row is exercised by `React reset recipe clears failed submissions and revokes both native
-sessions` in the [committed acceptance spec](../../examples/inertia-react/tests/recipes/inertia-react-password-reset.spec.ts).
+sessions` in the [committed acceptance spec](../../examples/inertia-react/tests/recipes/inertia_react_password_reset.spec.ts).
 The spec signs two distinct native sessions in before reset and verifies each reaches the native
 protected dashboard. “Unchanged” means byte-identical stored hash and successful protected
 requests from both saved sessions, rather than a reset response or database token count.
+When copying the acceptance spec into an application, also copy its
+[test helper](../../examples/inertia-react/tests/helpers/recipes_inertia_react_password_reset.ts)
+into `tests/helpers/`. The recipe harness copies both files.
+Current scaffold runs select `pnpm test --files=inertia_react_password_reset.spec.ts`;
+dated evidence below retains the filename used by its recorded revision.
 
 | Case                    | Expected behaviour and assertions                                                                                          |
 | ----------------------- | -------------------------------------------------------------------------------------------------------------------------- |
@@ -182,7 +187,7 @@ session store, generated the client route registry, built the app, and ran the b
 | Reference app                            | Full `pnpm test`: 33/33 passed in 14 seconds, including the changed journey and both-field retention checks                                                  |
 | Scoped checks                            | Actual application build, typecheck and lint passed; reference typecheck and lint passed; four documentation suites passed 13/13; documentation build passed |
 
-The [acceptance spec](../../examples/inertia-react/tests/recipes/inertia-react-password-reset.spec.ts)
+The [acceptance spec](../../examples/inertia-react/tests/recipes/inertia_react_password_reset.spec.ts)
 ran `React reset recipe preserves failed submissions and revokes both native sessions`. The final
 assertion-order change reports an unexpected native redirect immediately after the protected
 navigation; it preserves the credential requirement. The same final spec failed under mutation

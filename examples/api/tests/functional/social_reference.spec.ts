@@ -1,26 +1,16 @@
-import { randomUUID } from 'node:crypto'
-import { test } from '@japa/runner'
-import db from '@adonisjs/lucid/services/db'
 import User from '#models/user'
-import { setSocialFixture } from '#tests/helpers/social_provider_fixture'
 import { notifications } from '#services/account_kit_notifications'
 import {
   pkceChallenge as challenge,
   pkceVerifier as verifier,
 } from '#services/social_browser_transaction'
-import { ACCESS_TOKENS_ONLY, isSessionStrategy } from '#tests/helpers/strategy'
 import { truncateDatabase } from '#tests/helpers/database'
-
-const stateFrom = (url: string) => new URL(url).searchParams.get('state')!
-
-type Body = Record<string, unknown>
-const body = (response: { body(): unknown }) => response.body() as Body
-
-const continuationFrom = (response: { body(): unknown }): string => {
-  const continuation = body(response).continuation
-  if (typeof continuation !== 'string') throw new Error('Expected social continuation')
-  return continuation
-}
+import { body, continuationFrom, stateFrom } from '#tests/helpers/functional_social_reference'
+import { setSocialFixture } from '#tests/helpers/social_provider_fixture'
+import { ACCESS_TOKENS_ONLY, isSessionStrategy } from '#tests/helpers/strategy'
+import db from '@adonisjs/lucid/services/db'
+import { test } from '@japa/runner'
+import { randomUUID } from 'node:crypto'
 
 test.group('Social reference', (group) => {
   group.each.setup(truncateDatabase)

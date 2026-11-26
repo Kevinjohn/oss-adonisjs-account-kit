@@ -122,7 +122,8 @@ test.group('Signup recovery in the browser', (group) => {
       await page.getByRole('button', { name: 'Resend link' }).click()
       await page
         .getByText(
-          'Your change was saved, but the email could not be sent. If you need a verification link, wait one minute before requesting another.'
+          'Your change was saved, but the email could not be sent. If you need a verification link, wait one minute before requesting another.',
+          { exact: false }
         )
         .waitFor()
       assert.equal(deliveries, 1)
@@ -191,7 +192,7 @@ test.group('Signup recovery in the browser', (group) => {
         await page.getByRole('button', { name: 'Change password', exact: true }).click()
         const response = await pending
         if (failure === 'wrong password') {
-          await page.getByText('The password is incorrect.').waitFor()
+          await page.getByText('The password is incorrect.', { exact: false }).waitFor()
           assert.equal(observers, 0)
           assert.equal(notices, 0)
           const unchanged = await User.verifyCredentials(user.email, 'GlobalPass123!')
@@ -268,7 +269,8 @@ test.group('Signup recovery in the browser', (group) => {
 
       await page
         .getByText(
-          'Your account was created, but we could not sign you in. Please sign in to continue.'
+          'Your account was created, but we could not sign you in. Please sign in to continue.',
+          { exact: false }
         )
         .waitFor()
       assert.isNotNull(await User.findBy('email', email))

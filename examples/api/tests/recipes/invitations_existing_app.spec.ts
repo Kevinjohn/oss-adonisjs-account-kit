@@ -1,32 +1,14 @@
-/* eslint-disable @unicorn/filename-case -- P6 names acceptance specs after the recipe slug. */
 /* eslint-disable @unicorn/no-await-expression-member -- Keep each assertion next to its request. */
 
-import { test } from '@japa/runner'
-import testUtils from '@adonisjs/core/services/test_utils'
-import db from '@adonisjs/lucid/services/db'
 import User from '#models/user'
-
-type RecipeDelivery = { sentInvitations: string[] }
-
-type Snapshot = { accounts: unknown[]; access: unknown[] }
-
-async function truncateRecipeDatabase() {
-  const truncate = await testUtils.db().truncate()
-  await truncate()
-  await db.table('account_transaction_lock').insert({ id: 1, version: 0 })
-}
-
-async function snapshot(): Promise<Snapshot> {
-  return {
-    accounts: await db.from('users').orderBy('id'),
-    access: await db.from('app_user_roles').orderBy('id'),
-  }
-}
-
-async function tokenFor(user: User, abilities: string[] = ['*']): Promise<string> {
-  const token = await User.accessTokens.create(user, abilities, { expiresIn: '1d' })
-  return token.value!.release()
-}
+import {
+  type RecipeDelivery,
+  snapshot,
+  tokenFor,
+  truncateRecipeDatabase,
+} from '#tests/helpers/recipes_invitations_existing_app'
+import db from '@adonisjs/lucid/services/db'
+import { test } from '@japa/runner'
 
 test.group('existing app invitations', (group) => {
   group.setup(truncateRecipeDatabase)

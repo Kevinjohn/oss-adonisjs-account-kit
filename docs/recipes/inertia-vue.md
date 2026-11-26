@@ -103,7 +103,12 @@ Adapt only the files needed for your application:
 The clean-starter check uses the application edits in `inertia-vue-password-reset.patch`.
 Use the patch from the [matching Account Kit revision](../guide/password-reset-existing-app.md#recipe-patches).
 The accompanying browser spec is
-[`inertia-vue-password-reset.spec.ts`](../../examples/inertia-vue/tests/recipes/inertia-vue-password-reset.spec.ts).
+[`inertia_vue_password_reset.spec.ts`](../../examples/inertia-vue/tests/recipes/inertia_vue_password_reset.spec.ts).
+When copying the acceptance spec into an application, also copy its
+[test helper](../../examples/inertia-vue/tests/helpers/recipes_inertia_vue_password_reset.ts)
+into `tests/helpers/`. The recipe harness copies both files.
+Current scaffold runs select `pnpm test --files=inertia_vue_password_reset.spec.ts`;
+dated evidence below retains the filename used by its recorded revision.
 
 | Failure or invariant                                                                                                           | Browser evidence                                                                                                                                                                                       |
 | ------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |

@@ -36,14 +36,18 @@ test.group('native password reset journeys', (group) => {
       await requester.getByLabel('Email').fill(user.email)
       await requester.getByRole('button', { name: 'Send reset link' }).click()
       await requester
-        .getByText('If an account exists for that address, we have sent a reset link.')
+        .getByText('If an account exists for that address, we have sent a reset link.', {
+          exact: false,
+        })
         .waitFor()
       const one = await requester.locator('body').innerText()
       const unknown = await secondContext.visit('/forgot-password')
       await unknown.getByLabel('Email').fill('unknown@example.test')
       await unknown.getByRole('button', { name: 'Send reset link' }).click()
       await unknown
-        .getByText('If an account exists for that address, we have sent a reset link.')
+        .getByText('If an account exists for that address, we have sent a reset link.', {
+          exact: false,
+        })
         .waitFor()
       const two = await unknown.locator('body').innerText()
       assert.equal(one, two)
@@ -57,7 +61,7 @@ test.group('native password reset journeys', (group) => {
       await firstSession.getByRole('button', { name: 'Sign in' }).click()
       await firstSession.getByRole('heading', { name: 'Your account' }).waitFor()
       await firstSession.goto('/dashboard')
-      await firstSession.getByText('Signed in as morgan@example.test.').waitFor()
+      await firstSession.getByText('Signed in as morgan@example.test.', { exact: false }).waitFor()
 
       const secondSession = await secondContext.visit('/login')
       await secondSession.getByLabel('Email').fill(user.email)
@@ -65,7 +69,7 @@ test.group('native password reset journeys', (group) => {
       await secondSession.getByRole('button', { name: 'Sign in' }).click()
       await secondSession.getByRole('heading', { name: 'Your account' }).waitFor()
       await secondSession.goto('/dashboard')
-      await secondSession.getByText('Signed in as morgan@example.test.').waitFor()
+      await secondSession.getByText('Signed in as morgan@example.test.', { exact: false }).waitFor()
 
       const consumedProofPage = await consumedProofContext.visit(resetPath)
       await consumedProofPage.getByRole('heading', { name: 'Choose a new password' }).waitFor()
@@ -107,7 +111,7 @@ test.group('native password reset journeys', (group) => {
       await requester.getByRole('button', { name: 'Sign in' }).click()
       await requester.getByRole('heading', { name: 'Your account' }).waitFor()
       await requester.goto('/dashboard')
-      await requester.getByText('Signed in as morgan@example.test.').waitFor()
+      await requester.getByText('Signed in as morgan@example.test.', { exact: false }).waitFor()
       const assertCurrentSession = async () => {
         const response = await requester.request.get(`${origin}/dashboard`, { maxRedirects: 0 })
         assert.equal(response.status(), 200)
@@ -124,7 +128,10 @@ test.group('native password reset journeys', (group) => {
       )
       assert.isTrue(
         await consumedProofPage
-          .getByText('This reset link is invalid, already used, or expired. Request a fresh link.')
+          .getByText(
+            'This reset link is invalid, already used, or expired. Request a fresh link.',
+            { exact: false }
+          )
           .isVisible()
       )
       assert.isNotNull(await User.verifyCredentials(user.email, 'NewPassword123!'))
@@ -191,7 +198,9 @@ test.group('native password reset journeys', (group) => {
     await page.getByLabel('Email').fill(formOwner.email)
     await page.getByRole('button', { name: 'Send reset link' }).click()
     await page
-      .getByText('If an account exists for that address, we have sent a reset link.')
+      .getByText('If an account exists for that address, we have sent a reset link.', {
+        exact: false,
+      })
       .waitFor()
     const validToken = accountKitNotifications.tokenFor('passwordResetProvision', formOwner.email)
     const validHash = createHash('sha256').update(validToken).digest('hex')
@@ -276,7 +285,9 @@ test.group('native password reset journeys', (group) => {
       await requester.getByLabel('Email').fill(user.email)
       await requester.getByRole('button', { name: 'Send reset link' }).click()
       await requester
-        .getByText('If an account exists for that address, we have sent a reset link.')
+        .getByText('If an account exists for that address, we have sent a reset link.', {
+          exact: false,
+        })
         .waitFor()
       const token = accountKitNotifications.tokenFor('passwordResetProvision', user.email)
       const proofHash = createHash('sha256').update(token).digest('hex')
@@ -311,7 +322,7 @@ test.group('native password reset journeys', (group) => {
       await requester.getByLabel('New password').fill('ReplacementPass123!')
       await requester.getByLabel('Confirm password').fill('DifferentPass123!')
       await requester.getByRole('button', { name: 'Reset password' }).click()
-      await requester.getByText('Confirm password must match Password.').waitFor()
+      await requester.getByText('Confirm password must match Password.', { exact: false }).waitFor()
       assert.equal(await requester.getByLabel('New password').inputValue(), '')
       assert.equal(await requester.getByLabel('Confirm password').inputValue(), '')
       assert.isNotNull(await User.verifyCredentials(user.email, 'OldPassword123!'))
@@ -349,7 +360,9 @@ test.group('native password reset journeys', (group) => {
     await page.getByLabel('Email').fill(user.email)
     await page.getByRole('button', { name: 'Send reset link' }).click()
     await page
-      .getByText('If an account exists for that address, we have sent a reset link.')
+      .getByText('If an account exists for that address, we have sent a reset link.', {
+        exact: false,
+      })
       .waitFor()
     const firstToken = accountKitNotifications.tokenFor('passwordResetProvision', user.email)
 
@@ -364,7 +377,9 @@ test.group('native password reset journeys', (group) => {
     )
     assert.isTrue(
       await page
-        .getByText('If an account exists for that address, we have sent a reset link.')
+        .getByText('If an account exists for that address, we have sent a reset link.', {
+          exact: false,
+        })
         .isVisible()
     )
     const replacementToken = accountKitNotifications.tokenFor('passwordResetProvision', user.email)

@@ -1,21 +1,18 @@
-import { randomUUID } from 'node:crypto'
-import { test } from '@japa/runner'
-import limiter from '@adonisjs/limiter/services/main'
-import db from '@adonisjs/lucid/services/db'
 import User from '#models/user'
-import { setSocialFixture } from '#tests/helpers/social_provider_fixture'
 import { notifications } from '#services/account_kit_notifications'
 import {
   pkceChallenge as challenge,
   pkceVerifier as verifier,
 } from '#services/social_browser_transaction'
-import { ACCESS_TOKENS_ONLY, isSessionStrategy } from '#tests/helpers/strategy'
 import { truncateDatabase } from '#tests/helpers/database'
+import { body, stateFrom } from '#tests/helpers/functional_social_reference_policy'
+import { setSocialFixture } from '#tests/helpers/social_provider_fixture'
+import { ACCESS_TOKENS_ONLY, isSessionStrategy } from '#tests/helpers/strategy'
+import limiter from '@adonisjs/limiter/services/main'
+import db from '@adonisjs/lucid/services/db'
+import { test } from '@japa/runner'
+import { randomUUID } from 'node:crypto'
 
-const stateFrom = (url: string) => new URL(url).searchParams.get('state')!
-
-type Body = Record<string, unknown>
-const body = (response: { body(): unknown }) => response.body() as Body
 test.group('Social reference policy', (group) => {
   group.each.setup(truncateDatabase)
 
