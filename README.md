@@ -32,11 +32,11 @@ Requires Node.js 24+, AdonisJS 7 with Lucid, and `@adonisjs/limiter`. For a regi
 AdonisJS combines installation and configuration with
 `node ace add @kevinjohn/adonisjs-account-kit --package-manager=pnpm`. Account Kit pre-releases are
 GitHub archives. Use these installation steps and then choose a configuration path.
-[GitHub releases](https://github.com/Kevinjohn/oss-adonisjs-account-kit/releases)
+[0.9.0 release notes](https://github.com/Kevinjohn/oss-adonisjs-account-kit/releases/tag/v0.9.0)
 
 ```sh
 node ace add @adonisjs/limiter
-pnpm add https://github.com/Kevinjohn/oss-adonisjs-account-kit/releases/download/v0.8.0/kevinjohn-adonisjs-account-kit-0.8.0.tgz
+pnpm add https://github.com/Kevinjohn/oss-adonisjs-account-kit/releases/download/v0.9.0/kevinjohn-adonisjs-account-kit-0.9.0.tgz
 ```
 
 Choose an integration path before configuring the package or running its migrations:
