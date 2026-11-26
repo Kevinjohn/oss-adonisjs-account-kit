@@ -1,18 +1,21 @@
-// Classifies a branch's changes for the checks workflow. Two narrow shapes get a focused run;
-// everything else is `full`. Plain JavaScript with no imports from node_modules: the workflow's
-// plan job runs it before `pnpm install`, which would compile the package through `prepare`.
+// Classifies changes before dependencies are installed. Node 24 strips the types natively.
 import { spawnSync } from 'node:child_process'
 import { pathToFileURL } from 'node:url'
+
+import type { Classification } from './check_changed_plan.ts'
+
+interface ClassifiedChange {
+  classification: Classification
+  reason: string
+}
 
 export const rootReadme = 'README.md'
 
 /**
  * Classify changed files. `files` holds one entry per path with its git status letter (`M`, `A`,
  * `D`, `R`, ... or `?` for an untracked file).
- * @param {{ path: string, status: string }[]} files
- * @returns {{ classification: 'root-readme-only' | 'full', reason: string }}
  */
-export function classify(files) {
+export function classify(files: { path: string; status: string }[]): ClassifiedChange {
   if (files.length === 0) return { classification: 'full', reason: 'no changed files' }
   if (files.length > 1) {
     const other = files.find((file) => file.path !== rootReadme) ?? files[1]
@@ -28,11 +31,12 @@ export function classify(files) {
 
 /**
  * Classify the working tree's commits since the merge base with `base`. Untracked files count.
- * @param {string} base
- * @param {string} cwd
  */
-export function classifyRepository(base, cwd = process.cwd()) {
-  const git = (...args) => {
+export function classifyRepository(
+  base: string | undefined,
+  cwd = process.cwd()
+): ClassifiedChange {
+  const git = (...args: string[]) => {
     const result = spawnSync('git', args, { cwd, encoding: 'utf8' })
     return result.status === 0 ? result.stdout : undefined
   }

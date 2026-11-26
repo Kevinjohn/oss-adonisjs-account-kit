@@ -99,9 +99,9 @@ docs/                       documentation
 ```
 
 1. A top-level folder exists only for an exported subpath. Anything else goes in `src/`.
-2. Scripts are TypeScript under `bin/`, run with `node --import=@poppinss/ts-exec`. Use `.mjs`
-   only when the script must run before dependencies are installed, and explain why in a comment
-   at the top.
+2. Scripts are TypeScript under `bin/`, run with `node --import=@poppinss/ts-exec` when they
+   need the project loader. Pre-install scripts use native Node 24 type stripping with no
+   installed dependencies.
 3. Use one Japa config with `files: ['tests/**/*.spec.ts']`; do not add suites or `node --test`
    scripts.
 4. Do not add a `scripts/` folder.

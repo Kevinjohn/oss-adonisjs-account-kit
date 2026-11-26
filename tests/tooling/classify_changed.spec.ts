@@ -1,11 +1,11 @@
 import { test } from '@japa/runner'
 import assert from 'node:assert/strict'
 import { execFileSync } from 'node:child_process'
-import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
+import { copyFile, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { classify, classifyRepository, rootReadme } from '../../bin/classify_changed.mjs'
+import { classify, classifyRepository, rootReadme } from '../../bin/classify_changed.ts'
 
 const repository = fileURLToPath(new URL('../../', import.meta.url))
 const modified = (path: string) => ({ path, status: 'M' })
@@ -92,7 +92,7 @@ test.group('classify_changed repository', (group) => {
     const output = join(repo, 'github-output')
     const stdout = execFileSync(
       process.execPath,
-      [join(repository, 'bin/classify_changed.mjs'), 'base'],
+      [join(repository, 'bin/classify_changed.ts'), 'base'],
       {
         cwd: repo,
         encoding: 'utf8',
@@ -101,7 +101,10 @@ test.group('classify_changed repository', (group) => {
     )
     assert.match(stdout, /^classification=root-readme-only\nreason=only README.md changed\n$/)
     assert.equal(await readFile(output, 'utf8'), 'classification=root-readme-only\nfocused=true\n')
-    const full = execFileSync(process.execPath, [join(repository, 'bin/classify_changed.mjs')], {
+    // A standalone copy proves the pre-install command needs neither a loader nor dependencies.
+    const standalone = join(repo, 'classify_changed.ts')
+    await copyFile(join(repository, 'bin/classify_changed.ts'), standalone)
+    const full = execFileSync(process.execPath, [standalone], {
       cwd: repo,
       encoding: 'utf8',
     })
