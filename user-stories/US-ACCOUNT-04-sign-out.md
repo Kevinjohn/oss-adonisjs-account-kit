@@ -29,7 +29,7 @@ flowchart TD
 
 ```mermaid
 flowchart TD
-  M["Managed account.credential.revoke reads guard evidence and calls authentication.current"] -->|Current account accepted| N["Resolve request guard and selected credentialForRevocation"]
+  M["Managed account.credential.revoke reads guard evidence and calls authentication.current"] -->|Current account accepted| N["Resolve request guard; credentialForRevocation is required for tokens and optional for sessions"]
   M -->|Session evidence read; E_ACCOUNT_KIT_INVALID_SESSION from account check| S["Terminate browser session and return 204"]
   M -->|Guard refuses evidence or other account-check error| X["Propagate refusal"]
   N --> A["authentication.revokeCredential"]
