@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Export optional auth types through `/types/auth`, document transaction cleanup errors and exercise admission provider boot in focused tests.
+
 - Align reference application controllers, configuration, migrations and input recovery with AdonisJS conventions; check bounded display-field recovery with focused tests.
 
 ## 0.9.1 - 2026-11-26

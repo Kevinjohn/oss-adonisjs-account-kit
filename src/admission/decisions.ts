@@ -67,6 +67,8 @@ export async function applyTransition(
 /**
  * An approver's decision. Locks the actor and the subject; the actor must exist, differ from the
  * subject, be admitted themselves and be allowed by `authorize.decide`.
+ *
+ * @throws {AggregateError} If transaction work and cleanup fail before a commit is confirmed.
  */
 export async function decideAdmission(
   deps: AdmissionContext,

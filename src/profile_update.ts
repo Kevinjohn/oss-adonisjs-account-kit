@@ -23,6 +23,7 @@ import { rememberCorrectionRevision } from './profile_correction_revision.ts'
 import type { AccountUser, RequestEmailChangeInput, UpdateProfileInput } from './types.ts'
 import type { ServiceDependencies } from './service_dependencies.ts'
 
+/** @throws {AggregateError} If transaction work and cleanup fail before a commit is confirmed. */
 export async function requestEmailChange(
   deps: ServiceDependencies,
   input: RequestEmailChangeInput
@@ -35,6 +36,7 @@ export async function requestEmailChange(
   })
 }
 
+/** @throws {AggregateError} If transaction work and cleanup fail before a commit is confirmed. */
 export async function updateProfile(
   deps: ServiceDependencies,
   input: UpdateProfileInput

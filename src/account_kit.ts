@@ -109,6 +109,7 @@ export class AccountKit {
     }
   }
 
+  /** @throws {AggregateError} If transaction work and cleanup fail before a commit is confirmed. */
   #runEnabledCapability<T>(capability: Capability, run: () => Promise<T>): Promise<T> {
     if (!this.#deps.config.enabled.includes(capability))
       return Promise.reject(new E_ACCOUNT_KIT_CAPABILITY_DISABLED(`${capability} is disabled`))
@@ -162,6 +163,8 @@ export class AccountKit {
      * ```ts
      * await kit.registration.register({ email: 'sam@example.test', password })
      * ```
+     *
+     * @throws {AggregateError} If transaction work and cleanup fail before a commit is confirmed.
      */
     register: (input: RegistrationInput): Promise<AccountUser> =>
       this.#runEnabledCapability('registration', () => register(this.#deps, input)),
@@ -184,6 +187,8 @@ export class AccountKit {
      * ```ts
      * await kit.magicLink.request({ email: 'sam@example.test', clientKey: request.ip(), clientChallenge })
      * ```
+     *
+     * @throws {AggregateError} If transaction work and cleanup fail before a commit is confirmed.
      */
     request: (input: MagicLinkRequestInput): Promise<void> =>
       this.#runEnabledCapability('magicLinkLogin', () => requestMagicLink(this.#deps, input)),
@@ -206,6 +211,8 @@ export class AccountKit {
      * ```ts
      * await kit.magicLink.complete({ token, verifier }, requestGuard)
      * ```
+     *
+     * @throws {AggregateError} If transaction work and cleanup fail before a commit is confirmed.
      */
     complete: <Credential>(
       input: MagicLinkCompleteInput,
@@ -226,6 +233,8 @@ export class AccountKit {
      * ```ts
      * await kit.passwordReset.request({ email: 'sam@example.test', clientKey: request.ip() })
      * ```
+     *
+     * @throws {AggregateError} If transaction work and cleanup fail before a commit is confirmed.
      */
     request: (input: PasswordResetRequestInput): Promise<void> =>
       this.#runEnabledCapability('passwordReset', () => requestPasswordReset(this.#deps, input)),
@@ -247,6 +256,8 @@ export class AccountKit {
      * ```ts
      * await kit.passwordReset.reset({ token, password })
      * ```
+     *
+     * @throws {AggregateError} If transaction work and cleanup fail before a commit is confirmed.
      */
     reset: (input: PasswordResetCompleteInput): Promise<AccountUser> =>
       this.#runEnabledCapability('passwordReset', () => completePasswordReset(this.#deps, input)),
@@ -261,6 +272,8 @@ export class AccountKit {
      * ```ts
      * await kit.emailVerification.send({ userId })
      * ```
+     *
+     * @throws {AggregateError} If transaction work and cleanup fail before a commit is confirmed.
      */
     send: (input: VerificationSendInput): Promise<'sent' | 'already_verified'> =>
       this.#runEnabledCapability('emailVerification', () => sendVerification(this.#deps, input)),
@@ -281,6 +294,8 @@ export class AccountKit {
      * ```ts
      * await kit.emailVerification.complete({ token, password })
      * ```
+     *
+     * @throws {AggregateError} If transaction work and cleanup fail before a commit is confirmed.
      */
     complete: (input: VerificationCompleteInput): Promise<'verified'> =>
       this.#runEnabledCapability('emailVerification', () =>
@@ -296,6 +311,8 @@ export class AccountKit {
      * ```ts
      * await kit.invitations.send({ actorId, email: 'sam@example.test', role: 'member' })
      * ```
+     *
+     * @throws {AggregateError} If transaction work and cleanup fail before a commit is confirmed.
      */
     send: (input: InvitationsSendInput): Promise<Invitation> =>
       this.#runEnabledCapability('invitations', () => sendInvitation(this.#deps, input)),
@@ -327,6 +344,8 @@ export class AccountKit {
      * ```ts
      * await kit.invitations.accept({ token, password })
      * ```
+     *
+     * @throws {AggregateError} If transaction work and cleanup fail before a commit is confirmed.
      */
     accept: (input: InvitationsAcceptInput): Promise<AccountUser> =>
       this.#runEnabledCapability('invitations', () => acceptInvitation(this.#deps, input)),
@@ -338,6 +357,8 @@ export class AccountKit {
      * ```ts
      * await kit.invitations.resend({ actorId, invitationId })
      * ```
+     *
+     * @throws {AggregateError} If transaction work and cleanup fail before a commit is confirmed.
      */
     resend: (input: InvitationsResendInput): Promise<Invitation> =>
       this.#runEnabledCapability('invitations', () => resendInvitation(this.#deps, input)),
@@ -348,6 +369,8 @@ export class AccountKit {
      * ```ts
      * await kit.invitations.revoke({ actorId, invitationId })
      * ```
+     *
+     * @throws {AggregateError} If transaction work and cleanup fail before a commit is confirmed.
      */
     revoke: (input: InvitationsRevokeInput): Promise<void> =>
       this.#runEnabledCapability('invitations', () => revokeInvitation(this.#deps, input)),
@@ -364,6 +387,8 @@ export class AccountKit {
      * ```ts
      * await kit.operator.invite({ email: 'sam@example.test', role: 'member', deliver: 'send' })
      * ```
+     *
+     * @throws {AggregateError} If transaction work and cleanup fail before a commit is confirmed.
      */
     invite: (input: OperatorInviteInput): Promise<OperatorInviteResult> =>
       this.#runEnabledCapability('invitations', () =>
@@ -376,6 +401,8 @@ export class AccountKit {
      * ```ts
      * await kit.operator.resetLink({ email: 'sam@example.test', deliver: 'send' })
      * ```
+     *
+     * @throws {AggregateError} If transaction work and cleanup fail before a commit is confirmed.
      */
     resetLink: (input: OperatorResetLinkInput): Promise<OperatorResetLinkResult> =>
       this.#runEnabledCapability('passwordReset', () => issueOperatorResetLink(this.#deps, input)),
@@ -392,6 +419,8 @@ export class AccountKit {
      * ```ts
      * await kit.emailPasswordManagement.changePassword({ actorId, currentPassword, newPassword })
      * ```
+     *
+     * @throws {AggregateError} If transaction work and cleanup fail before a commit is confirmed.
      */
     changePassword: (input: ChangePasswordInput): Promise<{ revision: string | null }> =>
       this.#runEnabledCapability('emailPasswordManagement', () =>
@@ -404,6 +433,8 @@ export class AccountKit {
      * ```ts
      * await kit.emailPasswordManagement.requestEmailChange({ actorId, currentPassword, newEmail: 'new-address@example.test' })
      * ```
+     *
+     * @throws {AggregateError} If transaction work and cleanup fail before a commit is confirmed.
      */
     requestEmailChange: (input: RequestEmailChangeInput): Promise<void> =>
       this.#runEnabledCapability('emailPasswordManagement', () =>
@@ -416,6 +447,8 @@ export class AccountKit {
      * ```ts
      * await kit.emailPasswordManagement.updateProfile({ actorId, currentPassword, registrationData: { displayName: 'Sam Example' } })
      * ```
+     *
+     * @throws {AggregateError} If transaction work and cleanup fail before a commit is confirmed.
      */
     updateProfile: (input: UpdateProfileInput): Promise<AccountUser> =>
       this.#runEnabledCapability('emailPasswordManagement', () => updateProfile(this.#deps, input)),
@@ -439,6 +472,8 @@ export class AccountKit {
      * ```ts
      * await kit.emailPasswordManagement.completeEmailChange({ token })
      * ```
+     *
+     * @throws {AggregateError} If transaction work and cleanup fail before a commit is confirmed.
      */
     completeEmailChange: (input: CompleteEmailChangeInput): Promise<AccountUser> =>
       this.#runEnabledCapability('emailPasswordManagement', () =>
@@ -457,6 +492,8 @@ export class AccountKit {
      * ```ts
      * await kit.accountData.export({ actorId, currentPassword })
      * ```
+     *
+     * @throws {AggregateError} If transaction work and cleanup fail before a commit is confirmed.
      */
     export: (input: AccountDataInput): Promise<AccountExport> =>
       this.#runEnabledCapability('dataExport', () => exportAccountData(this.#deps, input)),
@@ -468,6 +505,8 @@ export class AccountKit {
      * ```ts
      * await kit.accountData.delete({ actorId, currentPassword })
      * ```
+     *
+     * @throws {AggregateError} If transaction work and cleanup fail before a commit is confirmed.
      */
     delete: (input: AccountDataInput): Promise<void> =>
       this.#runEnabledCapability('accountDeletion', () => deleteAccount(this.#deps, input)),

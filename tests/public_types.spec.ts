@@ -1,5 +1,8 @@
 import { test } from '@japa/runner'
 import type * as Http from '../http/main.ts'
+import type { SessionUserProviderContract } from '@adonisjs/auth/types/session'
+import type * as Auth from '../auth/main.ts'
+import type * as AuthTypes from '../src/types_auth.ts'
 import type * as AccountKit from '../index.ts'
 import type * as Admission from '../src/admission/main.ts'
 import type * as Commands from '../src/define_commands.ts'
@@ -47,4 +50,10 @@ test('shares managed HTTP route, guard, OpenAPI and endpoint types with the HTTP
   >()
   expectTypeOf<Types.ManagedErrorBody>().toEqualTypeOf<Http.ManagedErrorBody>()
   expectTypeOf<Types.ManagedMessage>().toEqualTypeOf<Http.ManagedMessage>()
+})
+
+test('shares the optional session guard type with the auth entry point', ({ expectTypeOf }) => {
+  expectTypeOf<
+    AuthTypes.AccountKitSessionGuard<SessionUserProviderContract<unknown>>
+  >().toEqualTypeOf<Auth.AccountKitSessionGuard<SessionUserProviderContract<unknown>>>()
 })

@@ -39,6 +39,7 @@ interface LinkRow {
   client_challenge: string
 }
 
+/** @throws {AggregateError} If transaction work and cleanup fail before a commit is confirmed. */
 export async function requestMagicLink(
   deps: ServiceDependencies,
   input: MagicLinkRequestInput

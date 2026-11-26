@@ -9,6 +9,7 @@ import { deleteUserRows } from './user_rows.ts'
 import type { AccountDataInput, DeletedAccount } from './types.ts'
 import type { ServiceDependencies } from './service_dependencies.ts'
 
+/** @throws {AggregateError} If transaction work and cleanup fail before a commit is confirmed. */
 export async function deleteAccount(
   deps: ServiceDependencies,
   input: AccountDataInput

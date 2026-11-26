@@ -59,6 +59,8 @@ async function followUps(
 /**
  * Issue an invitation without actor authorization or throttles. Any existing invitation for the
  * address and scope is replaced, so a rerun after a lost link is never blocked by the pending one.
+ *
+ * @throws {AggregateError} If transaction work and cleanup fail before a commit is confirmed.
  */
 export async function issueStandaloneOperatorInvitation(
   deps: Pick<ServiceDependencies, 'config' | 'db'>,
@@ -67,7 +69,11 @@ export async function issueStandaloneOperatorInvitation(
   return issueOperatorInvitation(deps, input)
 }
 
-/** Internal composition for the admission approval written in the invitation transaction. */
+/**
+ * Internal composition for the admission approval written in the invitation transaction.
+ *
+ * @throws {AggregateError} If transaction work and cleanup fail before a commit is confirmed.
+ */
 export async function issueOperatorInvitation(
   deps: Pick<ServiceDependencies, 'config' | 'db'>,
   input: OperatorInviteInput,
@@ -128,6 +134,8 @@ export async function issueOperatorInvitation(
 /**
  * Issue a password-reset link without throttles or the timing floor. Unknown addresses are
  * reported, because the operator already has database-level access.
+ *
+ * @throws {AggregateError} If transaction work and cleanup fail before a commit is confirmed.
  */
 export async function issueOperatorResetLink(
   deps: Pick<ServiceDependencies, 'config' | 'db'>,

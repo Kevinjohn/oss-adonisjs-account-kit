@@ -18,7 +18,11 @@ import type { E_ACCOUNT_KIT_POST_COMMIT } from './errors.ts'
 import type { AccountUser, RegistrationInput } from './types.ts'
 import type { ServiceDependencies } from './service_dependencies.ts'
 
-/** Create an inactive account and its activation proof in one transaction. */
+/**
+ * Create an inactive account and its activation proof in one transaction.
+ *
+ * @throws {AggregateError} If transaction work and cleanup fail before a commit is confirmed.
+ */
 export async function register(
   deps: Pick<ServiceDependencies, 'config' | 'db'>,
   input: RegistrationInput

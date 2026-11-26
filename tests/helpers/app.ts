@@ -28,6 +28,7 @@ export interface BootOptions {
   sqliteBusyTimeout?: number
   sqlitePoolMax?: number
   accountKitProvider?: 'source' | 'build'
+  admissionProvider?: boolean
   postgresSchema?: string
   /** A caller-owned migration directory. The caller handles its cleanup. */
   migrationDirectory?: string
@@ -67,6 +68,9 @@ export async function bootTestApp(options: BootOptions = {}): Promise<TestApp> {
             : options.accountKitProvider === 'build'
               ? [() => import('@kevinjohn/adonisjs-account-kit/account_kit_provider')]
               : []),
+          ...(options.admissionProvider
+            ? [() => import('../../providers/account_admission_provider.js')]
+            : []),
         ],
       },
       config: {

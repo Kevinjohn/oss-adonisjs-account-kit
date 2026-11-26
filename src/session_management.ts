@@ -108,7 +108,11 @@ async function deleteSignIns(
 }
 
 export function createSessionManagementService(deps: Pick<ServiceDependencies, 'config' | 'db'>) {
-  /** Authenticate the caller and run `mutate` in one transaction under the account lock. */
+  /**
+   * Authenticate the caller and run `mutate` in one transaction under the account lock.
+   *
+   * @throws {AggregateError} If transaction work and cleanup fail before a commit is confirmed.
+   */
   async function withCurrentSession<T>(
     current: CurrentAccountInput,
     mutate: (
@@ -154,6 +158,8 @@ export function createSessionManagementService(deps: Pick<ServiceDependencies, '
      * ```ts
      * await kit.authentication.sessions.list({ current })
      * ```
+     *
+     * @throws {AggregateError} If transaction work and cleanup fail before a commit is confirmed.
      */
     list(input: { current: CurrentAccountInput }): Promise<SignIn[]> {
       return withCurrentSession(input.current, async (trx, target, userId) => {
@@ -183,6 +189,8 @@ export function createSessionManagementService(deps: Pick<ServiceDependencies, '
      * ```ts
      * await kit.authentication.sessions.revoke({ current, id: signInId })
      * ```
+     *
+     * @throws {AggregateError} If transaction work and cleanup fail before a commit is confirmed.
      */
     async revoke(input: {
       current: CurrentAccountInput
@@ -214,6 +222,8 @@ export function createSessionManagementService(deps: Pick<ServiceDependencies, '
      * ```ts
      * await kit.authentication.sessions.revokeOthers({ current })
      * ```
+     *
+     * @throws {AggregateError} If transaction work and cleanup fail before a commit is confirmed.
      */
     async revokeOthers(input: { current: CurrentAccountInput }): Promise<{ count: number }> {
       const operationId = randomUUID()
@@ -237,6 +247,8 @@ export function createSessionManagementService(deps: Pick<ServiceDependencies, '
      * ```ts
      * await kit.authentication.sessions.revokeAll({ current })
      * ```
+     *
+     * @throws {AggregateError} If transaction work and cleanup fail before a commit is confirmed.
      */
     async revokeAll(input: { current: CurrentAccountInput }): Promise<void> {
       const operationId = randomUUID()

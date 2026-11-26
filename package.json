@@ -25,6 +25,7 @@
   "exports": {
     ".": "./build/index.js",
     "./types": "./build/src/types.js",
+    "./types/auth": "./build/src/types_auth.js",
     "./errors": "./build/src/errors.js",
     "./account_kit_provider": "./build/providers/account_kit_provider.js",
     "./adapters/lucid": "./build/src/adapters/lucid.js",
@@ -177,6 +178,7 @@
       "./index.ts",
       "./configure.ts",
       "./src/types.ts",
+      "./src/types_auth.ts",
       "./src/errors.ts",
       "./src/ally_social_provider.ts",
       "./providers/account_kit_provider.ts",
