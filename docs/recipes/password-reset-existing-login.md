@@ -118,7 +118,7 @@ package does not generate that page.
 
 ## Verify the reset and revocation
 
-Use the committed [acceptance spec](../../examples/api/tests/recipes/api-password-reset.spec.ts)
+Use the committed [acceptance spec](../../examples/api/tests/recipes/api_password_reset.spec.ts)
 and `api-password-reset.patch` from the [matching Account Kit revision](../guide/password-reset-existing-app.md#recipe-patches).
 To run the recipe harness, use the repository root:
 
@@ -143,7 +143,7 @@ contains only application hand edits against that post-configure checkpoint. It 
 migrations, generated schema, dependencies, the lockfile and the archive.
 
 The harness copies the spec into the disposable app’s functional suite and runs
-`pnpm test --files=api-password-reset.spec.ts`. It prints the retained application, evidence JSON
+`pnpm test --files=api_password_reset.spec.ts`. It prints the retained application, evidence JSON
 and an exact replay command. The replay wrapper retains the generated local test environment and
 Node executable, and removes inherited external database settings. Run the printed command from
 any directory when checking a mutation; running the bare spec command with different environment

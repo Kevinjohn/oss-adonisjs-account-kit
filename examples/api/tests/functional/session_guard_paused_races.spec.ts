@@ -1,37 +1,12 @@
-import { randomUUID } from 'node:crypto'
-import { test } from '@japa/runner'
 import User from '#models/user'
 import { notifications } from '#services/account_kit_notifications'
-import { SESSION_ONLY, isSessionStrategy } from '#tests/helpers/strategy'
 import { cookies as rawCookies } from '#tests/helpers/cookies'
-import { tokenFrom } from '#tests/helpers/link_tokens'
 import { truncateDatabase } from '#tests/helpers/database'
-
-function pauseNextSessionLookup(userId: number | string) {
-  const original = User.findOrFail
-  const lookup = original.bind(User)
-  let signalPaused!: () => void
-  let signalResume!: () => void
-  const paused = new Promise<void>((resolve) => (signalPaused = resolve))
-  const resume = new Promise<void>((resolve) => (signalResume = resolve))
-  let waiting = true
-  Reflect.set(User, 'findOrFail', async (id: number | string) => {
-    const found = await lookup(id)
-    if (waiting && String(id) === String(userId)) {
-      waiting = false
-      signalPaused()
-      await resume
-    }
-    return found
-  })
-  return {
-    paused,
-    release() {
-      Reflect.set(User, 'findOrFail', original)
-      signalResume()
-    },
-  }
-}
+import { pauseNextSessionLookup } from '#tests/helpers/functional_session_guard_paused_races'
+import { tokenFrom } from '#tests/helpers/link_tokens'
+import { SESSION_ONLY, isSessionStrategy } from '#tests/helpers/strategy'
+import { test } from '@japa/runner'
+import { randomUUID } from 'node:crypto'
 
 test.group('Paused session guard races', (group) => {
   group.each.setup(truncateDatabase)

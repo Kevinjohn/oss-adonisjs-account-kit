@@ -32,16 +32,22 @@ if (Boolean(candidateInput) !== Boolean(candidateRevision)) {
   throw new Error('--candidate-tarball and --candidate-revision must be supplied together')
 }
 const patch = join(root, 'docs/recipes/patches', `${recipe}.patch`)
-const spec = join(root, `examples/${kit}/tests/recipes`, `${recipe}.spec.ts`)
+const recipeName = recipe.replaceAll('-', '_')
+const spec = join(root, `examples/${kit}/tests/recipes`, `${recipeName}.spec.ts`)
+const helper =
+  recipe === 'api-password-reset'
+    ? undefined
+    : join(root, `examples/${kit}/tests/helpers`, `recipes_${recipeName}.ts`)
 // Validate the committed inputs before downloading or creating anything.
 let patchText
 try {
   patchText = await readFile(patch, 'utf8')
   await readFile(spec)
+  if (helper) await readFile(helper)
 } catch (error) {
   if (error instanceof Error && 'code' in error && error.code === 'ENOENT')
     throw new Error(
-      `Recipe ${recipe} is unavailable in this checkout: missing patch or acceptance spec`
+      `Recipe ${recipe} is unavailable in this checkout: missing patch, acceptance spec or test helper`
     )
   throw error
 }
@@ -57,7 +63,7 @@ for (const entry of patchText.matchAll(/^diff --git a\/(.+) b\/(.+)$/gm)) {
 }
 const retained = await mkdtemp(join(tmpdir(), 'account-kit-recipe-'))
 const appRoot = join(retained, 'app')
-const specCommand = ['test', `--files=${recipe}.spec.ts`]
+const specCommand = ['test', `--files=${recipeName}.spec.ts`]
 const browserBootstrapPath = join(appRoot, 'tests/bootstrap.ts')
 const vueBrowserBootstrap = (source: string) => {
   if (source.includes("from '@japa/browser-client'")) return source
@@ -368,7 +374,12 @@ test('original starter login reaches its protected profile', async ({ client, as
   run('git', ['apply', patch])
   const suiteDirectory = join(appRoot, 'tests', browserRecipe ? 'browser' : 'functional')
   await mkdir(suiteDirectory, { recursive: true })
-  await copyFile(spec, join(suiteDirectory, `${recipe}.spec.ts`))
+  await copyFile(spec, join(suiteDirectory, `${recipeName}.spec.ts`))
+  if (helper) {
+    const helperDirectory = join(appRoot, 'tests/helpers')
+    await mkdir(helperDirectory, { recursive: true })
+    await copyFile(helper, join(helperDirectory, `recipes_${recipeName}.ts`))
+  }
   if (browserRecipe) {
     testEnvironment.SESSION_DRIVER = 'database'
     env.SESSION_DRIVER = 'database'

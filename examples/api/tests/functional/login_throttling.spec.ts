@@ -1,20 +1,10 @@
-import { createHmac, hkdfSync, randomUUID } from 'node:crypto'
-import { test } from '@japa/runner'
-import limiter from '@adonisjs/limiter/services/main'
 import User from '#models/user'
-import env from '#start/env'
-import { responseBody } from '#tests/helpers/response_body'
 import { truncateDatabase } from '#tests/helpers/database'
-
-function storedLoginKey(operation: string, value: string) {
-  const secret = env.get('APP_KEY').release()
-  const derived = Buffer.from(
-    hkdfSync('sha256', secret, 'adonisjs-account-kit', 'limiter-key-v1', 32)
-  )
-  return `account-kit:v1:${createHmac('sha256', derived)
-    .update(JSON.stringify(['default', operation, value]))
-    .digest('hex')}`
-}
+import { storedLoginKey } from '#tests/helpers/functional_login_throttling'
+import { responseBody } from '#tests/helpers/response_body'
+import limiter from '@adonisjs/limiter/services/main'
+import { test } from '@japa/runner'
+import { randomUUID } from 'node:crypto'
 
 test.group('Login throttling', (group) => {
   group.each.setup(truncateDatabase)

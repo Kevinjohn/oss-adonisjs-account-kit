@@ -1,14 +1,8 @@
+import User from '#models/user'
+import { oldInputFromFlash } from '#tests/helpers/browser_native_form_validation'
 import { test } from '@japa/runner'
 import { DateTime } from 'luxon'
-import User from '#models/user'
 import { setupAccountDatabase } from '../helpers/account_database.js'
-
-/** Session.commit flattens its input bag into top-level flash entries. */
-function oldInputFromFlash(flash: Record<string, unknown>) {
-  return Object.fromEntries(
-    Object.entries(flash).filter(([key]) => !['errorsBag', 'inputErrorsBag'].includes(key))
-  )
-}
 
 test.group('native form validation', (group) => {
   group.each.setup(setupAccountDatabase)

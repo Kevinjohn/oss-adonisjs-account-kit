@@ -332,7 +332,8 @@ test.group('Signup recovery in the browser', (group) => {
 
       await page
         .getByText(
-          'Your account was created, but we could not sign you in. Please sign in to continue.'
+          'Your account was created, but we could not sign you in. Please sign in to continue.',
+          { exact: false }
         )
         .waitFor()
       assert.isNotNull(await User.findBy('email', email))

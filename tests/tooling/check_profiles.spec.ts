@@ -121,7 +121,7 @@ test('the full recipe step selects committed inputs and check forwards its argum
     'the selected recipe patch is committed'
   )
   assert.isTrue(
-    existsSync(join(root, 'examples/api/tests/recipes/api-password-reset.spec.ts')),
+    existsSync(join(root, 'examples/api/tests/recipes/api_password_reset.spec.ts')),
     'the selected recipe acceptance spec is committed'
   )
 

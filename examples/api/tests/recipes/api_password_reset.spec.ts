@@ -1,4 +1,4 @@
-/* eslint-disable @unicorn/no-await-expression-member, @unicorn/filename-case -- Keep HTTP assertions beside requests and the filename aligned with the recipe selector. */
+/* eslint-disable @unicorn/no-await-expression-member -- Keep HTTP assertions beside requests and the filename aligned with the recipe selector. */
 import { createHash, randomBytes, randomUUID } from 'node:crypto'
 import { test } from '@japa/runner'
 import db from '@adonisjs/lucid/services/db'

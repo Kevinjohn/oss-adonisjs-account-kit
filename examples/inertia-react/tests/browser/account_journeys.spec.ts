@@ -1,10 +1,8 @@
 /* eslint-disable @unicorn/no-await-expression-member -- Keep each browser result beside its assertion. */
-import { test } from '@japa/runner'
 import User from '#models/user'
+import { notifications } from '#tests/helpers/browser_account_journeys'
+import { test } from '@japa/runner'
 import { setupAccountDatabase } from '../helpers/account_database.js'
-import { notifyOverrides } from '../../config/account_kit.js'
-
-const notifications = () => notifyOverrides
 
 test.group('composed account browser journeys', (group) => {
   group.each.setup(setupAccountDatabase)
@@ -42,7 +40,9 @@ test.group('composed account browser journeys', (group) => {
       assert.equal(unconfirmed?.status(), 403)
       assert.include(await page.locator('body').innerText(), 'verification_required')
       await page.goto('/settings/email')
-      await page.getByText('Confirm your current address before requesting a new one.').waitFor()
+      await page
+        .getByText('Confirm your current address before requesting a new one.', { exact: false })
+        .waitFor()
       assert.equal(await page.getByRole('button', { name: 'Request change' }).count(), 0)
       assert.isString(verificationUrl)
       await page.goto(new URL(verificationUrl!).pathname)
@@ -100,7 +100,9 @@ test.group('composed account browser journeys', (group) => {
       await guest.getByLabel('Email').fill(email)
       await guest.getByRole('button', { name: 'Send reset link' }).click()
       await guest
-        .getByText('If an account exists for that address, we have sent a reset link.')
+        .getByText('If an account exists for that address, we have sent a reset link.', {
+          exact: false,
+        })
         .waitFor()
       assert.isString(resetUrl)
 
@@ -175,17 +177,19 @@ test.group('composed account browser journeys', (group) => {
       await ownerPage.getByLabel('Full name').fill('Updated Settings Journey')
       await ownerPage.getByLabel('Current password').fill('OldPass123!')
       await ownerPage.getByRole('button', { name: 'Save profile' }).click()
-      await ownerPage.getByText('Your profile has been updated.').waitFor()
+      await ownerPage.getByText('Your profile has been updated.', { exact: false }).waitFor()
       assert.equal((await User.findOrFail(owner.id)).fullName, 'Updated Settings Journey')
 
       await ownerPage.goto('/settings/email')
       await ownerPage.getByLabel('New email address').fill('cancelled@example.test')
       await ownerPage.getByLabel('Current password').fill('OldPass123!')
       await ownerPage.getByRole('button', { name: 'Request change' }).click()
-      await ownerPage.getByText('Pending confirmation:').waitFor()
+      await ownerPage.getByText('Pending confirmation:', { exact: false }).waitFor()
       await ownerPage.getByLabel('Current password').last().fill('OldPass123!')
       await ownerPage.getByRole('button', { name: 'Cancel pending change' }).click()
-      await ownerPage.getByText('Pending confirmation:').waitFor({ state: 'hidden' })
+      await ownerPage
+        .getByText('Pending confirmation:', { exact: false })
+        .waitFor({ state: 'hidden' })
       await otherPage.goto(new URL(confirmationUrls[0]).pathname)
       await otherPage.getByRole('heading', { name: 'This link can’t be used' }).waitFor()
       await otherPage.goto('/dashboard')
@@ -194,7 +198,7 @@ test.group('composed account browser journeys', (group) => {
       await ownerPage.getByLabel('New email address').fill('renewed@example.test')
       await ownerPage.getByLabel('Current password').fill('OldPass123!')
       await ownerPage.getByRole('button', { name: 'Request change' }).click()
-      await ownerPage.getByText('Pending confirmation:').waitFor()
+      await ownerPage.getByText('Pending confirmation:', { exact: false }).waitFor()
       assert.equal((await User.findOrFail(owner.id)).email, originalEmail)
       await otherPage.goto(new URL(confirmationUrls[1]).pathname)
       await otherPage.getByRole('heading', { name: 'Confirm your new email' }).waitFor()
@@ -221,11 +225,13 @@ test.group('composed account browser journeys', (group) => {
       await ownerPage.getByLabel('New password', { exact: true }).fill('NewestPass123!')
       await ownerPage.getByLabel('Confirm new password').fill('NewestPass123!')
       await ownerPage.getByRole('button', { name: 'Change password' }).click()
-      await ownerPage.getByText('Password changed. Other devices have been signed out.').waitFor()
+      await ownerPage
+        .getByText('Password changed. Other devices have been signed out.', { exact: false })
+        .waitFor()
       await ownerPage.goto('/dashboard')
       await ownerPage.getByRole('heading', { name: 'Your dashboard is ready' }).waitFor()
       await ownerPage.goto('/settings/profile')
-      await ownerPage.getByText('renewed@example.test').waitFor()
+      await ownerPage.getByText('renewed@example.test', { exact: false }).waitFor()
       await otherPage.goto('/dashboard')
       await otherPage.getByRole('heading', { name: 'Welcome back' }).waitFor()
       assert.equal(
@@ -259,7 +265,9 @@ test.group('composed account browser journeys', (group) => {
         await page.getByRole('heading', { name: 'Your account is confirmed' }).waitFor()
         assert.equal(new URL(page.url()).pathname, '/account')
       } else {
-        await page.getByText('Confirm your email address before opening this page.').waitFor()
+        await page
+          .getByText('Confirm your email address before opening this page.', { exact: false })
+          .waitFor()
         assert.equal(new URL(page.url()).pathname, '/dashboard')
       }
       await page.getByRole('button', { name: 'Log out' }).click()

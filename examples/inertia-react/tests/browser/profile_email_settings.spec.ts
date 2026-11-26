@@ -47,7 +47,7 @@ test.group('profile and email settings browser journey', (group) => {
       await ownerPage.getByLabel('Full name').fill('Updated Owner')
       await ownerPage.getByLabel('Current password').fill(password)
       await ownerPage.getByRole('button', { name: 'Save profile' }).click()
-      await ownerPage.getByText('Your profile has been updated.').waitFor()
+      await ownerPage.getByText('Your profile has been updated.', { exact: false }).waitFor()
       assert.equal((await User.findOrFail(owner.id)).fullName, 'Updated Owner')
 
       await ownerPage.goto('/settings/email')
@@ -90,16 +90,18 @@ test.group('profile and email settings browser journey', (group) => {
         await ownerPage.getByLabel('New email address').fill('new@example.test')
         await ownerPage.getByLabel('Current password').fill(password)
         await ownerPage.getByRole('button', { name: 'Request change' }).click()
-        await ownerPage.getByText('Pending confirmation:').waitFor()
+        await ownerPage.getByText('Pending confirmation:', { exact: false }).waitFor()
         await ownerPage.getByLabel('Current password').last().fill(password)
         await ownerPage.getByRole('button', { name: 'Cancel pending change' }).click()
-        await ownerPage.getByText('Pending confirmation:').waitFor({ state: 'hidden' })
+        await ownerPage
+          .getByText('Pending confirmation:', { exact: false })
+          .waitFor({ state: 'hidden' })
         await otherPage.goto(new URL(confirmationUrls[0]).pathname)
         await otherPage.getByRole('heading', { name: 'This link can’t be used' }).waitFor()
         await ownerPage.getByLabel('New email address').fill('final@example.test')
         await ownerPage.getByLabel('Current password').fill(password)
         await ownerPage.getByRole('button', { name: 'Request change' }).click()
-        await ownerPage.getByText('Pending confirmation:').waitFor()
+        await ownerPage.getByText('Pending confirmation:', { exact: false }).waitFor()
       } finally {
         notify.emailChangeProvision = original
       }

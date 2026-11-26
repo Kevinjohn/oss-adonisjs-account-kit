@@ -1,191 +1,25 @@
 /* eslint-disable @unicorn/no-await-expression-member -- Keep original responses beside their state and destination assertions. */
-import { createHash, randomBytes } from 'node:crypto'
-import { appendFileSync } from 'node:fs'
-import { test } from '@japa/runner'
-import type { Assert } from '@japa/assert'
-import { Session } from '@adonisjs/session'
-import db from '@adonisjs/lucid/services/db'
-import limiter from '@adonisjs/limiter/services/main'
-import { DateTime } from 'luxon'
 import User from '#models/user'
 import { setupAccountDatabase } from '#tests/helpers/account_database'
-
-const origin = process.env.APP_URL!
-const password = 'CorrectedPassword123!'
-const families = ['reset-password', 'verify-email', 'confirm-email'] as const
-type Family = (typeof families)[number]
-const csrfMessage = 'Invalid or expired CSRF token'
-
-/** Real native form session with manual redirects and the server-rendered hidden CSRF token. */
-class ProofSession {
-  private cookies = new Map<string, string>()
-  private csrf?: string
-
-  async request(
-    path: string,
-    options: {
-      form?: Record<string, string>
-      malformed?: boolean
-      csrf?: boolean
-      referer?: string
-    } = {}
-  ) {
-    const post = options.form !== undefined || options.malformed
-    const headers = new Headers({
-      accept: 'text/html',
-      cookie: [...this.cookies].map(([key, value]) => `${key}=${value}`).join('; '),
-    })
-    if (post)
-      headers.set(
-        'content-type',
-        options.malformed ? 'application/json' : 'application/x-www-form-urlencoded'
-      )
-    if (options.referer) headers.set('referer', options.referer)
-    const response = await fetch(new URL(path, origin), {
-      method: post ? 'POST' : 'GET',
-      headers,
-      body: options.malformed
-        ? '{"broken":'
-        : options.form
-          ? new URLSearchParams({
-              ...options.form,
-              ...(options.csrf === false ? {} : { _csrf: this.csrf ?? '' }),
-            })
-          : undefined,
-      redirect: 'manual',
-    })
-    for (const cookie of response.headers.getSetCookie()) {
-      const [name, value] = cookie.split(';')[0].split('=', 2)
-      this.cookies.set(name, value ?? '')
-    }
-    if (response.headers.get('content-type')?.includes('text/html')) {
-      const html = await response.clone().text()
-      const input = html.match(/<input\b[^>]*\bname=(["'])_csrf\1[^>]*>/)?.[0]
-      const token = input?.match(/\bvalue=(["'])([^"']+)\1/)?.[2]
-      if (token) this.csrf = token
-    }
-    if (process.env.PROOF_HEADER_EVIDENCE)
-      appendFileSync(
-        process.env.PROOF_HEADER_EVIDENCE,
-        JSON.stringify({
-          method: post ? 'POST' : 'GET',
-          path,
-          status: response.status,
-          headers: Object.fromEntries(
-            ['cache-control', 'referrer-policy', 'location', 'content-type'].map((name) => [
-              name,
-              response.headers.get(name),
-            ])
-          ),
-        }) + '\n'
-      )
-    return response
-  }
-
-  async prime() {
-    await this.request('/login')
-    if (!this.csrf) throw new Error('The native login form did not render a CSRF token')
-  }
-}
-
-async function proofFor(family: Family, expired = false) {
-  const token = randomBytes(40).toString('base64url')
-  const email = `${family}@example.test`
-  const user = await User.create({
-    fullName: 'Proof Owner',
-    email,
-    password: 'OldPass123!',
-    unverifiedEmail:
-      family === 'verify-email'
-        ? email
-        : family === 'confirm-email'
-          ? 'changed@example.test'
-          : null,
-  })
-  const hash = createHash('sha256').update(token).digest('hex')
-  const table = family === 'reset-password' ? 'password_reset_tokens' : 'email_verification_tokens'
-  const now = new Date()
-  await db.table(table).insert({
-    tokenable_id: user.id,
-    email: family === 'confirm-email' ? 'changed@example.test' : email,
-    ...(family === 'reset-password'
-      ? {}
-      : {
-          current_email: email,
-          purpose: family === 'confirm-email' ? 'email_change' : 'activation',
-        }),
-    hash,
-    created_at: now.toISOString(),
-    expires_at: new Date(now.getTime() + (expired ? -1000 : 3600000)).toISOString(),
-  })
-  return { user, token, hash, table, path: `/${family}/${token}` }
-}
-
-function protectedResponse(assert: Assert, response: Response) {
-  assert.equal(response.headers.get('cache-control'), 'no-store')
-  assert.equal(response.headers.get('referrer-policy'), 'no-referrer')
-}
-
-async function destination(
-  assert: Assert,
-  session: ProofSession,
-  response: Response,
-  expected: string
-) {
-  assert.equal(response.status, 302)
-  const location = new URL(response.headers.get('location')!, origin)
-  assert.equal(location.origin, origin)
-  assert.equal(location.pathname, expected)
-  assert.equal(location.search, '')
-  const followed = await session.request(expected)
-  assert.equal(followed.status, 200)
-  if (/^\/(reset-password|verify-email|confirm-email)\//.test(expected))
-    protectedResponse(assert, followed)
-  return followed
-}
-
-async function completed(
-  assert: Assert,
-  family: Family,
-  proof: Awaited<ReturnType<typeof proofFor>>
-) {
-  assert.notExists(await db.from(proof.table).where('hash', proof.hash).first())
-  if (family === 'confirm-email')
-    assert.equal((await User.findOrFail(proof.user.id)).email, 'changed@example.test')
-  else assert.equal((await User.verifyCredentials(proof.user.email, password)).id, proof.user.id)
-}
-
-/** Observe the data real session middleware commits; restore even when a request fails. */
-async function capturedFlashes<T>(operation: () => Promise<T>) {
-  const committing = Session.prototype as unknown as { commit: (this: Session) => Promise<void> }
-  const previous = committing.commit
-  const flashes: string[] = []
-  committing.commit = async function () {
-    const feedback = JSON.stringify(this.responseFlashMessages.all())
-    await previous.call(this)
-    flashes.push(feedback)
-  }
-  try {
-    return { result: await operation(), flashes }
-  } finally {
-    committing.commit = previous
-  }
-}
-
-function safeCapturedFeedback(
-  assert: Assert,
-  flashes: string[],
-  expected: string,
-  secrets: string[]
-) {
-  assert.isNotEmpty(flashes)
-  const persisted = flashes.join()
-  assert.include(persisted, expected)
-  assert.notInclude(persisted, '"input"')
-  for (const secret of secrets) assert.notInclude(persisted, secret)
-}
-
-const form = { password, passwordConfirmation: password }
+import {
+  capturedFlashes,
+  completed,
+  csrfMessage,
+  destination,
+  families,
+  form,
+  origin,
+  password,
+  proofFor,
+  ProofSession,
+  protectedResponse,
+  safeCapturedFeedback,
+} from '#tests/helpers/browser_proof_response_headers'
+import limiter from '@adonisjs/limiter/services/main'
+import db from '@adonisjs/lucid/services/db'
+import { test } from '@japa/runner'
+import { DateTime } from 'luxon'
+import { appendFileSync } from 'node:fs'
 
 test.group('standalone native proof response boundary', (group) => {
   group.each.setup(async () => {
@@ -582,7 +416,7 @@ test.group('standalone native proof response boundary', (group) => {
         await page.getByLabel('Email').fill(other.email)
         await page.getByLabel('Password').fill('OldPass123!')
         await page.getByRole('button', { name: 'Sign in' }).click()
-        await page.getByText('Signed in as other@example.test.').waitFor()
+        await page.getByText('Signed in as other@example.test.', { exact: false }).waitFor()
         const document = await page.goto(proof.path)
         assert.equal(document!.headers()['cache-control'], 'no-store')
         assert.equal(document!.headers()['referrer-policy'], 'no-referrer')
@@ -591,7 +425,7 @@ test.group('standalone native proof response boundary', (group) => {
         const referrer = (await followOn).headers()['referer']
         assert.equal(referrer ?? '', '')
         await page.getByRole('link', { name: 'Dashboard', exact: true }).click()
-        await page.getByText('Signed in as other@example.test.').waitFor()
+        await page.getByText('Signed in as other@example.test.', { exact: false }).waitFor()
         await page.goto(proof.path)
         const rejected = await page.request.post(`${origin}${proof.path}?token=${proof.token}`, {
           form,
@@ -627,9 +461,11 @@ test.group('standalone native proof response boundary', (group) => {
           await page.getByLabel('Confirm password').fill(password)
           await page.getByRole('button', { name: button, exact: true }).click()
         } else await page.getByRole('button', { name: 'Confirm email change', exact: true }).click()
-        await page.getByText('Welcome to the power of a Hypermedia app.').waitFor()
+        await page
+          .getByText('Welcome to the power of a Hypermedia app.', { exact: false })
+          .waitFor()
         await page.goto('/dashboard')
-        await page.getByText('Signed in as other@example.test.').waitFor()
+        await page.getByText('Signed in as other@example.test.', { exact: false }).waitFor()
         await completed(assert, family, proof)
         assert.equal((await User.verifyCredentials(other.email, 'OldPass123!')).id, other.id)
         if (process.env.PROOF_HEADER_EVIDENCE)

@@ -47,7 +47,7 @@ test.group('native account journeys', (group) => {
     await page.getByRole('heading', { name: 'Confirm your email' }).waitFor()
     assert.equal((await User.findByOrFail('id', user.id)).emailVerifiedAt, null)
     await page.goto('/dashboard')
-    await page.getByText('Signed in as taylor@example.test.').waitFor()
+    await page.getByText('Signed in as taylor@example.test.', { exact: false }).waitFor()
     await page.goto(proofPath)
     await page.getByLabel('Choose a password').fill('ClaimedPass123!')
     await page.getByLabel('Confirm password').fill('ClaimedPass123!')
@@ -86,7 +86,7 @@ test.group('native account journeys', (group) => {
     await page.getByLabel('Full name').fill('Updated Unverified Example')
     await page.getByLabel('Current password').fill('SignupPass123!')
     await page.getByRole('button', { name: 'Save profile' }).click()
-    await page.getByText('Your profile has been updated.').waitFor()
+    await page.getByText('Your profile has been updated.', { exact: false }).waitFor()
     assert.notInclude(await page.locator('body').innerText(), 'Your current password is incorrect.')
     assert.equal((await User.findByOrFail('id', user.id)).fullName, 'Updated Unverified Example')
 
@@ -95,7 +95,9 @@ test.group('native account journeys', (group) => {
     await page.getByLabel('New password', { exact: true }).fill('ChangedPass123!')
     await page.getByLabel('Confirm new password').fill('ChangedPass123!')
     await page.getByRole('button', { name: 'Change password' }).click()
-    await page.getByText('Password changed. Other sessions have been signed out.').waitFor()
+    await page
+      .getByText('Password changed. Other sessions have been signed out.', { exact: false })
+      .waitFor()
     assert.notInclude(await page.locator('body').innerText(), 'Your current password is incorrect.')
     assert.equal((await User.verifyCredentials(user.email, 'ChangedPass123!')).id, user.id)
     const unchanged = await User.findByOrFail('id', user.id)
@@ -139,7 +141,7 @@ test.group('native account journeys', (group) => {
     assert.include(oldInput, 'taylor@example.test')
     assert.notInclude(oldInput, 'SignupPass123!')
     assert.notInclude(oldInput, 'different-password')
-    await page.getByText('Confirm password must match Password.').waitFor()
+    await page.getByText('Confirm password must match Password.', { exact: false }).waitFor()
 
     assert.equal(await page.getByLabel('Full name').inputValue(), 'Taylor Example')
     assert.equal(await page.getByLabel('Email').inputValue(), 'taylor@example.test')
@@ -190,7 +192,9 @@ test.group('native account journeys', (group) => {
     await page.getByLabel('Password').fill('UnknownPass123!')
     await page.getByRole('button', { name: 'Sign in' }).click()
     await page
-      .getByText('The email or password is incorrect. Check your details and try again.')
+      .getByText('The email or password is incorrect. Check your details and try again.', {
+        exact: false,
+      })
       .waitFor()
     assert.equal(await page.getByLabel('Email').inputValue(), 'unknown@example.test')
     assert.equal(await page.getByLabel('Password').inputValue(), '')
@@ -351,26 +355,26 @@ test.group('native account journeys', (group) => {
       await primary.getByLabel('Current password').fill('wrong-password')
       await primary.getByRole('button', { name: 'Save profile' }).click()
       await primary
-        .getByText('Your current password is incorrect. Check it and try again.')
+        .getByText('Your current password is incorrect. Check it and try again.', { exact: false })
         .waitFor()
       assert.equal(await primary.getByLabel('Full name').inputValue(), 'Morgan Updated')
       assert.equal(await primary.getByLabel('Current password').inputValue(), '')
       await primary.getByLabel('Current password').fill('OldPassword123!')
       await primary.getByRole('button', { name: 'Save profile' }).click()
-      await primary.getByText('Your profile has been updated.').waitFor()
+      await primary.getByText('Your profile has been updated.', { exact: false }).waitFor()
       assert.equal((await User.findByOrFail('id', user.id)).fullName, 'Morgan Updated')
       await primary.getByLabel('Full name').fill('')
       await primary.getByLabel('Current password').fill('wrong-password')
       await primary.getByRole('button', { name: 'Save profile' }).click()
       await primary
-        .getByText('Your current password is incorrect. Check it and try again.')
+        .getByText('Your current password is incorrect. Check it and try again.', { exact: false })
         .waitFor()
       assert.equal(await primary.getByLabel('Full name').inputValue(), '')
       assert.equal(await primary.getByLabel('Current password').inputValue(), '')
       assert.equal((await User.findByOrFail('id', user.id)).fullName, 'Morgan Updated')
       await primary.getByLabel('Current password').fill('OldPassword123!')
       await primary.getByRole('button', { name: 'Save profile' }).click()
-      await primary.getByText('Your profile has been updated.').waitFor()
+      await primary.getByText('Your profile has been updated.', { exact: false }).waitFor()
       assert.isNull((await User.findByOrFail('id', user.id)).fullName)
 
       const existing = await User.create({
@@ -384,13 +388,15 @@ test.group('native account journeys', (group) => {
       await emailPrimary.getByLabel('New email').fill(existing.email)
       await emailPrimary.getByLabel('Current password').fill('EmailOwnerPassword123!')
       await emailPrimary.getByRole('button', { name: 'Request email change' }).click()
-      await emailPrimary.getByText('This address cannot be used. Try another address.').waitFor()
+      await emailPrimary
+        .getByText('This address cannot be used. Try another address.', { exact: false })
+        .waitFor()
       assert.equal(await emailPrimary.getByLabel('New email').inputValue(), existing.email)
       await emailPrimary.getByLabel('New email').fill('email-owner.new@example.test')
       await emailPrimary.getByLabel('Current password').fill('wrong-password')
       await emailPrimary.getByRole('button', { name: 'Request email change' }).click()
       await emailPrimary
-        .getByText('Your current password is incorrect. Check it and try again.')
+        .getByText('Your current password is incorrect. Check it and try again.', { exact: false })
         .waitFor()
       assert.equal(
         await emailPrimary.getByLabel('New email').inputValue(),
@@ -405,7 +411,9 @@ test.group('native account journeys', (group) => {
       await emailPrimary.goto('/settings/email')
       await emailPrimary.getByLabel('Current password').fill('EmailOwnerPassword123!')
       await emailPrimary.getByRole('button', { name: 'Cancel pending change' }).click()
-      await emailPrimary.getByText('The pending email change was canceled.').waitFor()
+      await emailPrimary
+        .getByText('The pending email change was canceled.', { exact: false })
+        .waitFor()
       assert.isNull((await User.findByOrFail('id', emailOwner.id)).unverifiedEmail)
 
       await emailPrimary.goto('/settings/email')
@@ -435,13 +443,17 @@ test.group('native account journeys', (group) => {
       await inspection.goto(`${origin}${emailProof}`)
       await inspection.getByRole('heading', { name: 'Confirm your new email' }).waitFor()
       await otherSession.goto('/dashboard')
-      await otherSession.getByText('Signed in as email-owner@example.test.').waitFor()
+      await otherSession
+        .getByText('Signed in as email-owner@example.test.', { exact: false })
+        .waitFor()
       await inspection.goto(`${origin}${emailProof}`)
       await inspection.getByRole('button', { name: 'Confirm email change' }).click()
-      await inspection.getByText('Welcome to the power of a Hypermedia app.').waitFor()
+      await inspection
+        .getByText('Welcome to the power of a Hypermedia app.', { exact: false })
+        .waitFor()
       await inspection.goto('/dashboard')
       await inspection.getByRole('heading', { name: 'Your account' }).waitFor()
-      await inspection.getByText('Signed in as visitor@example.test.').waitFor()
+      await inspection.getByText('Signed in as visitor@example.test.', { exact: false }).waitFor()
       await inspection.goto('/account')
       await inspection.getByRole('heading', { name: 'Protected account page' }).waitFor()
       assert.equal(
@@ -474,7 +486,7 @@ test.group('native account journeys', (group) => {
       await passwordPrimary.getByLabel('Confirm new password').fill('NewPassword123!')
       await passwordPrimary.getByRole('button', { name: 'Change password' }).click()
       await passwordPrimary
-        .getByText('Your current password is incorrect. Check it and try again.')
+        .getByText('Your current password is incorrect. Check it and try again.', { exact: false })
         .waitFor()
       assert.equal(await passwordPrimary.getByLabel('Current password').inputValue(), '')
       await passwordPrimary.getByLabel('Current password').fill('PasswordOwnerPassword123!')
@@ -482,7 +494,7 @@ test.group('native account journeys', (group) => {
       await passwordPrimary.getByLabel('Confirm new password').fill('NewPassword123!')
       await passwordPrimary.getByRole('button', { name: 'Change password' }).click()
       await passwordPrimary
-        .getByText('Password changed. Other sessions have been signed out.')
+        .getByText('Password changed. Other sessions have been signed out.', { exact: false })
         .waitFor()
       assert.isNotNull(await User.verifyCredentials(passwordOwner.email, 'NewPassword123!'))
       await otherPasswordSession.goto('/account')
@@ -556,7 +568,7 @@ test.group('native account journeys', (group) => {
     await page.goto(`/verify-email/${encodeURIComponent(proof)}`)
     await page.getByRole('heading', { name: 'Confirm your email' }).waitFor()
     await page.goto('/dashboard')
-    await page.getByText('Signed in as visitor@example.test.').waitFor()
+    await page.getByText('Signed in as visitor@example.test.', { exact: false }).waitFor()
     assert.equal((await User.findByOrFail('id', proofOwner.id)).emailVerifiedAt, null)
   })
 
@@ -629,7 +641,8 @@ test.group('native account journeys', (group) => {
       await page.getByRole('button', { name: 'Change password' }).click()
       await page
         .getByText(
-          'Password changed. Other sessions have been signed out. We could not send the confirmation email.'
+          'Password changed. Other sessions have been signed out. We could not send the confirmation email.',
+          { exact: false }
         )
         .waitFor()
       assert.isNotNull(await User.verifyCredentials(user.email, 'NewPassword123!'))
