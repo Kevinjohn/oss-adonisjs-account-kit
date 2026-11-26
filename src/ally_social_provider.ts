@@ -35,20 +35,30 @@ export function createAllySocialProvider(input: {
     original?: unknown
   }>
 }): SocialProvider {
-  return {
-    authorizationUrl: async (state, context) => input.authorizationUrl(state, context),
-    async resolve(callback) {
-      const user = await input.user(callback)
-      return {
-        subject: String(user.id),
-        email: user.email,
-        emailVerified: user.emailVerificationState === 'verified',
-        name: user.name ?? null,
-        nickname: user.nickName ?? null,
-        avatarUrl: user.avatarUrl ?? null,
-      }
-    },
-    // Ally's normalized user profile does not attest a new provider authentication event.
-    // Reauthentication remains unsupported until an adapter verifies separate bound evidence.
+  return new AllySocialProvider(input)
+}
+
+class AllySocialProvider implements SocialProvider {
+  #input: Parameters<typeof createAllySocialProvider>[0]
+
+  constructor(input: Parameters<typeof createAllySocialProvider>[0]) {
+    this.#input = input
+  }
+
+  authorizationUrl: SocialProvider['authorizationUrl'] = async (state, context) =>
+    this.#input.authorizationUrl(state, context)
+
+  // Ally's normalized user profile does not attest a new provider authentication event.
+  // Reauthentication remains unsupported until an adapter verifies separate bound evidence.
+  resolve: SocialProvider['resolve'] = async (callback) => {
+    const user = await this.#input.user(callback)
+    return {
+      subject: String(user.id),
+      email: user.email,
+      emailVerified: user.emailVerificationState === 'verified',
+      name: user.name ?? null,
+      nickname: user.nickName ?? null,
+      avatarUrl: user.avatarUrl ?? null,
+    }
   }
 }

@@ -67,22 +67,37 @@ export function requireTrustedOrigin(
  * ```
  */
 export function createActionUrls(options: ActionUrlOptions): UrlCallbacks {
-  const { backendOrigin, backendOriginSetting } = options
-  try {
-    requireTrustedOrigin(backendOrigin, options.environment)
-  } catch (error) {
-    if (!(error instanceof Error) || !options.backendOriginSetting) throw error
-    throw new InvalidArgumentsException(
-      `account_kit: ${backendOriginSetting}: ${error.message.replace('account_kit: ', '')}`,
-      {
-        cause: error,
-      }
-    )
+  return new ActionUrls(options)
+}
+
+class ActionUrls implements UrlCallbacks {
+  #options: ActionUrlOptions
+  #base: URL
+
+  constructor(options: ActionUrlOptions) {
+    this.#options = options
+    const { backendOrigin, backendOriginSetting } = options
+    try {
+      requireTrustedOrigin(backendOrigin, options.environment)
+    } catch (error) {
+      if (!(error instanceof Error) || !options.backendOriginSetting) throw error
+      throw new InvalidArgumentsException(
+        `account_kit: ${backendOriginSetting}: ${error.message.replace('account_kit: ', '')}`,
+        {
+          cause: error,
+        }
+      )
+    }
+    const frontend = requireTrustedOrigin(options.appFrontendUrl, options.environment)
+    this.#base = new URL(frontend.toString().replace(/\/?$/, '/'))
+    for (const [name, destination] of Object.entries(options.destinations)) {
+      if (destination !== undefined) this.#link(name as keyof UrlCallbacks, 'check')
+    }
+    actionUrlBackendOrigins.set(this, { value: backendOrigin, setting: backendOriginSetting })
   }
-  const frontend = requireTrustedOrigin(options.appFrontendUrl, options.environment)
-  const base = new URL(frontend.toString().replace(/\/?$/, '/'))
-  function link(name: keyof UrlCallbacks, token: string): string {
-    const destination = options.destinations[name]
+
+  #link(name: keyof UrlCallbacks, token: string): string {
+    const destination = this.#options.destinations[name]
     if (
       !destination ||
       destination.trim() !== destination ||
@@ -110,9 +125,12 @@ export function createActionUrls(options: ActionUrlOptions): UrlCallbacks {
         throw new InvalidArgumentsException('unsafe path segment')
       const resolved = new URL(
         `${destination.replace(/\/?$/, '/')}${encodeURIComponent(token)}`,
-        base
+        this.#base
       )
-      if (resolved.origin !== base.origin || !resolved.pathname.startsWith(base.pathname))
+      if (
+        resolved.origin !== this.#base.origin ||
+        !resolved.pathname.startsWith(this.#base.pathname)
+      )
         throw new InvalidArgumentsException('outside configured frontend')
       return resolved.toString()
     } catch {
@@ -121,16 +139,11 @@ export function createActionUrls(options: ActionUrlOptions): UrlCallbacks {
       )
     }
   }
-  for (const [name, destination] of Object.entries(options.destinations)) {
-    if (destination !== undefined) link(name as keyof UrlCallbacks, 'check')
-  }
-  const urls: UrlCallbacks = {
-    passwordReset: (token) => link('passwordReset', token),
-    emailVerification: (token) => link('emailVerification', token),
-    invitation: (token) => link('invitation', token),
-    emailChange: (token) => link('emailChange', token),
-    magicLink: (token) => link('magicLink', token),
-  }
-  actionUrlBackendOrigins.set(urls, { value: backendOrigin, setting: backendOriginSetting })
-  return urls
+
+  passwordReset: UrlCallbacks['passwordReset'] = (token) => this.#link('passwordReset', token)
+  emailVerification: UrlCallbacks['emailVerification'] = (token) =>
+    this.#link('emailVerification', token)
+  invitation: UrlCallbacks['invitation'] = (token) => this.#link('invitation', token)
+  emailChange: UrlCallbacks['emailChange'] = (token) => this.#link('emailChange', token)
+  magicLink: UrlCallbacks['magicLink'] = (token) => this.#link('magicLink', token)
 }

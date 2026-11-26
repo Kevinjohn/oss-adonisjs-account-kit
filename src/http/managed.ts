@@ -1,4 +1,4 @@
-import type { Router } from '@adonisjs/core/http'
+import type { HttpContext, Router } from '@adonisjs/core/http'
 import type {} from '@adonisjs/core/providers/vinejs_provider'
 import { applyMappedHeaders, mapManagedErrorResponse } from './responses.ts'
 import { managedSocialHandlers } from './social.ts'
@@ -81,83 +81,102 @@ export function registerManagedRoutes<Credential>(
   router: Router,
   options: ManagedRoutesOptions<Credential>
 ): readonly ManagedRoute[] {
-  if (router.commited)
-    throw new InvalidArgumentsException(
-      'Managed routes must be registered before the router commits'
+  return new ManagedRouteRegistration(router, options)
+}
+
+class ManagedRouteRegistration<Credential> extends Array<ManagedRoute> {
+  #options: ManagedRoutesOptions<Credential>
+  #methodsEnabled: boolean
+
+  // Array methods such as map and slice return ordinary arrays of their results.
+  static get [Symbol.species]() {
+    return Array
+  }
+
+  constructor(router: Router, options: ManagedRoutesOptions<Credential>) {
+    if (router.commited)
+      throw new InvalidArgumentsException(
+        'Managed routes must be registered before the router commits'
+      )
+    assertManagedRoutesOptions(options)
+    const existing = routeEntries(router)
+    const routes = planManagedRoutes(
+      {
+        prefix: options.prefix,
+        strategy: options.guard.strategy,
+        enabled: options.enabled,
+        except: options.except,
+      },
+      existing,
+      managedRouteRegistration(router) !== undefined
     )
-  assertManagedRoutesOptions(options)
-  const existing = routeEntries(router)
-  const routes = planManagedRoutes(
-    {
-      prefix: options.prefix,
+    super(...routes)
+
+    this.#options = options
+    this.#methodsEnabled = this.some(({ name }) => name === 'auth.methods')
+    for (const route of this) {
+      router
+        .route(route.path, [route.method], (context) => this.#dispatch(route, context))
+        .as(`accountKit.${route.name}`)
+    }
+    // AdonisJS exposes queued route definitions through toJSON only after commit. The
+    // lifecycle wrapper rejects ambiguous application routes before the server starts.
+    const commit = router.commit
+    const registeredRoutes = this
+    router.commit = function (this: Router, ...args: Parameters<Router['commit']>) {
+      const result = commit.apply(this, args)
+      const committed = routeEntries(this)
+      assertManagedRouteCollisions(registeredRoutes, committed)
+      return result
+    }
+    recordManagedRegistration(router, {
+      routes: this,
       strategy: options.guard.strategy,
-      enabled: options.enabled,
-      except: options.except,
-    },
-    existing,
-    managedRouteRegistration(router) !== undefined
-  )
-  const methodsEnabled = routes.some(({ name }) => name === 'auth.methods')
-  for (const route of routes) {
-    router
-      .route(route.path, [route.method], async (context) => {
-        try {
-          return await executeManagedRequest({
-            route,
-            context,
-            options,
-            methodsEnabled,
-            handlers: managedHandlers,
-          })
-        } catch (error) {
-          if (
-            (route.method !== 'GET' || route.name === 'auth.oauth.callback') &&
-            reportCommittedFailure(context, route.name, error)
-          )
-            return context.response.accepted({ committed: true })
-          const mapped = mapManagedErrorResponse(error, {
-            request: context.request,
-            message: options.extensions?.message,
-            i18n: getRequestTranslator(context),
-            proof: route.proofKind,
-          })
-          if (!mapped) throw error
-          // The client gets the masked envelope, so the operator's only record is this log entry.
-          // Committed failures were reported above; the error carries no request body or token.
-          if (mapped.status >= 500)
-            context.logger?.error(
-              { err: error, operation: route.name },
-              'Managed account operation failed'
-            )
-          applyMappedHeaders(context, mapped)
-          return context.response.status(mapped.status).send(mapped.body)
-        }
+      prefix: options.prefix,
+      socialProviders: options.enabled.includes('socialAuthentication')
+        ? (options.extensions?.social?.providers ?? [])
+        : [],
+      replaced: {
+        registration: Boolean(options.extensions?.registration),
+        invitationAcceptance: Boolean(options.extensions?.invitationAcceptance),
+        profile: Boolean(options.extensions?.profile),
+        representAccount: Boolean(options.extensions?.representAccount),
+      },
+      openapi: options.openapi,
+    })
+  }
+
+  async #dispatch(route: ManagedRoute, context: HttpContext) {
+    try {
+      return await executeManagedRequest({
+        route,
+        context,
+        options: this.#options,
+        methodsEnabled: this.#methodsEnabled,
+        handlers: managedHandlers,
       })
-      .as(`accountKit.${route.name}`)
+    } catch (error) {
+      if (
+        (route.method !== 'GET' || route.name === 'auth.oauth.callback') &&
+        reportCommittedFailure(context, route.name, error)
+      )
+        return context.response.accepted({ committed: true })
+      const mapped = mapManagedErrorResponse(error, {
+        request: context.request,
+        message: this.#options.extensions?.message,
+        i18n: getRequestTranslator(context),
+        proof: route.proofKind,
+      })
+      if (!mapped) throw error
+      // The client gets the masked envelope, so the operator's only record is this log entry.
+      // Committed failures were reported above; the error carries no request body or token.
+      if (mapped.status >= 500)
+        context.logger?.error(
+          { err: error, operation: route.name },
+          'Managed account operation failed'
+        )
+      applyMappedHeaders(context, mapped)
+      return context.response.status(mapped.status).send(mapped.body)
+    }
   }
-  // AdonisJS exposes queued route definitions through toJSON only after commit. The
-  // lifecycle wrapper rejects ambiguous application routes before the server starts.
-  const commit = router.commit
-  router.commit = function (this: Router, ...args: Parameters<Router['commit']>) {
-    const result = commit.apply(this, args)
-    const committed = routeEntries(this)
-    assertManagedRouteCollisions(routes, committed)
-    return result
-  }
-  recordManagedRegistration(router, {
-    routes,
-    strategy: options.guard.strategy,
-    prefix: options.prefix,
-    socialProviders: options.enabled.includes('socialAuthentication')
-      ? (options.extensions?.social?.providers ?? [])
-      : [],
-    replaced: {
-      registration: Boolean(options.extensions?.registration),
-      invitationAcceptance: Boolean(options.extensions?.invitationAcceptance),
-      profile: Boolean(options.extensions?.profile),
-      representAccount: Boolean(options.extensions?.representAccount),
-    },
-    openapi: options.openapi,
-  })
-  return routes
 }

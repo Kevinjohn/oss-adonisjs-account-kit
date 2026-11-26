@@ -10,23 +10,46 @@ export function createDeferredSqlUsersAdapter(
   resolveTable: () => string,
   options: Omit<SqlUsersAdapterOptions, 'table'>
 ): SqlUsersAdapter {
-  let adapter: SqlUsersAdapter | undefined
-  const resolveInnerAdapter = () =>
-    (adapter ??= createSqlUsersAdapter({ ...options, table: resolveTable() }))
-  return {
-    resolveMetadata: async () => resolveInnerAdapter().resolveMetadata(),
-    findByEmail: async (...args) => resolveInnerAdapter().findByEmail(...args),
-    findById: async (...args) => resolveInnerAdapter().findById(...args),
-    create: async (...args) => resolveInnerAdapter().create(...args),
-    setPassword: async (...args) => resolveInnerAdapter().setPassword(...args),
-    hashPassword: async (...args) => resolveInnerAdapter().hashPassword(...args),
-    setPasswordHash: async (...args) => resolveInnerAdapter().setPasswordHash(...args),
-    setEmail: async (...args) => resolveInnerAdapter().setEmail(...args),
-    setUnverifiedEmail: async (...args) => resolveInnerAdapter().setUnverifiedEmail(...args),
-    updateRegistrationData: async (...args) =>
-      resolveInnerAdapter().updateRegistrationData(...args),
-    markEmailVerified: async (...args) => resolveInnerAdapter().markEmailVerified(...args),
-    verifyPassword: async (...args) => resolveInnerAdapter().verifyPassword(...args),
-    delete: async (...args) => resolveInnerAdapter().delete(...args),
+  return new DeferredSqlUsersAdapter(resolveTable, options)
+}
+
+class DeferredSqlUsersAdapter implements SqlUsersAdapter {
+  #adapter: SqlUsersAdapter | undefined
+  #resolveTable: () => string
+  #options: Omit<SqlUsersAdapterOptions, 'table'>
+
+  constructor(resolveTable: () => string, options: Omit<SqlUsersAdapterOptions, 'table'>) {
+    this.#resolveTable = resolveTable
+    this.#options = options
   }
+
+  #resolveInnerAdapter(): SqlUsersAdapter {
+    const resolveTable = this.#resolveTable
+    return (this.#adapter ??= createSqlUsersAdapter({ ...this.#options, table: resolveTable() }))
+  }
+
+  resolveMetadata: SqlUsersAdapter['resolveMetadata'] = async () =>
+    this.#resolveInnerAdapter().resolveMetadata()
+  findByEmail: SqlUsersAdapter['findByEmail'] = async (...args) =>
+    this.#resolveInnerAdapter().findByEmail(...args)
+  findById: SqlUsersAdapter['findById'] = async (...args) =>
+    this.#resolveInnerAdapter().findById(...args)
+  create: SqlUsersAdapter['create'] = async (...args) => this.#resolveInnerAdapter().create(...args)
+  setPassword: SqlUsersAdapter['setPassword'] = async (...args) =>
+    this.#resolveInnerAdapter().setPassword(...args)
+  hashPassword: SqlUsersAdapter['hashPassword'] = async (...args) =>
+    this.#resolveInnerAdapter().hashPassword(...args)
+  setPasswordHash: SqlUsersAdapter['setPasswordHash'] = async (...args) =>
+    this.#resolveInnerAdapter().setPasswordHash(...args)
+  setEmail: SqlUsersAdapter['setEmail'] = async (...args) =>
+    this.#resolveInnerAdapter().setEmail(...args)
+  setUnverifiedEmail: SqlUsersAdapter['setUnverifiedEmail'] = async (...args) =>
+    this.#resolveInnerAdapter().setUnverifiedEmail(...args)
+  updateRegistrationData: SqlUsersAdapter['updateRegistrationData'] = async (...args) =>
+    this.#resolveInnerAdapter().updateRegistrationData(...args)
+  markEmailVerified: SqlUsersAdapter['markEmailVerified'] = async (...args) =>
+    this.#resolveInnerAdapter().markEmailVerified(...args)
+  verifyPassword: SqlUsersAdapter['verifyPassword'] = async (...args) =>
+    this.#resolveInnerAdapter().verifyPassword(...args)
+  delete: SqlUsersAdapter['delete'] = async (...args) => this.#resolveInnerAdapter().delete(...args)
 }

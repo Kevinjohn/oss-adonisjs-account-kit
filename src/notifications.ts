@@ -87,14 +87,24 @@ async function resolveMail(option: MailNotificationOptions['mail']): Promise<Acc
  * ```
  */
 export function createMailNotifications(options: MailNotificationOptions): NotificationCallbacks {
-  if (
-    !options.from?.trim() ||
-    !options.brandName?.trim() ||
-    /[\r\n]/.test(options.from) ||
-    /[\r\n]/.test(options.brandName)
-  )
-    throw new InvalidArgumentsException('account_kit: from and brandName are required')
-  async function send(
+  return new MailNotifications(options)
+}
+
+class MailNotifications implements NotificationCallbacks {
+  #options: MailNotificationOptions
+
+  constructor(options: MailNotificationOptions) {
+    this.#options = options
+    if (
+      !options.from?.trim() ||
+      !options.brandName?.trim() ||
+      /[\r\n]/.test(options.from) ||
+      /[\r\n]/.test(options.brandName)
+    )
+      throw new InvalidArgumentsException('account_kit: from and brandName are required')
+  }
+
+  async #send(
     kind: AccountMessageKind,
     recipient: string,
     actionUrl?: string,
@@ -102,55 +112,73 @@ export function createMailNotifications(options: MailNotificationOptions): Notif
   ) {
     const rendered = renderAccountMessage(
       kind,
-      { brandName: options.brandName, actionUrl, providerName },
-      options.emailLayout,
-      { i18n: resolveTranslator(options.i18n) }
+      { brandName: this.#options.brandName, actionUrl, providerName },
+      this.#options.emailLayout,
+      { i18n: resolveTranslator(this.#options.i18n) }
     )
-    const mail = await resolveMail(options.mail)
+    const mail = await resolveMail(this.#options.mail)
     await mail.sendLater((message) => {
       message
         .to(recipient)
-        .from(options.from)
+        .from(this.#options.from)
         .subject(rendered.subject)
         .html(rendered.html)
         .text(rendered.text)
     })
   }
-  return {
-    passwordResetProvision: (user, url) => {
-      const message = new PasswordResetProvision(user.email, url)
-      return send(message.kind, message.recipient, message.actionUrl)
-    },
-    accountActivationProvision: (user, url) => {
-      const message = new AccountActivationProvision(user.unverifiedEmail ?? user.email, url)
-      return send(message.kind, message.recipient, message.actionUrl)
-    },
-    invitationProvision: (invitation, url) => {
-      const message = new InvitationProvision(invitation.email, url)
-      return send(message.kind, message.recipient, message.actionUrl)
-    },
-    emailChangeProvision: (_user, newEmail, url) => {
-      const message = new EmailChangeProvision(newEmail, url)
-      return send(message.kind, message.recipient, message.actionUrl)
-    },
-    emailChanged: (previousEmail) => send('emailChanged', previousEmail),
-    passwordResetCompleted: (user) => send('passwordResetCompleted', user.email),
-    passwordChanged: (user) => send('passwordChanged', user.email),
-    socialIdentityLinked: (user, identity) =>
-      send('socialIdentityLinked', user.email, undefined, resolveProviderLabel(identity.provider)),
-    socialIdentityUnlinked: (user, identity) =>
-      send(
-        'socialIdentityUnlinked',
-        user.email,
-        undefined,
-        resolveProviderLabel(identity.provider)
-      ),
-    magicLinkProvision: (user, url) => {
-      const message = new MagicLinkProvision(user.email, url)
-      return send(message.kind, message.recipient, message.actionUrl)
-    },
-    accountDeleted: (account) => send('accountDeleted', account.email),
+
+  passwordResetProvision: NotificationCallbacks['passwordResetProvision'] = (user, url) => {
+    const message = new PasswordResetProvision(user.email, url)
+    return this.#send(message.kind, message.recipient, message.actionUrl)
   }
+
+  accountActivationProvision: NotificationCallbacks['accountActivationProvision'] = (user, url) => {
+    const message = new AccountActivationProvision(user.unverifiedEmail ?? user.email, url)
+    return this.#send(message.kind, message.recipient, message.actionUrl)
+  }
+
+  invitationProvision: NotificationCallbacks['invitationProvision'] = (invitation, url) => {
+    const message = new InvitationProvision(invitation.email, url)
+    return this.#send(message.kind, message.recipient, message.actionUrl)
+  }
+
+  emailChangeProvision: NotificationCallbacks['emailChangeProvision'] = (_user, newEmail, url) => {
+    const message = new EmailChangeProvision(newEmail, url)
+    return this.#send(message.kind, message.recipient, message.actionUrl)
+  }
+
+  emailChanged: NotificationCallbacks['emailChanged'] = (previousEmail) =>
+    this.#send('emailChanged', previousEmail)
+
+  passwordResetCompleted: NotificationCallbacks['passwordResetCompleted'] = (user) =>
+    this.#send('passwordResetCompleted', user.email)
+
+  passwordChanged: NotificationCallbacks['passwordChanged'] = (user) =>
+    this.#send('passwordChanged', user.email)
+
+  socialIdentityLinked: NotificationCallbacks['socialIdentityLinked'] = (user, identity) =>
+    this.#send(
+      'socialIdentityLinked',
+      user.email,
+      undefined,
+      resolveProviderLabel(identity.provider)
+    )
+
+  socialIdentityUnlinked: NotificationCallbacks['socialIdentityUnlinked'] = (user, identity) =>
+    this.#send(
+      'socialIdentityUnlinked',
+      user.email,
+      undefined,
+      resolveProviderLabel(identity.provider)
+    )
+
+  magicLinkProvision: NotificationCallbacks['magicLinkProvision'] = (user, url) => {
+    const message = new MagicLinkProvision(user.email, url)
+    return this.#send(message.kind, message.recipient, message.actionUrl)
+  }
+
+  accountDeleted: NotificationCallbacks['accountDeleted'] = (account) =>
+    this.#send('accountDeleted', account.email)
 }
 
 function resolveProviderLabel(provider: string): string {
