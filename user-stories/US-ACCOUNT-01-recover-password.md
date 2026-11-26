@@ -38,7 +38,8 @@ flowchart TD
 ```mermaid
 flowchart TD
   A["Managed password-reset request validates email and supplies request IP; host may call directly"] --> B["passwordReset.request validates input, throttles client and email and looks up account"]
-  B --> C{"Account exists with matching email after lock and re-read?"}
+  B -->|Invalid input, throttle or other error| ERR["Wait for timing floor and propagate refusal"]
+  B -->|Accepted| C{"Account exists with matching email after lock and re-read?"}
   C -->|No| D["Skip delivery; return after timing floor"]
   C -->|Yes| E["Upsert hashed token and run onPasswordResetIssuedTransaction; commit"]
   E --> F["Run provision and follow-ups; wait for timing floor"]
@@ -47,7 +48,9 @@ flowchart TD
   F -->|Success| H2["Service resolves void; managed handler returns generic 202"]
   I["Managed GET or host call"] --> J["passwordReset.inspect checks token expiry and current email without consuming; return boolean or managed proof response"]
   K["Managed POST validates password fields and policy; host may call directly"] --> L["passwordReset.reset validates policy and token; prepare password"]
-  L --> M["Transaction consumes matching live token; store password and clear pending email correction and social state where configured"]
+  L -->|Invalid password or proof| REJ["Reject without a password change"]
+  L -->|Valid shape| M["Transaction consumes matching live token; store password and clear pending email correction and social state where configured"]
+  M -->|Token invalid or transaction fails| REJ
   M --> N["If inactive, verify email and apply pending invitations; clear verification proof and advance credentials"]
   N --> O["Commit; run observers, notices and invitation follow-ups; return account or managed reset acknowledgement, or surface committed failure to service callers and acknowledge it in managed HTTP"]
 ```

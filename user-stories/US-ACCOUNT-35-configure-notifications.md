@@ -12,7 +12,7 @@ As an application operator, I want to connect account events to mail or host-own
 ## Acceptance criteria
 
 - **Inputs and result:** Configure `notify` provision callbacks for the enabled events, or use `createMailNotifications`/`createLogNotifications`; message rendering and translation helpers are public. The package invokes notification callbacks after the operation commits. A transport/observer failure after commit does not roll back the account mutation. Separate transaction hooks are not notification callbacks.
-- **Helper inputs:** `createMailNotifications` requires `from` and `brandName`; `createLogNotifications` requires `brandName` and `environment` (`development` or `test`) and refuses `production` because logged links are live bearer credentials.
+- **Helper inputs:** `createMailNotifications` requires `from` and `brandName`; `createLogNotifications` requires `logger`, `brandName` and `environment` (`development` or `test`) and refuses `production` because logged links are live bearer credentials.
 
 ## User flow
 

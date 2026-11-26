@@ -37,10 +37,11 @@ flowchart TD
   C -->|Refused| E["Abort transaction"]
   C -->|Accepted| D["Write mapped fields if supplied and supported by adapter"]
   D --> G{"Email supplied?"}
-  G -->|No| H["Reload account and commit; return updated account without delivery"]
+  G -->|No| H["Reload account and commit without delivery"]
+  H -->|Committed fault| F["Propagate committed fault"]
   G -->|Yes| I["Apply the shared email branches in US-ACCOUNT-06 in the same transaction"]
   I --> J["Commit and return account or surface follow-up failure; inactive correction may refresh managed session even on committed error"]
-  H --> R["Managed handler returns represented account"]
+  H -->|Managed success| R["Managed handler returns represented account"]
   J -->|Managed success| R
 ```
 

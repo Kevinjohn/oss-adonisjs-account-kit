@@ -33,7 +33,8 @@ Scope: the `usersAdapterContract` test helper and the fixture it receives. The i
 
 ```mermaid
 flowchart TD
- A["usersAdapterContract(fixture)"] --> B["Run create, normalised lookup, password and verification checks inside fixture transaction"]
+ A["usersAdapterContract(fixture) returns a test function"] --> Z["Caller invokes the returned function"]
+ Z --> B["Run create, normalised lookup, password and verification checks inside fixture transaction"]
  B --> C["Commit account; inspect stored password and check lookups, email updates, rollback and verification transactions"]
  C --> D["Invoke independent-writer probe with fixture's package account-lock callback"]
  D --> E["Check password updates, optional prepared-hash paths and inactive/pending-email behaviour"]

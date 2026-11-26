@@ -19,3 +19,5 @@ The [catalogue baseline](README.md) reconciles these boundaries with package sou
 ## Guide discrepancy
 
 The [admission requirement guide](../docs/guide/admission.md#how-it-works) describes invitation evidence as recorded only by `withInvitationEvidence`. [The operator grant](../src/admission/operator.ts) also records evidence for an existing account. [US-ACCOUNT-48](US-ACCOUNT-48-grant-admission-invitation-evidence.md) records the explicit grant and [US-ACCOUNT-51](US-ACCOUNT-51-configure-admission-hooks.md) covers evidence recorded during invitation acceptance.
+
+The [setup choices reference](../docs/reference/setup-choices.md) says the selected session store is checked against the process environment first. [`account-kit:setup`](../commands/setup.ts) instead passes only explicit `--env=NAME=value` overrides to inspection; selected values then fall back to application environment files. [US-ACCOUNT-31](US-ACCOUNT-31-configure-account-kit.md) records the command behaviour.
