@@ -2,7 +2,7 @@
 import { E_ACCOUNT_KIT_INVALID_CONFIGURATION } from './errors.ts'
 
 /** A registry for one package service. The service reads it once, when first resolved. */
-export class CallbackRegistry<Callbacks extends object> {
+export class CallbackConfiguration<Callbacks extends object> {
   readonly #service: string
   #factory?: () => Callbacks | Promise<Callbacks>
   #resolved?: Promise<Callbacks | undefined>

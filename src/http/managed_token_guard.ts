@@ -1,6 +1,6 @@
 import type { HttpContext } from '@adonisjs/core/http'
 import { E_ACCOUNT_KIT_ADAPTER_CONTRACT, E_ACCOUNT_KIT_INVALID_SESSION } from '../errors.ts'
-import type { UserId } from '../types.ts'
+import type { AuthenticationGuard, UserId } from '../types.ts'
 import type { ManagedGuard } from './managed_types.ts'
 import type { ManagedTokenGuardOptions, ManagedTokenCredential, ManagedUser } from './guard.ts'
 import { markAuthenticated, type MarkableAuthenticator } from './authenticator_mark.ts'
@@ -44,86 +44,114 @@ type TokenContext<User> = HttpContext & {
 export function createTokenGuard<User>(
   options: ManagedTokenGuardOptions<User>
 ): ManagedGuard<ManagedTokenCredential> {
-  return {
-    strategy: 'access_tokens',
-    name: options.name,
-    publicCredential(credential: ManagedTokenCredential) {
-      if (typeof credential.value !== 'string' || !credential.value)
+  return new ManagedTokenGuard(options)
+}
+
+type ManagedTokenRequestGuardContract = Extract<
+  AuthenticationGuard<ManagedTokenCredential>,
+  { strategy: 'access_tokens' }
+>
+
+class ManagedTokenGuard<User> implements ManagedGuard<ManagedTokenCredential> {
+  #options: ManagedTokenGuardOptions<User>
+
+  strategy = 'access_tokens' as const
+  name: string
+
+  constructor(options: ManagedTokenGuardOptions<User>) {
+    this.#options = options
+    this.name = options.name
+  }
+
+  publicCredential: NonNullable<ManagedGuard<ManagedTokenCredential>['publicCredential']> = (
+    credential
+  ) => {
+    if (typeof credential.value !== 'string' || !credential.value)
+      throw new E_ACCOUNT_KIT_ADAPTER_CONTRACT('Token guard did not return a bearer value')
+    return credential.value
+  }
+  current: ManagedGuard<ManagedTokenCredential>['current'] = async (context) => {
+    const auth = (context as TokenContext<User>).auth
+    const user = await authenticate(auth.use(this.#options.name))
+    await markAuthenticated(auth, this.#options.name)
+    return { userId: requireManagedUser(user).id, tokenId: requireCurrentTokenIdentifier(user) }
+  }
+  logoutCredential: NonNullable<ManagedGuard<ManagedTokenCredential>['logoutCredential']> = async (
+    context
+  ) => {
+    const user = await authenticate((context as TokenContext<User>).auth.use(this.#options.name))
+    return {
+      userId: requireManagedUser(user).id,
+      identifier: requireCurrentTokenIdentifier(user),
+    }
+  }
+  forRequest: ManagedGuard<ManagedTokenCredential>['forRequest'] = (_context) => {
+    return new ManagedTokenRequestGuard(this.#options)
+  }
+}
+
+class ManagedTokenRequestGuard<User> implements ManagedTokenRequestGuardContract {
+  #options: ManagedTokenGuardOptions<User>
+
+  strategy = 'access_tokens' as const
+  name: string
+
+  constructor(options: ManagedTokenGuardOptions<User>) {
+    this.#options = options
+    this.name = options.name
+  }
+
+  /** @throws {AggregateError} If token issuance and deletion both fail. */
+  establish: ManagedTokenRequestGuardContract['establish'] = async (
+    userId,
+    abilities,
+    expiresIn,
+    issue
+  ) => {
+    const model = await this.#options.loadUser()
+    const user = await model.findOrFail(userId)
+    const createOptions = {
+      ...(expiresIn === null ? {} : { expiresIn }),
+      ...(issue?.name ? { name: issue.name } : {}),
+    }
+    const token = await model.accessTokens.create(
+      user,
+      abilities,
+      Object.keys(createOptions).length ? createOptions : undefined
+    )
+    if (!token || typeof token !== 'object')
+      throw new E_ACCOUNT_KIT_ADAPTER_CONTRACT('Token guard did not return a token')
+    let identifier: UserId
+    try {
+      identifier = requireTokenIdentifierValue(token.identifier)
+    } catch (error) {
+      // An invalid identifier cannot safely identify a token for cleanup.
+      throw new E_ACCOUNT_KIT_ADAPTER_CONTRACT('Token guard did not return a token identifier', {
+        cause: error,
+      })
+    }
+    try {
+      if (!token.value || typeof token.value.release !== 'function')
         throw new E_ACCOUNT_KIT_ADAPTER_CONTRACT('Token guard did not return a bearer value')
-      return credential.value
-    },
-    async current(context) {
-      const auth = (context as TokenContext<User>).auth
-      const user = await authenticate(auth.use(options.name))
-      await markAuthenticated(auth, options.name)
-      return { userId: requireManagedUser(user).id, tokenId: requireCurrentTokenIdentifier(user) }
-    },
-    async logoutCredential(context) {
-      const user = await authenticate((context as TokenContext<User>).auth.use(options.name))
-      return {
-        userId: requireManagedUser(user).id,
-        identifier: requireCurrentTokenIdentifier(user),
+      const value = token.value.release()
+      if (typeof value !== 'string' || !value)
+        throw new E_ACCOUNT_KIT_ADAPTER_CONTRACT('Token guard did not return a bearer value')
+      return { userId, identifier, value }
+    } catch (error) {
+      try {
+        await model.accessTokens.delete(user, token.identifier)
+      } catch (cleanupError) {
+        throw new AggregateError([error, cleanupError], 'Token issuance failed and cleanup failed')
       }
-    },
-    forRequest(_context) {
-      return {
-        strategy: 'access_tokens',
-        name: options.name,
-        /** @throws {AggregateError} If token issuance and deletion both fail. */
-        async establish(userId, abilities, expiresIn, issue) {
-          const model = await options.loadUser()
-          const user = await model.findOrFail(userId)
-          const createOptions = {
-            ...(expiresIn === null ? {} : { expiresIn }),
-            ...(issue?.name ? { name: issue.name } : {}),
-          }
-          const token = await model.accessTokens.create(
-            user,
-            abilities,
-            Object.keys(createOptions).length ? createOptions : undefined
-          )
-          if (!token || typeof token !== 'object')
-            throw new E_ACCOUNT_KIT_ADAPTER_CONTRACT('Token guard did not return a token')
-          let identifier: UserId
-          try {
-            identifier = requireTokenIdentifierValue(token.identifier)
-          } catch (error) {
-            // An invalid identifier cannot safely identify a token for cleanup.
-            throw new E_ACCOUNT_KIT_ADAPTER_CONTRACT(
-              'Token guard did not return a token identifier',
-              {
-                cause: error,
-              }
-            )
-          }
-          try {
-            if (!token.value || typeof token.value.release !== 'function')
-              throw new E_ACCOUNT_KIT_ADAPTER_CONTRACT('Token guard did not return a bearer value')
-            const value = token.value.release()
-            if (typeof value !== 'string' || !value)
-              throw new E_ACCOUNT_KIT_ADAPTER_CONTRACT('Token guard did not return a bearer value')
-            return { userId, identifier, value }
-          } catch (error) {
-            try {
-              await model.accessTokens.delete(user, token.identifier)
-            } catch (cleanupError) {
-              throw new AggregateError(
-                [error, cleanupError],
-                'Token issuance failed and cleanup failed'
-              )
-            }
-            throw error
-          }
-        },
-        async terminate(credential) {
-          if (!credential) return
-          const model = await options.loadUser()
-          await model.accessTokens.delete(
-            await model.findOrFail(credential.userId),
-            credential.identifier
-          )
-        },
-      }
-    },
+      throw error
+    }
+  }
+  terminate: ManagedTokenRequestGuardContract['terminate'] = async (credential) => {
+    if (!credential) return
+    const model = await this.#options.loadUser()
+    await model.accessTokens.delete(
+      await model.findOrFail(credential.userId),
+      credential.identifier
+    )
   }
 }

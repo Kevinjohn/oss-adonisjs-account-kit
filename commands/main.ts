@@ -1,3 +1,4 @@
+// Source specs use this loader. The build generates its own with adonis-kit.
 import { ListLoader } from '@adonisjs/core/ace'
 import PruneAccountKit from './prune.ts'
 import SetupAccountKit from './setup.ts'

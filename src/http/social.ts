@@ -1,4 +1,3 @@
-import type { HttpContext } from '@adonisjs/core/http'
 import { E_ACCOUNT_KIT_INVALID_INPUT, E_ACCOUNT_KIT_SOCIAL_TRANSACTION_INVALID } from '../errors.ts'
 import { isSocialProviderName } from '../social_providers.ts'
 import { isSensitivePurpose, isSocialBeginIntent, isSocialIntent } from '../social_enums.ts'
@@ -9,7 +8,6 @@ import type {
   SocialIntent,
   SocialProviderName,
   SocialCallbackResult,
-  Trx,
 } from '../types.ts'
 import type { ManagedGuard, ManagedHandler } from './managed_types.ts'
 import type { ManagedEndpointName } from './routes.ts'
@@ -36,23 +34,7 @@ import {
 
 export { rememberManagedMethod } from './last_used_method.ts'
 
-/** Social sign-in options for `registerManagedRoutes`, passed as `extensions.social`. */
-export interface ManagedSocialExtension {
-  /** Public provider inventory, without client credentials or account data. */
-  providers: readonly SocialProviderName[]
-  /** Application creation policy; never inferred from a client body. */
-  admit?: (
-    profile: { provider: SocialProviderName; subject: string; email: string },
-    trx: Trx
-  ) => Promise<void>
-  /** Optional trusted reader for a signed, visitor-local hint; never read account information. */
-  lastUsedMethod?(context: HttpContext): Promise<'password' | SocialProviderName | null>
-  /** Optional signed visitor-local writer called only after a credential is established. */
-  rememberLastUsedMethod?(
-    context: HttpContext,
-    method: 'password' | SocialProviderName
-  ): Promise<void>
-}
+export type { ManagedSocialExtension } from './managed_types.ts'
 
 function requireEnabledProviderName(
   value: string,

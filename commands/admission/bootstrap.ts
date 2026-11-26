@@ -1,15 +1,11 @@
 import { BaseCommand, args, flags } from '@adonisjs/core/ace'
-import {
-  reportOperatorOutcome,
-  completeOperatorCommand,
-  writeResult,
-} from '../../../commands/operator_output.ts'
+import { reportOperatorOutcome, completeOperatorCommand, writeResult } from '../operator_output.ts'
 import {
   E_ACCOUNT_KIT_BOOTSTRAP_APPROVAL_CHANGED,
   E_ACCOUNT_KIT_INVALID_INPUT,
-} from '../../errors.ts'
-import { invitationRoleLength } from '../../invitation_input.ts'
-import { AccountAdmission } from '../service.ts'
+} from '../../src/errors.ts'
+import { invitationRoleLength } from '../../src/invitation_input.ts'
+import { AccountAdmission } from '../../src/admission/service.ts'
 
 /** First administrator in one step: an operator invitation that lands its account approved. */
 export default class BootstrapAdmission extends BaseCommand {

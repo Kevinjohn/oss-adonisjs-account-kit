@@ -2,7 +2,8 @@ import { test } from '@japa/runner'
 import { type AccountKit } from '../src/account_kit.ts'
 import { E_ACCOUNT_KIT_DELIVERY, E_ACCOUNT_KIT_INVALID_SESSION } from '../src/errors.ts'
 import { registerManagedRoutes } from '../src/http/managed.ts'
-import type { ManagedQuery, ManagedSuccessBody } from '../src/http/contracts.ts'
+import type { ManagedQuery, ManagedRequestBody } from '../http/main.ts'
+import type { ManagedSuccessBody } from '../src/http/contracts.ts'
 import { fakeManagedHttp, stubGuard } from './helpers/managed_http_fakes.ts'
 
 test.group('managed HTTP dispatch', () => {
@@ -91,7 +92,7 @@ test.group('managed HTTP dispatch', () => {
       authentication: {
         current: async () => account,
         requireActive: async () => account,
-        logout: async () => {},
+        revokeCredential: async () => {},
       },
       emailPasswordManagement: {
         updateProfile: async () => user,
@@ -274,29 +275,21 @@ test.group('managed HTTP dispatch', () => {
     ])
   })
 
-  // Type contracts: `pnpm typecheck` fails if an accepted shape stops compiling or a refused one
-  // starts to. The runtime body only keeps the values in use.
-  test('invitation query contract is separate from its empty request body', () => {
-    const query: ManagedQuery<'account.invitation.list'> = { limit: 25, cursor: 'opaque' }
-    // @ts-expect-error the list query takes no body fields
-    const body: ManagedQuery<'account.invitation.list'> = { email: 'person@example.test' }
-    // @ts-expect-error the cursor is opaque text
-    const cursor: ManagedQuery<'account.invitation.list'> = { cursor: 1 }
-    void [query, body, cursor]
+  test('invitation query contract is separate from its empty request body', ({ expectTypeOf }) => {
+    type InvitationListQuery = ManagedQuery<'account.invitation.list'>
+    expectTypeOf<{ limit: number; cursor: string }>().toExtend<InvitationListQuery>()
+    expectTypeOf<InvitationListQuery>().not.toHaveProperty('email')
+    expectTypeOf<{ limit: number; cursor: number }>().not.toExtend<InvitationListQuery>()
+    expectTypeOf<ManagedRequestBody<'account.invitation.list'>>().toBeUndefined()
   })
 
-  test('social GET callback query contract represents success and provider denial', () => {
-    const success: ManagedQuery<'auth.oauth.callback'> = {
-      code: 'provider-code',
-      state: 'bound-state',
-    }
-    const denial: ManagedQuery<'auth.oauth.callback'> = {
-      error: 'access_denied',
-      state: 'bound-state',
-    }
-    // @ts-expect-error a success needs its state
-    const unbound: ManagedQuery<'auth.oauth.callback'> = { code: 'provider-code' }
-    void [success, denial, unbound]
+  test('social GET callback query contract represents success and provider denial', ({
+    expectTypeOf,
+  }) => {
+    type CallbackQuery = ManagedQuery<'auth.oauth.callback'>
+    expectTypeOf<{ code: string; state: string }>().toExtend<CallbackQuery>()
+    expectTypeOf<{ error: string; state: string }>().toExtend<CallbackQuery>()
+    expectTypeOf<{ code: string }>().not.toExtend<CallbackQuery>()
   })
 
   test('negotiated errors preserve an existing Vary value', async ({ assert }) => {

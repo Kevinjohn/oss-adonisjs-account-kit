@@ -1,4 +1,4 @@
-import type { PasswordPolicy } from './types.ts'
+import type { PasswordRules } from './types.ts'
 
 export const MIN_PASSWORD_LENGTH = 8
 export const MAX_PASSWORD_LENGTH = 256
@@ -19,7 +19,7 @@ function scorePasswordStrength(estimatedBits: number): 0 | 1 | 2 | 3 | 4 {
   return 4
 }
 
-export function isPasswordAllowed(value: unknown, policy: PasswordPolicy): value is string {
+export function isPasswordAllowed(value: unknown, policy: PasswordRules): value is string {
   if (!isPasswordShaped(value)) return false
   if (
     value.length < policy.minLength ||

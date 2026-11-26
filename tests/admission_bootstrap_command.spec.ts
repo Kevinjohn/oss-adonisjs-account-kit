@@ -1,5 +1,5 @@
 import { test } from '@japa/runner'
-import BootstrapAdmission from '../src/admission/commands/bootstrap.ts'
+import BootstrapAdmission from '../commands/admission/bootstrap.ts'
 import {
   E_ACCOUNT_KIT_BOOTSTRAP_APPROVAL_CHANGED,
   E_ACCOUNT_KIT_INVALID_INPUT,
@@ -65,7 +65,7 @@ test.group('admission bootstrap', (group) => {
           return url
         },
       },
-      onLifecycleEvent: async (event) => {
+      onLifecycleNotification: async (event) => {
         if (event.type === 'invitation.sent') {
           cancelled = await admission.operator.cancelBootstrap({ email })
         }

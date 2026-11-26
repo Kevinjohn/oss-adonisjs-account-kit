@@ -247,11 +247,11 @@ test.group('authentication contract', (group) => {
         secondCalls.push(credential)
       },
     }
-    assert.isUndefined(await account.authentication.logout(firstGuard, firstCredential))
+    assert.isUndefined(await account.authentication.revokeCredential(firstGuard, firstCredential))
     assert.lengthOf(firstCalls, 1)
     assert.strictEqual(firstCalls[0], firstCredential)
     assert.isEmpty(secondCalls)
-    assert.isUndefined(await account.authentication.logout(secondGuard, secondCredential))
+    assert.isUndefined(await account.authentication.revokeCredential(secondGuard, secondCredential))
     assert.lengthOf(firstCalls, 1)
     assert.lengthOf(secondCalls, 1)
     assert.strictEqual(secondCalls[0], secondCredential)
@@ -528,7 +528,7 @@ test.group('authentication.withCurrent', (group) => {
       await inside.promise
       // The session was just created, so `current` did not touch (and lock) it.
       logout = account.authentication
-        .logout({ terminate: async () => {} }, undefined, input)
+        .revokeCredential({ terminate: async () => {} }, undefined, input)
         .then(() => void order.push('logout'))
       await waitForBlockedBy(kit, assert, await tracked.backendId)
     } finally {

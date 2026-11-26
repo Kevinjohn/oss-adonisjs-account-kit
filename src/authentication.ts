@@ -12,11 +12,11 @@ import { invalidateChangedCredentials, revision } from './credential_revision.ts
 import { establishCredential } from './credential_issuance.ts'
 import {
   requireLiveSession,
-  isSessionRegistryEnabled,
+  isSessionTrackingEnabled,
   sessionTable,
   touchSession,
   type LiveSession,
-} from './session_registry.ts'
+} from './session_tracking.ts'
 import { waitForFloor } from './timing.ts'
 import { hashToken } from './tokens.ts'
 import { assessRetirementImpact } from './login_method_retirement.ts'
@@ -69,7 +69,7 @@ async function requireCurrentAccountAndSession(
       input.revision !== (await revision(trx, deps.config, input.userId))
     )
       throw new E_ACCOUNT_KIT_INVALID_SESSION()
-    if (isSessionRegistryEnabled(deps.config))
+    if (isSessionTrackingEnabled(deps.config))
       session = await requireLiveSession(trx, input.userId, input.sessionHandle)
   } else {
     if (
@@ -342,16 +342,16 @@ export function createAuthenticationService(deps: ServiceDependencies) {
      *
      * @example
      * ```ts
-     * await kit.authentication.logout(requestGuard, undefined, current)
+     * await kit.authentication.revokeCredential(requestGuard, undefined, current)
      * ```
      */
-    async logout<Credential>(
+    async revokeCredential<Credential>(
       guard: Pick<AuthenticationGuard<Credential>, 'terminate'>,
       credential?: Credential,
       current?: CurrentAccountInput
     ): Promise<void> {
       requireAuthentication(deps.config)
-      if (current?.sessionHandle && isSessionRegistryEnabled(deps.config))
+      if (current?.sessionHandle && isSessionTrackingEnabled(deps.config))
         await deps.db
           .from(sessionTable)
           .where('handle_hash', hashToken(current.sessionHandle))

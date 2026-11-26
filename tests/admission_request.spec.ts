@@ -1,5 +1,5 @@
 import { test } from '@japa/runner'
-import type { AdmissionEvent } from '../src/admission/types.ts'
+import type { AdmissionNotification } from '../src/admission/types.ts'
 import { E_ACCOUNT_KIT_INVALID_SESSION, E_ACCOUNT_KIT_UNVERIFIED_EMAIL } from '../src/errors.ts'
 import { useAdmissionApp } from './helpers/admission_schema.ts'
 import { allowDecisions, makeAdmission, writeAdmissionRow } from './helpers/admission.ts'
@@ -11,12 +11,12 @@ test.group('admission request', (group) => {
   const kit = useAdmissionApp(group)
 
   test('records the request once and emits one event', async ({ assert }) => {
-    const events: AdmissionEvent[] = []
+    const events: AdmissionNotification[] = []
     const { admission } = makeAdmission(
       kit,
       {
         approval: { required: true, authorize: allowDecisions },
-        onAdmissionEvent: async (event) => void events.push(event),
+        onAdmissionNotification: async (event) => void events.push(event),
       },
       { authentication }
     )

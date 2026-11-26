@@ -4,7 +4,7 @@ import type { ManagedHandler } from './managed_types.ts'
 import { buildAccountProjection } from '../account_projection.ts'
 import { passwordChangeRevision } from '../password_change_revision.ts'
 import { takeCorrectionRevision } from '../profile_correction_revision.ts'
-import { sendInvalidProofResponse, sendPasswordPolicyErrorResponse } from './response_helpers.ts'
+import { sendInvalidProofResponse, sendPasswordRulesErrorResponse } from './response_helpers.ts'
 import { passwordChangeValidator, profileUpdateValidator } from './validators.ts'
 
 export const emailPasswordManagementHandlers = {
@@ -64,7 +64,7 @@ export const emailPasswordManagementHandlers = {
     const { currentPassword, recentProof, newPassword } =
       await request.validateUsing(passwordChangeValidator)
     if (!kit.managedHttp.passwordAllowed(newPassword))
-      return sendPasswordPolicyErrorResponse(context, 'newPassword')
+      return sendPasswordRulesErrorResponse(context, 'newPassword')
     const guard = options.guard.forRequest(context)
     const { revision } = await kit.emailPasswordManagement
       .changePassword({

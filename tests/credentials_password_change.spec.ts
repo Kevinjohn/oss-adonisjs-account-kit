@@ -253,7 +253,7 @@ test.group('emailPasswordManagement', (group) => {
           throw failure
         },
       },
-      onLifecycleEvent: async () => {
+      onLifecycleNotification: async () => {
         lifecycleCalls++
       },
     })
@@ -298,7 +298,7 @@ test.group('emailPasswordManagement', (group) => {
           throw failure
         })
       },
-      onLifecycleEvent: async () => {
+      onLifecycleNotification: async () => {
         calls.push('lifecycle')
       },
       notify: {

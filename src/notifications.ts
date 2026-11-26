@@ -8,6 +8,13 @@ import type { NotificationCallbacks } from './types.ts'
 import type { AccountKitTranslator } from './translator.ts'
 import { isSocialProviderName, socialProviderLabels } from './social_providers.ts'
 import { renderAccountMessage, type AccountMessageKind } from './account_message_templates.ts'
+import type { AccountMailService, MailNotificationOptions } from './types_notifications.ts'
+
+export type {
+  AccountMailMessage,
+  AccountMailService,
+  MailNotificationOptions,
+} from './types_notifications.ts'
 
 export {
   renderAccountMessage,
@@ -17,47 +24,6 @@ export {
 
 export { createActionUrls, type ActionUrlOptions } from './action_urls.ts'
 export { notificationReadiness, type NotificationReadinessInput } from './notification_readiness.ts'
-
-/** The small Mail surface used here keeps service-only imports independent of @adonisjs/mail. */
-export interface AccountMailService {
-  /** Queue a message; `callback` fills it in. */
-  sendLater(callback: (message: AccountMailMessage) => void): Promise<unknown>
-}
-
-/** The part of an AdonisJS Mail message `createMailNotifications` uses. */
-export interface AccountMailMessage {
-  /** Set the recipient address. */
-  to(address: string): this
-  /** Set the sender address. */
-  from(address: string): this
-  /** Set the subject line. */
-  subject(subject: string): this
-  /** Set the HTML body. */
-  html(content: string): this
-  /** Set the plain-text body. */
-  text(content: string): this
-}
-
-/** Options for `createMailNotifications`. */
-export interface MailNotificationOptions {
-  /**
-   * Defaults to the AdonisJS Mail service, resolved when a message is sent. Config files load
-   * before that service exists, so pass a function rather than the service itself.
-   */
-  mail?: AccountMailService | (() => AccountMailService)
-  /** The sender address. */
-  from: string
-  /** Your product name, used in subjects and message bodies. */
-  brandName: string
-  /** Receives escaped body markup; return a complete HTML document or wrapper. */
-  emailLayout?: (body: string) => string
-  /**
-   * An `@adonisjs/i18n` instance for one site-wide language, resolved when a message is sent, for
-   * example `() => i18nManager.locale('fr')`. Each part is looked up as
-   * `account_kit.emails.<kind>.<part>`, with the English text as the fallback.
-   */
-  i18n?: AccountKitTranslator | (() => AccountKitTranslator)
-}
 
 function resolveTranslator(
   option: MailNotificationOptions['i18n']
@@ -87,14 +53,24 @@ async function resolveMail(option: MailNotificationOptions['mail']): Promise<Acc
  * ```
  */
 export function createMailNotifications(options: MailNotificationOptions): NotificationCallbacks {
-  if (
-    !options.from?.trim() ||
-    !options.brandName?.trim() ||
-    /[\r\n]/.test(options.from) ||
-    /[\r\n]/.test(options.brandName)
-  )
-    throw new InvalidArgumentsException('account_kit: from and brandName are required')
-  async function send(
+  return new MailNotifications(options)
+}
+
+class MailNotifications implements NotificationCallbacks {
+  #options: MailNotificationOptions
+
+  constructor(options: MailNotificationOptions) {
+    this.#options = options
+    if (
+      !options.from?.trim() ||
+      !options.brandName?.trim() ||
+      /[\r\n]/.test(options.from) ||
+      /[\r\n]/.test(options.brandName)
+    )
+      throw new InvalidArgumentsException('account_kit: from and brandName are required')
+  }
+
+  async #send(
     kind: AccountMessageKind,
     recipient: string,
     actionUrl?: string,
@@ -102,55 +78,73 @@ export function createMailNotifications(options: MailNotificationOptions): Notif
   ) {
     const rendered = renderAccountMessage(
       kind,
-      { brandName: options.brandName, actionUrl, providerName },
-      options.emailLayout,
-      { i18n: resolveTranslator(options.i18n) }
+      { brandName: this.#options.brandName, actionUrl, providerName },
+      this.#options.emailLayout,
+      { i18n: resolveTranslator(this.#options.i18n) }
     )
-    const mail = await resolveMail(options.mail)
+    const mail = await resolveMail(this.#options.mail)
     await mail.sendLater((message) => {
       message
         .to(recipient)
-        .from(options.from)
+        .from(this.#options.from)
         .subject(rendered.subject)
         .html(rendered.html)
         .text(rendered.text)
     })
   }
-  return {
-    passwordResetProvision: (user, url) => {
-      const message = new PasswordResetProvision(user.email, url)
-      return send(message.kind, message.recipient, message.actionUrl)
-    },
-    accountActivationProvision: (user, url) => {
-      const message = new AccountActivationProvision(user.unverifiedEmail ?? user.email, url)
-      return send(message.kind, message.recipient, message.actionUrl)
-    },
-    invitationProvision: (invitation, url) => {
-      const message = new InvitationProvision(invitation.email, url)
-      return send(message.kind, message.recipient, message.actionUrl)
-    },
-    emailChangeProvision: (_user, newEmail, url) => {
-      const message = new EmailChangeProvision(newEmail, url)
-      return send(message.kind, message.recipient, message.actionUrl)
-    },
-    emailChanged: (previousEmail) => send('emailChanged', previousEmail),
-    passwordResetCompleted: (user) => send('passwordResetCompleted', user.email),
-    passwordChanged: (user) => send('passwordChanged', user.email),
-    socialIdentityLinked: (user, identity) =>
-      send('socialIdentityLinked', user.email, undefined, resolveProviderLabel(identity.provider)),
-    socialIdentityUnlinked: (user, identity) =>
-      send(
-        'socialIdentityUnlinked',
-        user.email,
-        undefined,
-        resolveProviderLabel(identity.provider)
-      ),
-    magicLinkProvision: (user, url) => {
-      const message = new MagicLinkProvision(user.email, url)
-      return send(message.kind, message.recipient, message.actionUrl)
-    },
-    accountDeleted: (account) => send('accountDeleted', account.email),
+
+  passwordResetProvision: NotificationCallbacks['passwordResetProvision'] = (user, url) => {
+    const message = new PasswordResetProvision(user.email, url)
+    return this.#send(message.kind, message.recipient, message.actionUrl)
   }
+
+  accountActivationProvision: NotificationCallbacks['accountActivationProvision'] = (user, url) => {
+    const message = new AccountActivationProvision(user.unverifiedEmail ?? user.email, url)
+    return this.#send(message.kind, message.recipient, message.actionUrl)
+  }
+
+  invitationProvision: NotificationCallbacks['invitationProvision'] = (invitation, url) => {
+    const message = new InvitationProvision(invitation.email, url)
+    return this.#send(message.kind, message.recipient, message.actionUrl)
+  }
+
+  emailChangeProvision: NotificationCallbacks['emailChangeProvision'] = (_user, newEmail, url) => {
+    const message = new EmailChangeProvision(newEmail, url)
+    return this.#send(message.kind, message.recipient, message.actionUrl)
+  }
+
+  emailChanged: NotificationCallbacks['emailChanged'] = (previousEmail) =>
+    this.#send('emailChanged', previousEmail)
+
+  passwordResetCompleted: NotificationCallbacks['passwordResetCompleted'] = (user) =>
+    this.#send('passwordResetCompleted', user.email)
+
+  passwordChanged: NotificationCallbacks['passwordChanged'] = (user) =>
+    this.#send('passwordChanged', user.email)
+
+  socialIdentityLinked: NotificationCallbacks['socialIdentityLinked'] = (user, identity) =>
+    this.#send(
+      'socialIdentityLinked',
+      user.email,
+      undefined,
+      resolveProviderLabel(identity.provider)
+    )
+
+  socialIdentityUnlinked: NotificationCallbacks['socialIdentityUnlinked'] = (user, identity) =>
+    this.#send(
+      'socialIdentityUnlinked',
+      user.email,
+      undefined,
+      resolveProviderLabel(identity.provider)
+    )
+
+  magicLinkProvision: NotificationCallbacks['magicLinkProvision'] = (user, url) => {
+    const message = new MagicLinkProvision(user.email, url)
+    return this.#send(message.kind, message.recipient, message.actionUrl)
+  }
+
+  accountDeleted: NotificationCallbacks['accountDeleted'] = (account) =>
+    this.#send('accountDeleted', account.email)
 }
 
 function resolveProviderLabel(provider: string): string {

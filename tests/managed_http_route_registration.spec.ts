@@ -22,7 +22,14 @@ test.group('managed HTTP dispatch', () => {
       enabled: ['authentication'] as const,
       except: ['auth.login'] as const,
     }
-    registerManagedRoutes(router, options)
+    const registered = registerManagedRoutes(router, options)
+    assert.isTrue(Array.isArray(registered))
+    const names = registered.map(({ name }) => name)
+    assert.strictEqual(Object.getPrototypeOf(names), Array.prototype)
+    assert.deepEqual(
+      names,
+      pending.map(({ name }) => name?.replace('accountKit.', ''))
+    )
     assert.isFalse(routes.has('POST /api/v1/auth/login'))
     // `routes` is keyed by method and path, so a repeat would overwrite it; count definitions.
     const count = pending.length

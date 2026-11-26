@@ -11,70 +11,68 @@ import { freezeResolved } from './config_freeze.ts'
 export function resolveAuthentication(
   config: Pick<AccountKitConfig, 'authentication'>
 ): ResolvedAuthenticationConfig | undefined {
-  let authentication: ResolvedAuthenticationConfig | undefined
-  if (config.authentication !== undefined) {
-    const auth = config.authentication
-    assertObject(auth, 'authentication')
-    if (auth.strategy !== 'session' && auth.strategy !== 'access_tokens')
-      throw new E_ACCOUNT_KIT_INVALID_CONFIGURATION(
-        'authentication.strategy',
-        'account_kit: authentication.strategy must be session or access_tokens'
-      )
-    if (typeof auth.guard !== 'string' || auth.guard.trim() === '')
-      throw new E_ACCOUNT_KIT_INVALID_CONFIGURATION(
-        'authentication.guard',
-        'account_kit: authentication.guard must name an existing guard'
-      )
-    if (auth.canAccess !== undefined && typeof auth.canAccess !== 'function')
-      throw new E_ACCOUNT_KIT_INVALID_CONFIGURATION(
-        'authentication.canAccess',
-        'account_kit: authentication.canAccess must be a function'
-      )
-    if (
-      auth.tokenAbilities !== undefined &&
-      (!Array.isArray(auth.tokenAbilities) ||
-        auth.tokenAbilities.length === 0 ||
-        auth.tokenAbilities.some((ability) => typeof ability !== 'string' || ability.trim() === ''))
+  if (config.authentication === undefined) return undefined
+  const auth = config.authentication
+  assertObject(auth, 'authentication')
+  if (auth.strategy !== 'session' && auth.strategy !== 'access_tokens')
+    throw new E_ACCOUNT_KIT_INVALID_CONFIGURATION(
+      'authentication.strategy',
+      'account_kit: authentication.strategy must be session or access_tokens'
     )
-      throw new E_ACCOUNT_KIT_INVALID_CONFIGURATION(
-        'authentication.tokenAbilities',
-        'account_kit: authentication.tokenAbilities must be non-empty strings'
-      )
-    if (auth.tokenExpiresIn !== undefined)
-      computeConfiguredExpiry('authentication.tokenExpiresIn', DateTime.utc(), auth.tokenExpiresIn)
-    const tokenTable = auth.tokenTable ?? 'auth_access_tokens'
-    if (typeof tokenTable !== 'string' || !isSqlIdentifier(tokenTable))
-      throw new E_ACCOUNT_KIT_INVALID_CONFIGURATION(
-        'authentication.tokenTable',
-        'account_kit: authentication.tokenTable must be a plain SQL identifier'
-      )
-    const clientLimit = resolveThrottleBudget(
-      auth.clientLimit,
-      { requests: 10, duration: '1m' },
-      'authentication.clientLimit'
+  if (typeof auth.guard !== 'string' || auth.guard.trim() === '')
+    throw new E_ACCOUNT_KIT_INVALID_CONFIGURATION(
+      'authentication.guard',
+      'account_kit: authentication.guard must name an existing guard'
     )
-    const identityLimit = resolveThrottleBudget(
-      auth.identityLimit,
-      { requests: 5, duration: '1m' },
-      'authentication.identityLimit'
+  if (auth.canAccess !== undefined && typeof auth.canAccess !== 'function')
+    throw new E_ACCOUNT_KIT_INVALID_CONFIGURATION(
+      'authentication.canAccess',
+      'account_kit: authentication.canAccess must be a function'
     )
-    const blockDuration = auth.identityLimit?.blockDuration ?? '20m'
-    resolveThrottleBudget(
-      { requests: 1, duration: blockDuration },
-      { requests: 1, duration: '20m' },
-      'authentication.identityLimit',
-      'authentication.identityLimit.blockDuration'
+  if (
+    auth.tokenAbilities !== undefined &&
+    (!Array.isArray(auth.tokenAbilities) ||
+      auth.tokenAbilities.length === 0 ||
+      auth.tokenAbilities.some((ability) => typeof ability !== 'string' || ability.trim() === ''))
+  )
+    throw new E_ACCOUNT_KIT_INVALID_CONFIGURATION(
+      'authentication.tokenAbilities',
+      'account_kit: authentication.tokenAbilities must be non-empty strings'
     )
-    authentication = {
-      strategy: auth.strategy,
-      guard: auth.guard,
-      canAccess: auth.canAccess?.bind(auth) ?? (async () => true),
-      clientLimit,
-      identityLimit: freezeResolved({ ...identityLimit, blockDuration }),
-      tokenAbilities: freezeResolved([...(auth.tokenAbilities ?? ['*'])]),
-      tokenExpiresIn: auth.tokenExpiresIn ?? null,
-      tokenTable,
-    }
+  if (auth.tokenExpiresIn !== undefined)
+    computeConfiguredExpiry('authentication.tokenExpiresIn', DateTime.utc(), auth.tokenExpiresIn)
+  const tokenTable = auth.tokenTable ?? 'auth_access_tokens'
+  if (typeof tokenTable !== 'string' || !isSqlIdentifier(tokenTable))
+    throw new E_ACCOUNT_KIT_INVALID_CONFIGURATION(
+      'authentication.tokenTable',
+      'account_kit: authentication.tokenTable must be a plain SQL identifier'
+    )
+  const clientLimit = resolveThrottleBudget(
+    auth.clientLimit,
+    { requests: 10, duration: '1m' },
+    'authentication.clientLimit'
+  )
+  const identityLimit = resolveThrottleBudget(
+    auth.identityLimit,
+    { requests: 5, duration: '1m' },
+    'authentication.identityLimit'
+  )
+  const blockDuration = auth.identityLimit?.blockDuration ?? '20m'
+  resolveThrottleBudget(
+    { requests: 1, duration: blockDuration },
+    { requests: 1, duration: '20m' },
+    'authentication.identityLimit',
+    'authentication.identityLimit.blockDuration'
+  )
+  const authentication: ResolvedAuthenticationConfig = {
+    strategy: auth.strategy,
+    guard: auth.guard,
+    canAccess: auth.canAccess?.bind(auth) ?? (async () => true),
+    clientLimit,
+    identityLimit: freezeResolved({ ...identityLimit, blockDuration }),
+    tokenAbilities: freezeResolved([...(auth.tokenAbilities ?? ['*'])]),
+    tokenExpiresIn: auth.tokenExpiresIn ?? null,
+    tokenTable,
   }
-  return authentication && freezeResolved(authentication)
+  return freezeResolved(authentication)
 }

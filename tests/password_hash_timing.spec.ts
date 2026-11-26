@@ -2,7 +2,7 @@ import { test } from '@japa/runner'
 import { createLucidAdapter } from '../src/adapters/lucid.ts'
 import { transaction } from '../src/db.ts'
 import type { UsersAdapter } from '../src/types.ts'
-import LucidUser from './fixtures/lucid_user.ts'
+import LucidUser from './helpers/lucid_user.ts'
 import { useTestApp } from './helpers/app.ts'
 import { insertUser, makeService, makeUsersAdapter, tokenFrom } from './helpers/fakes.ts'
 

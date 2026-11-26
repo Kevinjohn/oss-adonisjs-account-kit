@@ -7,7 +7,7 @@ import { E_ACCOUNT_KIT_INVALID_SESSION, E_ACCOUNT_KIT_UNVERIFIED_EMAIL } from '.
 import { sqlTimestamp } from '../timestamps.ts'
 import type { CurrentAccountInput } from '../types.ts'
 import { requireApproval } from './capability.ts'
-import { withAdmissionEvent } from './events.ts'
+import { withAdmissionNotification } from './notifications.ts'
 import { readAdmissionRow, toAdmissionRecord, upsertAdmissionRow } from './rows.ts'
 import type { AdmissionContext } from './service.ts'
 import type { AdmissionRecord } from './types.ts'
@@ -23,7 +23,7 @@ export async function requestAdmission(
 ): Promise<AdmissionRecord> {
   requireApproval(deps.config)
   const operationId = randomUUID()
-  const { record } = await withAdmissionEvent(
+  const { record } = await withAdmissionNotification(
     deps.config,
     transaction(deps.db, async (trx) => {
       const account = await requireCurrentAccountInTransaction(

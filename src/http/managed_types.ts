@@ -1,10 +1,15 @@
 import type { HttpContext } from '@adonisjs/core/http'
 import type { AccountKit } from '../account_kit.ts'
-import type { AuthenticationGuard, CurrentAccount, CurrentAccountInput } from '../types.ts'
-import type { ManagedMessage } from './responses.ts'
-import type { ManagedSocialExtension } from './social.ts'
-import type { ManagedOpenApiOptions } from './route_registration.ts'
-import type { ManagedCapability, ManagedEndpointName, ManagedRoute } from './routes.ts'
+import type {
+  AuthenticationGuard,
+  CurrentAccount,
+  CurrentAccountInput,
+} from '../types_authentication.ts'
+import type { ManagedMessage } from '../types_error_response.ts'
+import type { Trx } from '../types_foundation.ts'
+import type { SocialProviderName } from '../types_social.ts'
+import type { ManagedOpenApiOptions } from './openapi_types.ts'
+import type { ManagedCapability, ManagedEndpointName, ManagedRoute } from './route_types.ts'
 
 /** Connects the managed routes to your existing guard. `createManagedGuard` builds one. */
 export interface ManagedGuard<Credential> {
@@ -130,3 +135,21 @@ export interface ManagedRequest<Credential> {
 }
 
 export type ManagedHandler = <Credential>(request: ManagedRequest<Credential>) => Promise<unknown>
+
+/** Social sign-in options for `registerManagedRoutes`, passed as `extensions.social`. */
+export interface ManagedSocialExtension {
+  /** Public provider inventory, without client credentials or account data. */
+  providers: readonly SocialProviderName[]
+  /** Application creation policy; never inferred from a client body. */
+  admit?: (
+    profile: { provider: SocialProviderName; subject: string; email: string },
+    trx: Trx
+  ) => Promise<void>
+  /** Optional trusted reader for a signed, visitor-local hint; never read account information. */
+  lastUsedMethod?(context: HttpContext): Promise<'password' | SocialProviderName | null>
+  /** Optional signed visitor-local writer called only after a credential is established. */
+  rememberLastUsedMethod?(
+    context: HttpContext,
+    method: 'password' | SocialProviderName
+  ): Promise<void>
+}

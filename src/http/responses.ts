@@ -1,5 +1,5 @@
 import type { HttpContext } from '@adonisjs/core/http'
-import type { E_ACCOUNT_KIT } from '../errors.ts'
+import type { AccountKitResponseError } from '../error_identity.ts'
 import type { AccountKitTranslator } from '../translator.ts'
 import { mapManagedErrorResponse, type ManagedErrorResponse } from '../error_response.ts'
 
@@ -24,7 +24,7 @@ export function applyMappedHeaders(context: HttpContext, mapped: ManagedErrorRes
 /** Renders a package error through the request's response, for the AdonisJS exception handler. */
 export async function renderAccountKitError(
   context: HttpContext,
-  error: InstanceType<typeof E_ACCOUNT_KIT>
+  error: AccountKitResponseError
 ): Promise<void> {
   const mapped = mapManagedErrorResponse(error, {
     request: context.request,

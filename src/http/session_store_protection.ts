@@ -3,15 +3,15 @@ import type { HttpContext } from '@adonisjs/core/http'
 import type { ConfigProvider } from '@adonisjs/core/types'
 import { InvalidArgumentsException } from '@adonisjs/core/exceptions'
 
-/** A session store factory as AdonisJS session config declares it. */
-export type ManagedSessionStoreFactory = (context: HttpContext, config: never) => unknown
-/** The part of a session config `protectManagedSessionConfig` reads: the selected store. */
-export type ManagedSessionConfiguration = {
-  /** The selected store name. */
-  store: string
-  /** The configured store factories. */
-  stores: Record<string, ManagedSessionStoreFactory>
-}
+import type {
+  ManagedSessionConfiguration,
+  ManagedSessionStoreFactory,
+} from './session_store_types.ts'
+
+export type {
+  ManagedSessionConfiguration,
+  ManagedSessionStoreFactory,
+} from './session_store_types.ts'
 
 const verifiedRequests = new WeakMap<
   object,

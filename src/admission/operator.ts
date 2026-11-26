@@ -16,7 +16,7 @@ import {
   approvalStatusByTransition,
   type AdmissionTransition,
 } from './decisions.ts'
-import { withAdmissionEvent } from './events.ts'
+import { withAdmissionNotification } from './notifications.ts'
 import { readAdmissionRow, toAdmissionRecord, upsertAdmissionRow } from './rows.ts'
 import type { AdmissionContext } from './service.ts'
 import type { AdmissionRecord } from './types.ts'
@@ -44,7 +44,7 @@ export async function applyOperatorDecision(
 ): Promise<AdmissionRecord> {
   requireApproval(deps.config)
   const operationId = randomUUID()
-  return withAdmissionEvent(
+  return withAdmissionNotification(
     deps.config,
     transaction(deps.db, async (trx) => {
       const subject = await lockSubject(deps, trx, input.email)
@@ -75,7 +75,7 @@ export async function grantOperatorInvitation(
   )
     throw new E_ACCOUNT_KIT_INVALID_INPUT('Invalid role')
   const operationId = randomUUID()
-  return withAdmissionEvent(
+  return withAdmissionNotification(
     deps.config,
     transaction(deps.db, async (trx) => {
       const subject = await lockSubject(deps, trx, input.email)

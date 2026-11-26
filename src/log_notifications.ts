@@ -1,6 +1,6 @@
 import type { LogNotificationOptions } from './types_log_notifications.ts'
 import { InvalidArgumentsException } from '@adonisjs/core/exceptions'
-import { createMailNotifications } from './notifications.ts'
+import { createMailNotifications, type AccountMailService } from './notifications.ts'
 import type { NotificationCallbacks } from './types.ts'
 
 /**
@@ -23,24 +23,31 @@ export function createLogNotifications(options: LogNotificationOptions): Notific
   return createMailNotifications({
     from: 'account-kit@localhost',
     brandName: options.brandName,
-    mail: {
-      async sendLater(callback) {
-        const fields = { to: '', subject: '', text: '' }
-        const message = {
-          to: (value: string) => ((fields.to = value), message),
-          from: () => message,
-          subject: (value: string) => ((fields.subject = value), message),
-          html: () => message,
-          text: (value: string) => ((fields.text = value), message),
-        }
-        callback(message)
-        const logger = typeof options.logger === 'function' ? options.logger() : options.logger
-        logger.info(
-          `[account-kit] mail to ${fields.to}: ${fields.subject}\n${fields.text.trimEnd()}`
-        )
-      },
-    },
+    mail: new LogMailService(options),
   })
+}
+
+class LogMailService implements AccountMailService {
+  #options: LogNotificationOptions
+
+  constructor(options: LogNotificationOptions) {
+    this.#options = options
+  }
+
+  async sendLater(callback: Parameters<AccountMailService['sendLater']>[0]) {
+    const fields = { to: '', subject: '', text: '' }
+    const message = {
+      to: (value: string) => ((fields.to = value), message),
+      from: () => message,
+      subject: (value: string) => ((fields.subject = value), message),
+      html: () => message,
+      text: (value: string) => ((fields.text = value), message),
+    }
+    callback(message)
+    const logger =
+      typeof this.#options.logger === 'function' ? this.#options.logger() : this.#options.logger
+    logger.info(`[account-kit] mail to ${fields.to}: ${fields.subject}\n${fields.text.trimEnd()}`)
+  }
 }
 
 export type { MessageLogger, LogNotificationOptions } from './types_log_notifications.ts'

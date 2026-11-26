@@ -264,13 +264,13 @@ index 0000000..20b2dd1
 +router.get('/api/v1/auth/invitations/:token', [() => import('#controllers/invitations_controller'), 'inspect'])
 +router.post('/api/v1/auth/invitations/:token', [() => import('#controllers/invitations_controller'), 'accept'])
 diff --git a/start/kernel.ts b/start/kernel.ts
-index d3c18be..4d21865 100644
+index 5ce2682..ef0424b 100644
 --- a/start/kernel.ts
 +++ b/start/kernel.ts
-@@ -23,6 +23,7 @@ server.errorHandler(() => import('#exceptions/handler'))
-  * the request URL.
+@@ -24,6 +24,7 @@ server.errorHandler(() => import('#exceptions/handler'))
   */
  server.use([
+   () => import('@kevinjohn/adonisjs-account-kit/middleware/proof_headers'),
 +  () => import('#middleware/invitation_proof_headers_middleware'),
    () => import('#middleware/force_json_response_middleware'),
    () => import('#middleware/container_bindings_middleware'),

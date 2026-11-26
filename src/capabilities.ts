@@ -19,7 +19,7 @@ export interface CapabilityRequirements {
   requiredHooks: readonly RequiredHook[]
 }
 
-export const capabilityRegistry: Record<Capability, CapabilityRequirements> = {
+export const capabilityRequirements: Record<Capability, CapabilityRequirements> = {
   passwordReset: {
     defaultOn: true,
     adapterMethods: [
@@ -104,5 +104,7 @@ export const capabilityRegistry: Record<Capability, CapabilityRequirements> = {
   },
 }
 
-export const capabilities = Object.keys(capabilityRegistry) as Capability[]
-export const defaultCapabilities = capabilities.filter((name) => capabilityRegistry[name].defaultOn)
+export const capabilities = Object.keys(capabilityRequirements) as Capability[]
+export const defaultCapabilities = capabilities.filter(
+  (name) => capabilityRequirements[name].defaultOn
+)

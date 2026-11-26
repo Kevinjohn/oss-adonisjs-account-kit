@@ -46,4 +46,4 @@ flowchart TD
  G -->|Yes| I["Service returns AdmissionRecord and writeResult prints approved, userId and email"]
 ```
 
-**Code references:** [`applyOperatorDecision`](../src/admission/operator.ts), [`approve command`](../src/admission/commands/approve.ts), [`command tests`](../tests/admission_commands.spec.ts), [committed events](../src/admission/events.ts), [command output](../commands/operator_output.ts), [operator service entry](../src/admission/service.ts)
+**Code references:** [`applyOperatorDecision`](../src/admission/operator.ts), [`approve command`](../commands/admission/approve.ts), [`command tests`](../tests/admission_commands.spec.ts), [committed events](../src/admission/notifications.ts), [command output](../commands/operator_output.ts), [operator service entry](../src/admission/service.ts)

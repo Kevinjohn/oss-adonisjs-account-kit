@@ -9,7 +9,7 @@ const define = (config: unknown) => () => defineConfig(config as AdmissionConfig
 test.group('admission config', () => {
   test('requires at least one requirement', ({ assert }) => {
     assert.throws(define({}), /at least one of domain, invitation or approval/)
-    assert.throws(define({ onAdmissionEvent: async () => {} }), /at least one/)
+    assert.throws(define({ onAdmissionNotification: async () => {} }), /at least one/)
     assert.throws(define(null), /must be an object/)
   })
 
@@ -94,12 +94,13 @@ test.group('admission config', () => {
   test('accepts an event hook only as a function', ({ assert }) => {
     const hook = async () => {}
     assert.equal(
-      defineConfig({ invitation: { required: true }, onAdmissionEvent: hook }).onAdmissionEvent,
+      defineConfig({ invitation: { required: true }, onAdmissionNotification: hook })
+        .onAdmissionNotification,
       hook
     )
     assert.throws(
-      define({ invitation: { required: true }, onAdmissionEvent: 'log' }),
-      /onAdmissionEvent must be a function/
+      define({ invitation: { required: true }, onAdmissionNotification: 'log' }),
+      /onAdmissionNotification must be a function/
     )
   })
 })

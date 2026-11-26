@@ -7,7 +7,7 @@ import {
   E_ACCOUNT_KIT_POST_COMMIT,
   E_ACCOUNT_KIT_USER_NOT_FOUND,
 } from '../src/errors.ts'
-import type { AdmissionEvent } from '../src/admission/types.ts'
+import type { AdmissionNotification } from '../src/admission/types.ts'
 import { deriveClientChallenge } from '../src/magic_link.ts'
 import type { AccountUser } from '../src/types.ts'
 import { useAdmissionApp } from './helpers/admission_schema.ts'
@@ -37,10 +37,10 @@ test.group('admission decisions', (group) => {
   test('an admitted approver applies each allowed transition and records who decided', async ({
     assert,
   }) => {
-    const events: AdmissionEvent[] = []
+    const events: AdmissionNotification[] = []
     const { admission } = makeAdmission(
       kit,
-      { ...approvalOnly, onAdmissionEvent: async (event) => void events.push(event) },
+      { ...approvalOnly, onAdmissionNotification: async (event) => void events.push(event) },
       {}
     )
     const actor = await owner()
@@ -172,7 +172,7 @@ test.group('admission decisions', (group) => {
     const subject = await insertUser(kit, { email: 'subject@example.test' })
     const { admission } = makeAdmission(kit, {
       ...approvalOnly,
-      onAdmissionEvent: async () => {
+      onAdmissionNotification: async () => {
         throw new Error('audit log down')
       },
     })

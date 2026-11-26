@@ -50,6 +50,7 @@ function fakeCommand(
         addCommand() {},
       })
     },
+    async registerMiddleware() {},
     async defineEnvValidations() {
       calls.envValidations++
     },

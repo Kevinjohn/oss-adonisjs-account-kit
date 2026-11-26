@@ -54,8 +54,7 @@ class InvalidConfigurationException extends RuntimeException {
 export const E_ACCOUNT_KIT_INVALID_CONFIGURATION = InvalidConfigurationException
 
 /**
- * The `authentication.canAccess` callback resolved to a value other than a boolean, or the
- * application's token guard returned no token, token identifier or bearer value to a managed
+ * The application's token guard returned no token, token identifier or bearer value to a managed
  * route. Clients get the generic `E_ACCOUNT_KIT_OPERATION_FAILED` 500 from the managed routes,
  * `accountErrorResponse` and `E_ACCOUNT_KIT.handle`. Managed routes log the error with the route
  * name through the request logger; on the application's own routes the AdonisJS exception handler
@@ -68,6 +67,32 @@ class AdapterContractException extends AccountKitException {
 
 /** @reexport */
 export const E_ACCOUNT_KIT_ADAPTER_CONTRACT = AdapterContractException
+
+/** The application's access callback returned a value other than a boolean. */
+class InvalidAccountAccessDecisionException extends RuntimeException {
+  static code = 'E_ACCOUNT_KIT_INVALID_ACCESS_DECISION'
+  static status = 500
+  static message = 'account_kit: canAccess must resolve to a boolean'
+  declare code: string
+
+  /** The raw error's translation key. */
+  get identifier(): string {
+    return `errors.${this.code}`
+  }
+
+  constructor(options?: ErrorOptions) {
+    super(InvalidAccountAccessDecisionException.message, options)
+  }
+
+  /** Keeps developer callback details out of the public response. */
+  async handle(error: this, ctx: HttpContext): Promise<void> {
+    const { renderAccountKitError } = await import('./http/responses.js')
+    await renderAccountKitError(ctx, error)
+  }
+}
+
+/** @reexport */
+export const E_ACCOUNT_KIT_INVALID_ACCESS_DECISION = InvalidAccountAccessDecisionException
 
 /**
  * Input failed a package rule, for example a password outside the policy or a malformed email.

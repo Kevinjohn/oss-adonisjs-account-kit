@@ -53,7 +53,7 @@ export async function matchInvitation(
 
 /** One `invitation.accepted` lifecycle effect per accepted invitation, in acceptance order. */
 export function emitInvitationAccepted(
-  config: Pick<ResolvedConfig, 'onLifecycleEvent'>,
+  config: Pick<ResolvedConfig, 'onLifecycleNotification'>,
   invitationIds: number[],
   userId: UserId,
   operationId: string

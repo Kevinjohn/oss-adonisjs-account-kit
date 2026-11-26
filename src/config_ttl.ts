@@ -12,6 +12,10 @@ export function computeConfiguredExpiry(
     return expiresAt(now, ttl)
   } catch (error) {
     if (!(error instanceof E_ACCOUNT_KIT_INVALID_INPUT)) throw error
-    throw new E_ACCOUNT_KIT_INVALID_CONFIGURATION(field, error.message, { cause: error })
+    throw new E_ACCOUNT_KIT_INVALID_CONFIGURATION(
+      field,
+      `account_kit: ${field}: ${error.message}`,
+      { cause: error }
+    )
   }
 }

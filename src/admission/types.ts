@@ -1,6 +1,8 @@
 // Public types of the admission module.
-import type { AccountUser, AuthorizationContext, UserId } from '../types.ts'
-
+import type { Database } from '@adonisjs/lucid/database'
+import type { AccountKit } from '../account_kit.ts'
+import type { ResolvedConfig } from '../types_configuration.ts'
+import type { AccountUser, AuthorizationContext, UserId } from '../types_foundation.ts'
 import type { AdmissionApprovalStatus } from '../admission_decision.ts'
 
 export type { AdmissionApprovalStatus, AdmissionDecision } from '../admission_decision.ts'
@@ -21,8 +23,8 @@ export interface AdmissionDomainConfig {
   includeSubdomains?: boolean
 }
 
-/** An admission event passed to `onAdmissionEvent` after commit. Carries ids only. */
-export type AdmissionEvent =
+/** An admission event passed to `onAdmissionNotification` after commit. Carries ids only. */
+export type AdmissionNotification =
   | { type: 'admission.requested'; userId: UserId; operationId: string }
   | {
       type: 'admission.approved' | 'admission.rejected' | 'admission.revoked'
@@ -50,22 +52,22 @@ export interface AdmissionConfig {
   invitation?: { required: true }
   /**
    * Admit only people an approver, or an operator command, approved. `authorize` is required here
-   * or through `AdmissionCallbackRegistry`.
+   * or through `AdmissionCallbackConfiguration`.
    */
   approval?: { required: true; authorize?: AdmissionAuthorizeCallbacks }
   /** Receives admission events after commit, for audit logs and notifications. */
-  onAdmissionEvent?: (event: AdmissionEvent) => Promise<void>
+  onAdmissionNotification?: (event: AdmissionNotification) => Promise<void>
 }
 
 /**
- * Callbacks an application provider registers through `AdmissionCallbackRegistry` instead of
+ * Callbacks an application provider registers through `AdmissionCallbackConfiguration` instead of
  * passing them to `defineConfig`. Each field may come from one place only.
  */
 export interface AdmissionCallbacks {
   /** `AdmissionConfig.approval.authorize`. */
   approvalAuthorize?: AdmissionAuthorizeCallbacks
-  /** `AdmissionConfig.onAdmissionEvent`. */
-  onAdmissionEvent?: (event: AdmissionEvent) => Promise<void>
+  /** `AdmissionConfig.onAdmissionNotification`. */
+  onAdmissionNotification?: (event: AdmissionNotification) => Promise<void>
 }
 
 /** The admission configuration after `defineConfig` validated it. */
@@ -73,7 +75,8 @@ export interface ResolvedAdmissionConfig {
   domain: { allowed: readonly string[]; includeSubdomains: boolean } | null
   invitation: boolean
   approval: { authorize: AdmissionAuthorizeCallbacks } | null
-  onAdmissionEvent?: (event: AdmissionEvent) => Promise<void>
+  /** Receives committed admission notifications. */
+  onAdmissionNotification?: (event: AdmissionNotification) => Promise<void>
 }
 
 /** Invitation evidence recorded for an account. */
@@ -104,4 +107,23 @@ export interface AdmissionRecord {
   } | null
   createdAt: string
   updatedAt: string
+}
+
+/** The dependencies the admission service is built from; the provider supplies them. */
+export interface AdmissionDependencies {
+  kit: AccountKit
+  db: Database
+  /** The resolved `config/account_kit.ts`. */
+  accountConfig: ResolvedConfig
+  /** The resolved `config/admission.ts`. */
+  config: ResolvedAdmissionConfig
+}
+
+/** What the admission operations read: everything but the account service. */
+export type AdmissionContext = Omit<AdmissionDependencies, 'kit'>
+
+/** One page of admission records and the cursor for the next, or null. */
+export interface AdmissionPage {
+  items: AdmissionRecord[]
+  nextCursor: string | null
 }

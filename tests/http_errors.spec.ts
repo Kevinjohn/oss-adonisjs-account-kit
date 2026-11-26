@@ -1,9 +1,11 @@
+import { RuntimeException } from '@adonisjs/core/exceptions'
 import { readFile } from 'node:fs/promises'
 import { test } from '@japa/runner'
 import * as errors from '../src/errors.ts'
 import {
   E_ACCOUNT_KIT,
   E_ACCOUNT_KIT_ADAPTER_CONTRACT,
+  E_ACCOUNT_KIT_INVALID_ACCESS_DECISION,
   E_ACCOUNT_KIT_AUTHORIZATION,
   E_ACCOUNT_KIT_DELIVERY,
   E_ACCOUNT_KIT_EMAIL_ALREADY_REGISTERED,
@@ -14,7 +16,7 @@ import {
   E_ACCOUNT_KIT_REGISTRATION_EMAIL_ALREADY_REGISTERED,
   E_ACCOUNT_KIT_THROTTLED,
 } from '../src/errors.ts'
-import { accountErrorResponse, type AccountErrorResponse } from '../src/error_response.ts'
+import { accountErrorResponse, type AccountErrorResponse } from '../index.ts'
 import { mapManagedErrorResponse } from '../src/http/responses.ts'
 
 const operationFailed = 'E_ACCOUNT_KIT_OPERATION_FAILED'
@@ -26,6 +28,63 @@ function messageOf(response: AccountErrorResponse): string {
 }
 
 test.group('account HTTP error mapping', () => {
+  test('masks a malformed access decision without masking unrelated runtime failures', ({
+    assert,
+  }) => {
+    const error = new E_ACCOUNT_KIT_INVALID_ACCESS_DECISION({
+      cause: new Error('private callback detail'),
+    })
+    assert.instanceOf(error, RuntimeException)
+    assert.equal(error.code, 'E_ACCOUNT_KIT_INVALID_ACCESS_DECISION')
+    assert.equal(error.identifier, 'errors.E_ACCOUNT_KIT_INVALID_ACCESS_DECISION')
+    for (const accept of ['application/json', 'application/vnd.api+json']) {
+      const mapped = accountErrorResponse(error, { accept })!
+      assert.equal(mapped.status, 500)
+      assert.equal(mapped.body.errors[0].code, operationFailed)
+      assert.equal(messageOf(mapped), 'Account operation failed.')
+      assert.notInclude(JSON.stringify(mapped), 'private callback detail')
+      assert.notInclude(JSON.stringify(mapped), error.code)
+    }
+    assert.isNull(accountErrorResponse(new RuntimeException('unrelated fault')))
+    assert.instanceOf(new E_ACCOUNT_KIT_ADAPTER_CONTRACT('invalid guard'), E_ACCOUNT_KIT)
+  })
+
+  test('infers plain JSON when error response options are omitted or undefined', ({
+    expectTypeOf,
+  }) => {
+    const error = new E_ACCOUNT_KIT_AUTHORIZATION()
+    const defaultResponse = accountErrorResponse(error)
+    const explicitUndefinedResponse = accountErrorResponse(error, undefined)
+
+    expectTypeOf<null>().toExtend<typeof defaultResponse>()
+    expectTypeOf(explicitUndefinedResponse).toEqualTypeOf(defaultResponse)
+
+    type PlainResponse = NonNullable<typeof defaultResponse>
+    type PlainEntry = PlainResponse['body']['errors'][number]
+    expectTypeOf<PlainResponse['contentType']>().toEqualTypeOf<'application/json'>()
+    expectTypeOf<PlainEntry['message']>().toEqualTypeOf<string>()
+    expectTypeOf<PlainEntry>().not.toHaveProperty('title')
+  })
+
+  test('infers the negotiated JSON and JSON:API error entry union with options', ({
+    expectTypeOf,
+  }) => {
+    expectTypeOf<
+      ReturnType<typeof accountErrorResponse>
+    >().toEqualTypeOf<AccountErrorResponse | null>()
+
+    for (const accept of [undefined, 'application/vnd.api+json']) {
+      const response = accountErrorResponse(new E_ACCOUNT_KIT_AUTHORIZATION(), { accept })
+      expectTypeOf(response).toEqualTypeOf<AccountErrorResponse | null>()
+
+      const entry = response!.body.errors[0]
+      expectTypeOf(entry).not.toHaveProperty('message')
+      expectTypeOf(entry).not.toHaveProperty('title')
+      if ('message' in entry) expectTypeOf(entry.message).toEqualTypeOf<string>()
+      if ('title' in entry) expectTypeOf(entry.title).toEqualTypeOf<string>()
+    }
+  })
+
   test('maps status and stable error code while keeping causes private', ({ assert }) => {
     const cause = new Error('database password and query details')
     const error = new E_ACCOUNT_KIT_DELIVERY('secret provider response', { cause })

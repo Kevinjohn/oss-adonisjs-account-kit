@@ -23,8 +23,8 @@ export const authenticationHandlers = {
     if (methodsEnabled) await rememberManagedMethod(context, 'password', options.extensions?.social)
     return response.ok(await renderIssuedAccountBody({ options, representIssued }, result))
   },
-  'account.logout': async ({ context, kit, options, accountInput }) => {
-    await kit.authentication.logout(
+  'account.credential.revoke': async ({ context, kit, options, accountInput }) => {
+    await kit.authentication.revokeCredential(
       options.guard.forRequest(context),
       await options.guard.logoutCredential?.(context),
       accountInput

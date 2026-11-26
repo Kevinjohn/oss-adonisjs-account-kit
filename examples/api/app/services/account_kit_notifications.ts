@@ -1,4 +1,4 @@
-import type { LifecycleEvent } from '@kevinjohn/adonisjs-account-kit'
+import type { LifecycleNotification } from '@kevinjohn/adonisjs-account-kit'
 
 export type Notice = { kind: string; recipient: string; value: string }
 
@@ -27,7 +27,7 @@ const noticeKinds: Record<string, string> = {
 
 export const notifications = {
   events: [] as Notice[],
-  lifecycleEvents: [] as LifecycleEvent[],
+  lifecycleEvents: [] as LifecycleNotification[],
   ...failureSwitches,
   deliveredOperationIds: new Set<string>(),
   failIfSwitchedOn(kind: string) {
@@ -50,7 +50,7 @@ export const notifications = {
       value: operationId,
     })
   },
-  async recordLifecycle(event: LifecycleEvent) {
+  async recordLifecycle(event: LifecycleNotification) {
     if (this.failLifecycle) throw new Error('temporary lifecycle observer outage')
     this.lifecycleEvents.push(event)
   },

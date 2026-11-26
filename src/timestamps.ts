@@ -1,14 +1,9 @@
 import { RuntimeException } from '@adonisjs/core/exceptions'
 // Converts timestamps between Luxon and the values SQL drivers accept and return.
 import { DateTime } from 'luxon'
+import type { DialectSource } from './types_timestamps.ts'
 
-/** Anything that can say which SQL dialect it talks to: a query client, transaction or database. */
-export type DialectSource =
-  | { dialect: { name: string } }
-  | {
-      /** The connection whose dialect is read, as on a Lucid database. */
-      connection(): { dialect: { name: string } }
-    }
+export type { DialectSource } from './types_timestamps.ts'
 
 function getDatabaseDialect(client: DialectSource): string {
   return 'dialect' in client ? client.dialect.name : client.connection().dialect.name

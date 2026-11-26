@@ -1,6 +1,6 @@
 import { getCommittedResult } from './transaction.ts'
 import { E_ACCOUNT_KIT_DELIVERY, E_ACCOUNT_KIT_POST_COMMIT } from './errors.ts'
-import type { LifecycleEvent, ResolvedConfig } from './types.ts'
+import type { LifecycleNotification, ResolvedConfig } from './types.ts'
 
 export interface PostCommitEffect {
   kind: 'delivery' | 'observer'
@@ -38,10 +38,10 @@ const observer = (run: PostCommitEffect['run']): PostCommitEffect => ({ kind: 'o
 
 /** Report a lifecycle event after commit; a failing hook surfaces as E_ACCOUNT_KIT_POST_COMMIT. */
 export function createLifecycleEffect(
-  config: Pick<ResolvedConfig, 'onLifecycleEvent'>,
-  event: LifecycleEvent
+  config: Pick<ResolvedConfig, 'onLifecycleNotification'>,
+  event: LifecycleNotification
 ): PostCommitEffect {
-  return observer(() => config.onLifecycleEvent?.(event))
+  return observer(() => config.onLifecycleNotification?.(event))
 }
 
 /** Await a package transaction; a committed fault still yields its result. */

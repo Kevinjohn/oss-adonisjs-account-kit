@@ -84,15 +84,45 @@ export function createLucidAdapter<Model extends LucidModelRow>(
   loadModel: LucidModelLoader<Model>,
   options: LucidAdapterOptions<Model> = {}
 ): LucidUsersAdapter {
-  let modelPromise: Promise<AccountModel> | undefined
-  const loadUserModel = async (): Promise<AccountModel> => {
-    modelPromise ??= loadModel().then((User) => User as unknown as AccountModel)
-    const User = await modelPromise
-    readUserModelMetadata(User)
+  return new LucidUsersAdapterInstance(loadModel, options)
+}
+
+class LucidUsersAdapterInstance<Model extends LucidModelRow> implements LucidUsersAdapter {
+  #loadModel: LucidModelLoader<Model>
+  #options: LucidAdapterOptions<Model>
+  #modelPromise: Promise<AccountModel> | undefined
+
+  declare hashPassword?: LucidUsersAdapter['hashPassword']
+  declare setPasswordHash?: LucidUsersAdapter['setPasswordHash']
+
+  constructor(loadModel: LucidModelLoader<Model>, options: LucidAdapterOptions<Model>) {
+    this.#loadModel = loadModel
+    this.#options = options
+    const hashPassword =
+      options.hashPassword ??
+      (options.verifyPassword
+        ? undefined
+        : async (password: string): Promise<string> => {
+            const { default: hash } = await import('@adonisjs/core/services/hash')
+            return hash.make(password)
+          })
+    if (hashPassword) {
+      this.hashPassword = hashPassword
+      this.setPasswordHash = async (id, passwordHash, trx) => {
+        await this.#writeHash(id, passwordHash, trx)
+      }
+    }
+  }
+
+  async #loadUserModel(): Promise<AccountModel> {
+    const loadModel = this.#loadModel
+    this.#modelPromise ??= loadModel().then((User) => User as unknown as AccountModel)
+    const User = await this.#modelPromise
+    this.#readUserModelMetadata(User)
     return User
   }
 
-  const readUserModelMetadata = (User: AccountModel): UsersAdapterMetadata => {
+  #readUserModelMetadata(User: AccountModel): UsersAdapterMetadata {
     User.boot()
 
     if (User.connection) {
@@ -132,23 +162,17 @@ export function createLucidAdapter<Model extends LucidModelRow>(
     return {
       table: User.table,
       primaryKey: 'id',
-      ...(options.emailConstraint ? { emailConstraint: options.emailConstraint } : {}),
+      ...(this.#options.emailConstraint ? { emailConstraint: this.#options.emailConstraint } : {}),
     }
   }
 
-  const resolveMetadata = async (): Promise<UsersAdapterMetadata> =>
-    readUserModelMetadata(await loadUserModel())
+  async #getByColumn(builder: Query, column: string, value: unknown) {
+    return builder.where(column, value).first()
+  }
 
-  const getByColumn = async (builder: Query, column: string, value: unknown) =>
-    builder.where(column, value).first()
-
-  const updateUser = async (
-    id: UserId,
-    trx: Trx,
-    change: (user: LucidModelRow) => void
-  ): Promise<void> => {
-    const User = await loadUserModel()
-    const user = await getByColumn(query(User, trx), 'id', id)
+  async #updateUser(id: UserId, trx: Trx, change: (user: LucidModelRow) => void): Promise<void> {
+    const User = await this.#loadUserModel()
+    const user = await this.#getByColumn(query(User, trx), 'id', id)
     if (!user) return
     change(user)
     user.useTransaction(trx)
@@ -156,8 +180,8 @@ export function createLucidAdapter<Model extends LucidModelRow>(
   }
 
   // A ready hash is written with a query, not the model, so the model's hashing hook never sees it.
-  const writeHash = async (id: UserId, passwordHash: string, trx: Trx): Promise<void> => {
-    const User = await loadUserModel()
+  async #writeHash(id: UserId, passwordHash: string, trx: Trx): Promise<void> {
+    const User = await this.#loadUserModel()
     const update = (
       User.query as unknown as (options: { client: Trx }) => {
         where(column: string, value: unknown): { update(values: object): Promise<unknown> }
@@ -166,161 +190,143 @@ export function createLucidAdapter<Model extends LucidModelRow>(
     await update.where('id', id).update({ password: passwordHash })
   }
 
-  const hashPassword =
-    options.hashPassword ??
-    (options.verifyPassword
-      ? undefined
-      : async (password: string): Promise<string> => {
-          const { default: hash } = await import('@adonisjs/core/services/hash')
-          return hash.make(password)
-        })
+  resolveMetadata: LucidUsersAdapter['resolveMetadata'] = async () => {
+    return this.#readUserModelMetadata(await this.#loadUserModel())
+  }
 
-  const adapter: LucidUsersAdapter = {
-    async resolveMetadata() {
-      return resolveMetadata()
-    },
+  findByEmail: LucidUsersAdapter['findByEmail'] = async (email, trx) => {
+    const user = await this.#getByColumn(
+      query(await this.#loadUserModel(), trx),
+      'email',
+      normalizeEmail(email)
+    )
+    return user ? toAccountUser(user) : null
+  }
 
-    async findByEmail(email, trx) {
-      const user = await getByColumn(
-        query(await loadUserModel(), trx),
-        'email',
-        normalizeEmail(email)
-      )
-      return user ? toAccountUser(user) : null
-    },
+  findById: LucidUsersAdapter['findById'] = async (id, trx) => {
+    const user = await this.#getByColumn(query(await this.#loadUserModel(), trx), 'id', id)
+    return user ? toAccountUser(user) : null
+  }
 
-    async findById(id, trx) {
-      const user = await getByColumn(query(await loadUserModel(), trx), 'id', id)
-      return user ? toAccountUser(user) : null
-    },
+  listVisibleIds: NonNullable<LucidUsersAdapter['listVisibleIds']> = async (after, limit) => {
+    const listing = query(await this.#loadUserModel())
+    if (after !== undefined) listing.where('id', '>', after)
+    const users = await listing.select('id').orderBy('id', 'asc').limit(limit).exec()
+    return users.map(({ id }) => id)
+  }
 
-    async listVisibleIds(after, limit) {
-      const listing = query(await loadUserModel())
-      if (after !== undefined) listing.where('id', '>', after)
-      const users = await listing.select('id').orderBy('id', 'asc').limit(limit).exec()
-      return users.map(({ id }) => id)
-    },
+  create: LucidUsersAdapter['create'] = async (attrs, trx) => {
+    const User = await this.#loadUserModel()
+    const user = new User() as unknown as LucidModelRow
+    const before = {
+      id: user.id,
+      email: user.email,
+      unverifiedEmail: user.unverifiedEmail,
+      password: user.password,
+      emailVerifiedAt: user.emailVerifiedAt,
+      role: (user as unknown as Record<string, unknown>).role,
+      credentialsChangedAt: (user as unknown as Record<string, unknown>).credentialsChangedAt,
+    }
 
-    async create(attrs, trx) {
-      const User = await loadUserModel()
-      const user = new User() as unknown as LucidModelRow
-      const before = {
-        id: user.id,
-        email: user.email,
-        unverifiedEmail: user.unverifiedEmail,
-        password: user.password,
-        emailVerifiedAt: user.emailVerifiedAt,
-        role: (user as unknown as Record<string, unknown>).role,
-        credentialsChangedAt: (user as unknown as Record<string, unknown>).credentialsChangedAt,
-      }
-
-      if (attrs.registrationData !== undefined) {
-        if (!options.mapRegistrationData) {
-          throw new InvalidArgumentsException(
-            'account_kit: registrationData requires mapRegistrationData'
-          )
-        }
-        await options.mapRegistrationData(attrs.registrationData, user as Model)
-        assertSafeRegistrationMapping(user, before)
-      }
-
-      user.email = normalizeEmail(attrs.email)
-      user.unverifiedEmail =
-        attrs.unverifiedEmail === null ? null : normalizeEmail(attrs.unverifiedEmail)
-      user.password = attrs.passwordHash === undefined ? attrs.password : null
-      user.emailVerifiedAt = null
-      user.useTransaction(trx)
-      await user.save()
-      if (attrs.passwordHash !== undefined) {
-        await writeHash(user.id, attrs.passwordHash, trx)
-        user.password = attrs.passwordHash
-      }
-      return toAccountUser(user)
-    },
-
-    async setPassword(id, password, trx) {
-      await updateUser(id, trx, (user) => {
-        user.password = password
-      })
-    },
-
-    ...(hashPassword
-      ? {
-          hashPassword,
-          async setPasswordHash(id: UserId, passwordHash: string, trx: Trx) {
-            await writeHash(id, passwordHash, trx)
-          },
-        }
-      : {}),
-
-    async setEmail(id, email, trx) {
-      await updateUser(id, trx, (user) => {
-        user.email = normalizeEmail(email)
-      })
-    },
-
-    async setUnverifiedEmail(id, email, trx) {
-      await updateUser(id, trx, (user) => {
-        user.unverifiedEmail = email === null ? null : normalizeEmail(email)
-      })
-    },
-
-    async updateRegistrationData(id, data, trx) {
-      if (!options.mapRegistrationData)
+    if (attrs.registrationData !== undefined) {
+      if (!this.#options.mapRegistrationData) {
         throw new InvalidArgumentsException(
           'account_kit: registrationData requires mapRegistrationData'
         )
-      const User = await loadUserModel()
-      const user = await getByColumn(query(User, trx), 'id', id)
-      if (!user) return
-      const before = {
-        id: user.id,
-        email: user.email,
-        unverifiedEmail: user.unverifiedEmail,
-        password: user.password,
-        emailVerifiedAt: user.emailVerifiedAt,
-        role: (user as unknown as Record<string, unknown>).role,
-        credentialsChangedAt: (user as unknown as Record<string, unknown>).credentialsChangedAt,
       }
-      await options.mapRegistrationData(data, user as Model)
+      await this.#options.mapRegistrationData(attrs.registrationData, user as Model)
       assertSafeRegistrationMapping(user, before)
-      user.useTransaction(trx)
-      await user.save()
-    },
+    }
 
-    async markEmailVerified(id, at, trx) {
-      await updateUser(id, trx, (user) => {
-        user.unverifiedEmail = null
-        // Lucid writes MySQL and SQLite timestamps as wall time without an offset. mysql2 with the
-        // required `timezone: 'Z'` reads MySQL back as UTC; Lucid reads SQLite back in the
-        // process zone, so SQLite gets local wall time.
-        user.emailVerifiedAt =
-          trx.dialect.name === 'mysql'
-            ? at.toUTC()
-            : ['better-sqlite3', 'sqlite3'].includes(trx.dialect.name)
-              ? at.toLocal()
-              : at
-      })
-    },
-
-    async verifyPassword(id, password, trx) {
-      const user = await getByColumn(query(await loadUserModel(), trx), 'id', id)
-      if (typeof user?.password !== 'string') return false
-      if (options.verifyPassword) return options.verifyPassword(user.password, password)
-      const { default: hash } = await import('@adonisjs/core/services/hash')
-      return hash.verify(user.password, password)
-    },
-
-    async delete(id, trx) {
-      const user = await getByColumn(query(await loadUserModel(), trx), 'id', id)
-      if (!user) return
-      user.useTransaction(trx)
-      if (typeof user.forceDelete === 'function') await user.forceDelete()
-      else await user.delete()
-    },
+    user.email = normalizeEmail(attrs.email)
+    user.unverifiedEmail =
+      attrs.unverifiedEmail === null ? null : normalizeEmail(attrs.unverifiedEmail)
+    user.password = attrs.passwordHash === undefined ? attrs.password : null
+    user.emailVerifiedAt = null
+    user.useTransaction(trx)
+    await user.save()
+    if (attrs.passwordHash !== undefined) {
+      await this.#writeHash(user.id, attrs.passwordHash, trx)
+      user.password = attrs.passwordHash
+    }
+    return toAccountUser(user)
   }
 
-  return adapter
+  setPassword: LucidUsersAdapter['setPassword'] = async (id, password, trx) => {
+    await this.#updateUser(id, trx, (user) => {
+      user.password = password
+    })
+  }
+
+  setEmail: LucidUsersAdapter['setEmail'] = async (id, email, trx) => {
+    await this.#updateUser(id, trx, (user) => {
+      user.email = normalizeEmail(email)
+    })
+  }
+
+  setUnverifiedEmail: LucidUsersAdapter['setUnverifiedEmail'] = async (id, email, trx) => {
+    await this.#updateUser(id, trx, (user) => {
+      user.unverifiedEmail = email === null ? null : normalizeEmail(email)
+    })
+  }
+
+  updateRegistrationData: NonNullable<LucidUsersAdapter['updateRegistrationData']> = async (
+    id,
+    data,
+    trx
+  ) => {
+    if (!this.#options.mapRegistrationData)
+      throw new InvalidArgumentsException(
+        'account_kit: registrationData requires mapRegistrationData'
+      )
+    const User = await this.#loadUserModel()
+    const user = await this.#getByColumn(query(User, trx), 'id', id)
+    if (!user) return
+    const before = {
+      id: user.id,
+      email: user.email,
+      unverifiedEmail: user.unverifiedEmail,
+      password: user.password,
+      emailVerifiedAt: user.emailVerifiedAt,
+      role: (user as unknown as Record<string, unknown>).role,
+      credentialsChangedAt: (user as unknown as Record<string, unknown>).credentialsChangedAt,
+    }
+    await this.#options.mapRegistrationData(data, user as Model)
+    assertSafeRegistrationMapping(user, before)
+    user.useTransaction(trx)
+    await user.save()
+  }
+
+  markEmailVerified: LucidUsersAdapter['markEmailVerified'] = async (id, at, trx) => {
+    await this.#updateUser(id, trx, (user) => {
+      user.unverifiedEmail = null
+      // Lucid writes MySQL and SQLite timestamps as wall time without an offset. mysql2 with the
+      // required `timezone: 'Z'` reads MySQL back as UTC; Lucid reads SQLite back in the
+      // process zone, so SQLite gets local wall time.
+      user.emailVerifiedAt =
+        trx.dialect.name === 'mysql'
+          ? at.toUTC()
+          : ['better-sqlite3', 'sqlite3'].includes(trx.dialect.name)
+            ? at.toLocal()
+            : at
+    })
+  }
+
+  verifyPassword: LucidUsersAdapter['verifyPassword'] = async (id, password, trx) => {
+    const user = await this.#getByColumn(query(await this.#loadUserModel(), trx), 'id', id)
+    if (typeof user?.password !== 'string') return false
+    if (this.#options.verifyPassword) return this.#options.verifyPassword(user.password, password)
+    const { default: hash } = await import('@adonisjs/core/services/hash')
+    return hash.verify(user.password, password)
+  }
+
+  delete: NonNullable<LucidUsersAdapter['delete']> = async (id, trx) => {
+    const user = await this.#getByColumn(query(await this.#loadUserModel(), trx), 'id', id)
+    if (!user) return
+    user.useTransaction(trx)
+    if (typeof user.forceDelete === 'function') await user.forceDelete()
+    else await user.delete()
+  }
 }
 
 export type {

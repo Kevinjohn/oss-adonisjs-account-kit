@@ -3,7 +3,7 @@ import type { ManagedEndpointName } from './routes.ts'
 import type { ManagedHandler } from './managed_types.ts'
 import { requirePositiveId } from './positive_id.ts'
 import { buildAccountProjection } from '../account_projection.ts'
-import { sendInvalidProofResponse, sendPasswordPolicyErrorResponse } from './response_helpers.ts'
+import { sendInvalidProofResponse, sendPasswordRulesErrorResponse } from './response_helpers.ts'
 import {
   invitationAcceptValidator,
   invitationListValidator,
@@ -23,7 +23,7 @@ export const invitationHandlers = {
       ? await options.extensions.invitationAcceptance.validate(context)
       : await request.validateUsing(invitationAcceptValidator)
     if (!kit.managedHttp.passwordAllowed(input.password))
-      return sendPasswordPolicyErrorResponse(context, 'password')
+      return sendPasswordRulesErrorResponse(context, 'password')
     const user = await kit.invitations.accept({
       token: params.token,
       password: input.password,

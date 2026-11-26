@@ -140,7 +140,7 @@ test.group('invitations.send', (group) => {
     let calls = 0
     const { account } = service({
       notify: recorder.notify,
-      onLifecycleEvent: async (event) => {
+      onLifecycleNotification: async (event) => {
         events.push(event.type)
       },
       authorize: { ...allowAll, invite: async () => ++calls === 1 },
@@ -369,7 +369,7 @@ test.group('invitations.send', (group) => {
       makeConfig({
         users: makeUsersAdapter(kit.db, kit.hash),
         notify: recorder.notify,
-        onLifecycleEvent: async (event) => {
+        onLifecycleNotification: async (event) => {
           events.push(event.type)
         },
       })

@@ -358,74 +358,78 @@ test.group('managed transaction wrapper', (group) => {
     .skip(locksRows, 'SQLite serializes writers instead of locking rows')
     .timeout(10_000)
 
-  test('pool-one failed native rollback releases the reservation before a queued read and next write', async ({
-    assert,
-  }) => {
-    const customKit = await bootTestApp({ sqlitePoolMax: 1 })
-    const client = customKit.db.connection().getWriteClient().client
-    const native = (await client.acquireConnection()) as {
-      exec(sql: string): void
-      prepare(sql: string): unknown
-      inTransaction: boolean
-    }
-    const original = native.exec.bind(native)
-    const originalPrepare = native.prepare.bind(native)
-    const rollbackFault = new Error('native rollback failed')
-    // Knex rolls back through prepare(); account kit's cleanup then retries through exec().
-    native.exec = (sql) => {
-      if (/^rollback/i.test(sql)) throw rollbackFault
-      original(sql)
-    }
-    native.prepare = (sql) => {
-      if (/^rollback/i.test(sql)) throw rollbackFault
-      return originalPrepare(sql)
-    }
-    await client.releaseConnection(native)
-    let entered!: () => void
-    const started = new Promise<void>((resolve) => {
-      entered = resolve
-    })
-    let resume!: () => void
-    const held = new Promise<void>((resolve) => {
-      resume = resolve
-    })
-    try {
-      await resetSchema(customKit)
-      const writing = transaction(customKit.db, async () => {
-        entered()
-        await held
-        throw new Error('work failed')
+  for (const primary of [new Error('work failed'), undefined]) {
+    test(`pool-one failed rollback preserves ${primary === undefined ? 'undefined' : 'an error'} before cleanup failures`, async ({
+      assert,
+    }) => {
+      const customKit = await bootTestApp({ sqlitePoolMax: 1 })
+      const client = customKit.db.connection().getWriteClient().client
+      const native = (await client.acquireConnection()) as {
+        exec(sql: string): void
+        prepare(sql: string): unknown
+        inTransaction: boolean
+      }
+      const original = native.exec.bind(native)
+      const originalPrepare = native.prepare.bind(native)
+      const rollbackFault = new Error('native rollback failed')
+      // Knex rolls back through prepare(); account kit's cleanup then retries through exec().
+      native.exec = (sql) => {
+        if (/^rollback/i.test(sql)) throw rollbackFault
+        original(sql)
+      }
+      native.prepare = (sql) => {
+        if (/^rollback/i.test(sql)) throw rollbackFault
+        return originalPrepare(sql)
+      }
+      await client.releaseConnection(native)
+      let entered!: () => void
+      const started = new Promise<void>((resolve) => {
+        entered = resolve
       })
-      await started
-      const reading = customKit.db.from('users').first()
-      resume()
-      const failure = await writing.then(
-        () => null,
-        (error: unknown) => error
-      )
-      assert.instanceOf(failure, AggregateError)
-      const reasons = (failure as AggregateError).errors.map((error: Error) => error.message)
-      assert.equal(reasons[0], 'work failed')
-      assert.isTrue(reasons.some((reason: string) => reason.endsWith('native rollback failed')))
-      assert.isNull(await reading)
-      await customKit.db
-        .table('users')
-        .insert({ email: 'bruce@example.test', created_at: dbTime(kit) })
-      assert.isNotNull(
-        await customKit.db.from('users').where('email', 'bruce@example.test').first()
-      )
-      // The connection left inside its transaction was discarded, not handed back to the pool.
-      const next = await client.acquireConnection()
-      await client.releaseConnection(next)
-      assert.notStrictEqual(next, native)
-    } finally {
-      native.exec = original
-      native.prepare = originalPrepare
-      await customKit.close()
-    }
-  })
-    .skip(locksRows, 'SQLite serializes writers instead of locking rows')
-    .timeout(5000)
+      let resume!: () => void
+      const held = new Promise<void>((resolve) => {
+        resume = resolve
+      })
+      try {
+        await resetSchema(customKit)
+        const writing = transaction(customKit.db, async () => {
+          entered()
+          await held
+          throw primary
+        })
+        await started
+        const reading = customKit.db.from('users').first()
+        resume()
+        const failure = await writing.then(
+          () => null,
+          (error: unknown) => error
+        )
+        assert.instanceOf(failure, AggregateError)
+        assert.strictEqual((failure as AggregateError).errors[0], primary)
+        const reasons = (failure as AggregateError).errors
+          .slice(1)
+          .map((error: Error) => error.message)
+        assert.isTrue(reasons.some((reason: string) => reason.endsWith('native rollback failed')))
+        assert.isNull(await reading)
+        await customKit.db
+          .table('users')
+          .insert({ email: 'bruce@example.test', created_at: dbTime(kit) })
+        assert.isNotNull(
+          await customKit.db.from('users').where('email', 'bruce@example.test').first()
+        )
+        // The connection left inside its transaction was discarded, not handed back to the pool.
+        const next = await client.acquireConnection()
+        await client.releaseConnection(next)
+        assert.notStrictEqual(next, native)
+      } finally {
+        native.exec = original
+        native.prepare = originalPrepare
+        await customKit.close()
+      }
+    })
+      .skip(locksRows, 'SQLite serializes writers instead of locking rows')
+      .timeout(5000)
+  }
 
   test('pool-one committed timeout restoration fault keeps outcome known and drains queued work', async ({
     assert,

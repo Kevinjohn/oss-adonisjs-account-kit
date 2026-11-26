@@ -141,11 +141,11 @@ function createCommittedFailure<T>(
   return error
 }
 
-function combineFailures(primary: unknown, cleanup: unknown[]): unknown {
+function combineFailures(primary: unknown, cleanup: unknown[], failed = true): unknown {
   if (cleanup.length === 0) return primary
-  return primary === undefined && cleanup.length === 1
+  return !failed && cleanup.length === 1
     ? cleanup[0]
-    : new AggregateError(primary === undefined ? cleanup : [primary, ...cleanup])
+    : new AggregateError(failed ? [primary, ...cleanup] : cleanup)
 }
 
 /**
@@ -275,7 +275,7 @@ async function runSqliteTransactionAttempt<T>(
       cleanup.push(error)
     }
   }
-  if (failed || cleanup.length > 0) throw combineFailures(failure, cleanup)
+  if (failed || cleanup.length > 0) throw combineFailures(failure, cleanup, failed)
   return result as T
 }
 

@@ -102,7 +102,7 @@ export default defineConfig({
    * sessions end on their own. Nothing else holds credentials in this app.
    */
   onCredentialsChangedTransaction: async () => {},
-  onLifecycleEvent: async (event) => {
+  onLifecycleNotification: async (event) => {
     await lifecycleOverrides.run?.(event)
   },
 })

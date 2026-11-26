@@ -8,4 +8,18 @@ test.group('Deferred SQL users adapter', () => {
     const sql = createSqlUsersAdapter({ table: 'users' })
     assert.sameMembers(Object.keys(deferred), Object.keys(sql))
   })
+
+  test('resolves the table lazily and reuses it through extracted methods', async ({ assert }) => {
+    let resolutions = 0
+    const { resolveMetadata } = createDeferredSqlUsersAdapter(() => {
+      resolutions++
+      return 'members'
+    }, {})
+    assert.equal(resolutions, 0)
+    const first = await resolveMetadata()
+    const second = await resolveMetadata()
+    assert.equal(first.table, 'members')
+    assert.equal(second.table, 'members')
+    assert.equal(resolutions, 1)
+  })
 })

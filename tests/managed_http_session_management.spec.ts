@@ -233,7 +233,7 @@ test.group('managed sign-in management routes', (group) => {
   }) => {
     await insertUser(kit)
     const { call, signIn, terminated } = mount('session', {
-      onLifecycleEvent: async (event) => {
+      onLifecycleNotification: async (event) => {
         if (event.type.startsWith('sessions.')) throw new Error('observer down')
       },
     })
@@ -259,7 +259,7 @@ test.group('managed sign-in management routes', (group) => {
   test('a failing observer after revoking another sign-in keeps the caller', async ({ assert }) => {
     await insertUser(kit)
     const { call, signIn, terminated } = mount('session', {
-      onLifecycleEvent: async (event) => {
+      onLifecycleNotification: async (event) => {
         if (event.type === 'sessions.revoked') throw new Error('observer down')
       },
     })

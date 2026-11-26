@@ -1,6 +1,6 @@
 import { test } from '@japa/runner'
 import { createLucidAdapter } from '../src/adapters/lucid.ts'
-import SoftDeletingUser from './fixtures/soft_deleting_user.ts'
+import SoftDeletingUser from './helpers/soft_deleting_user.ts'
 import { resolveConfig as defineConfig } from '../src/config.ts'
 import {
   E_ACCOUNT_KIT_CAPABILITY_DISABLED,
@@ -10,7 +10,7 @@ import {
   E_ACCOUNT_KIT_SOCIAL_PROOF_INVALID,
   E_ACCOUNT_KIT_THROTTLED,
 } from '../src/errors.ts'
-import type { AccountKitConfig, AccountUser, LifecycleEvent, Trx } from '../src/types.ts'
+import type { AccountKitConfig, AccountUser, LifecycleNotification, Trx } from '../src/types.ts'
 import { useTestApp } from './helpers/app.ts'
 import {
   accountKit,
@@ -32,7 +32,7 @@ const none = Object.fromEntries(userTables.map(([table]) => [table, 0]))
 
 test.group('account deletion', (group) => {
   const kit = useTestApp(group)
-  const events: LifecycleEvent[] = []
+  const events: LifecycleNotification[] = []
   group.each.setup(() => {
     events.length = 0
   })
@@ -40,7 +40,7 @@ test.group('account deletion', (group) => {
     makeService(kit, {
       enabled: ['accountDeletion', 'invitations'],
       authentication: { strategy: 'access_tokens', guard: 'api' },
-      onLifecycleEvent: async (event) => void events.push(event),
+      onLifecycleNotification: async (event) => void events.push(event),
       ...overrides,
     })
   const remove = (account: ReturnType<typeof service>['account'], actorId: AccountUser['id']) =>
@@ -259,7 +259,7 @@ test.group('account deletion', (group) => {
   }) => {
     const user = await insertUser(kit)
     const { account, recorder } = service({
-      onLifecycleEvent: async () => {
+      onLifecycleNotification: async () => {
         throw new Error('observer down')
       },
     })
@@ -328,7 +328,7 @@ test.group('account deletion', (group) => {
 
 test.group('permanent account deletion with SoftDeletes', (group) => {
   const kit = useTestApp(group)
-  const events: LifecycleEvent[] = []
+  const events: LifecycleNotification[] = []
   group.setup(async () => {
     await kit.db.connection().schema.alterTable('users', (table) => {
       table.timestamp('deleted_at').nullable()
@@ -352,7 +352,7 @@ test.group('permanent account deletion with SoftDeletes', (group) => {
         verifyPassword: async (stored, password) => stored === `hashed:${password}`,
       }),
       accountDeletion: { invitations },
-      onLifecycleEvent: async (event) => void events.push(event),
+      onLifecycleNotification: async (event) => void events.push(event),
     })
 
   for (const invitations of ['revoke', 'keep'] as const) {

@@ -1,6 +1,6 @@
-import type { AccountErrorResponse } from './types_error_response.ts'
+import type { AccountErrorResponse, ManagedMessage } from './types_error_response.ts'
 import { HttpRequest } from '@adonisjs/core/http'
-import { E_ACCOUNT_KIT } from './errors.ts'
+import { E_ACCOUNT_KIT, E_ACCOUNT_KIT_INVALID_ACCESS_DECISION } from './errors.ts'
 import {
   buildPublicErrorHeaders,
   mapPublicErrorIdentity,
@@ -12,12 +12,6 @@ const JSON_API = 'application/vnd.api+json'
 
 /** The managed routes' error response; the same shape as the public {@link AccountErrorResponse}. */
 export type ManagedErrorResponse = AccountErrorResponse
-
-/**
- * Replaces the public wording of a managed response. Receives the stable code and the default
- * message; the status and code cannot change.
- */
-export type ManagedMessage = (code: string, defaultMessage: string) => string
 
 /**
  * The error media type the `Accept` header asks for, by the framework's own negotiation: a
@@ -45,7 +39,7 @@ export function negotiateRequest(
 }
 
 /** The error's own `field` name, such as `email` on a duplicate registration email. */
-function getOwnErrorField(error: InstanceType<typeof E_ACCOUNT_KIT>): string | undefined {
+function getOwnErrorField(error: object): string | undefined {
   if (!Object.hasOwn(error, 'field')) return undefined
   const field = (error as { field?: unknown }).field
   return typeof field === 'string' ? field : undefined
@@ -62,7 +56,8 @@ export function mapManagedErrorResponse(
     i18n?: AccountKitTranslator
   } = {}
 ): ManagedErrorResponse | null {
-  if (!(error instanceof E_ACCOUNT_KIT)) return null
+  if (!(error instanceof E_ACCOUNT_KIT || error instanceof E_ACCOUNT_KIT_INVALID_ACCESS_DECISION))
+    return null
   const identity = mapPublicErrorIdentity(error, { proof: options.proof })
   const translated =
     options.i18n?.t(`errors.${identity.code}`, {}, identity.message) ?? identity.message
@@ -158,4 +153,4 @@ export function accountErrorResponse(
   })
 }
 
-export type { AccountErrorResponse } from './types_error_response.ts'
+export type { AccountErrorResponse, ManagedMessage } from './types_error_response.ts'

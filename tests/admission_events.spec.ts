@@ -1,5 +1,5 @@
 import { test } from '@japa/runner'
-import type { AdmissionEvent } from '../src/admission/types.ts'
+import type { AdmissionNotification } from '../src/admission/types.ts'
 import { E_ACCOUNT_KIT_POST_COMMIT } from '../src/errors.ts'
 import { useAdmissionApp } from './helpers/admission_schema.ts'
 import { allRequirements, makeAdmission, writeAdmissionRow } from './helpers/admission.ts'
@@ -9,10 +9,10 @@ test.group('admission events', (group) => {
   const kit = useAdmissionApp(group)
 
   test('a request from an account with a decision emits nothing', async ({ assert }) => {
-    const events: AdmissionEvent[] = []
+    const events: AdmissionNotification[] = []
     const { admission } = makeAdmission(
       kit,
-      { ...allRequirements, onAdmissionEvent: async (event) => void events.push(event) },
+      { ...allRequirements, onAdmissionNotification: async (event) => void events.push(event) },
       { authentication: { strategy: 'session', guard: 'web' } }
     )
     for (const [email, approval] of [
@@ -28,12 +28,12 @@ test.group('admission events', (group) => {
   })
 
   test('carry ids only, a fresh operation id each, after commit', async ({ assert }) => {
-    const events: AdmissionEvent[] = []
+    const events: AdmissionNotification[] = []
     const { admission } = makeAdmission(
       kit,
       {
         ...allRequirements,
-        onAdmissionEvent: async (event) => {
+        onAdmissionNotification: async (event) => {
           // After commit: the change is visible outside the operation's transaction.
           const row = await kit.db.from('account_admissions').where('user_id', event.userId).first()
           assert.isNotNull(row)
@@ -66,7 +66,7 @@ test.group('admission events', (group) => {
       kit,
       {
         ...allRequirements,
-        onAdmissionEvent: async () => {
+        onAdmissionNotification: async () => {
           throw new Error('hook down')
         },
       },

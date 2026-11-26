@@ -259,6 +259,14 @@ export async function configure(command: Configure) {
     if (!registeredCommand) rcFile.addCommand('@kevinjohn/adonisjs-account-kit/commands')
   })
 
+  await codemods.registerMiddleware('server', [
+    {
+      name: 'accountKitProofHeaders',
+      path: '@kevinjohn/adonisjs-account-kit/middleware/proof_headers',
+      position: 'before',
+    },
+  ])
+
   // The generated config builds links from ACCOUNT_KIT_FRONTEND_URL, or APP_URL when it is unset. Declare them
   // in start/env.ts so a missing APP_URL fails at boot; defineEnvValidations leaves an existing
   // declaration unchanged.

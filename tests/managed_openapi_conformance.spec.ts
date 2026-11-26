@@ -145,7 +145,7 @@ test.group('managed responses conform to the OpenAPI document', (group) => {
           }),
         ],
         ['account.profile.show', await call('GET /api/v1/account/profile')],
-        ['account.logout', await call('POST /api/v1/account/logout')],
+        ['account.credential.revoke', await call('POST /api/v1/account/logout')],
       ]
       if (strategy === 'session') outputs.push(['auth.csrf', await call('GET /api/v1/auth/csrf')])
       assert.deepEqual(

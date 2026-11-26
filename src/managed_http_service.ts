@@ -3,7 +3,7 @@ import { InvalidArgumentsException, RuntimeException } from '@adonisjs/core/exce
 import { DateTime } from 'luxon'
 import { expiresAt } from './ttl.ts'
 import { E_ACCOUNT_KIT_AUTHORIZATION } from './errors.ts'
-import { isPasswordAllowed as matchesPasswordPolicy } from './password.ts'
+import { isPasswordAllowed as matchesPasswordRules } from './password.ts'
 import type { Throttler } from './throttle.ts'
 import type { ResolvedConfig } from './types.ts'
 
@@ -13,7 +13,7 @@ export function createManagedHttpService(deps: Dependencies) {
   const computeMagicLinkExpiry = (): number =>
     expiresAt(DateTime.utc(), deps.config.expiresIn.magicLink).toMillis()
   const isPasswordAllowed = (value: unknown): value is string =>
-    matchesPasswordPolicy(value, deps.config.passwordPolicy)
+    matchesPasswordRules(value, deps.config.passwordPolicy)
 
   return {
     /** Local retention deadline for acknowledged managed magic-link requests. */

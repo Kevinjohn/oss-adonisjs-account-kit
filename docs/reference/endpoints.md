@@ -30,12 +30,12 @@ Request and response schemas for the routes you mounted are in the generated
 
 ## `authentication`
 
-| Method | Path               | Name                   | Access  |
-| ------ | ------------------ | ---------------------- | ------- |
-| `GET`  | `/auth/csrf`       | `auth.csrf`            | public  |
-| `POST` | `/auth/login`      | `auth.login`           | public  |
-| `POST` | `/account/logout`  | `account.logout`       | limited |
-| `GET`  | `/account/profile` | `account.profile.show` | limited |
+| Method | Path               | Name                        | Access  |
+| ------ | ------------------ | --------------------------- | ------- |
+| `GET`  | `/auth/csrf`       | `auth.csrf`                 | public  |
+| `POST` | `/auth/login`      | `auth.login`                | public  |
+| `POST` | `/account/logout`  | `account.credential.revoke` | limited |
+| `GET`  | `/account/profile` | `account.profile.show`      | limited |
 
 ## `sessionManagement`
 

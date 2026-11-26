@@ -164,8 +164,8 @@ test.group('capability configuration', (group) => {
       enabled: ['passwordReset'],
     })
     assert.throws(
-      () => defineConfig({ ...base, onLifecycleEvent: 'not callable' } as never),
-      /onLifecycleEvent must be a function/
+      () => defineConfig({ ...base, onLifecycleNotification: 'not callable' } as never),
+      /onLifecycleNotification must be a function/
     )
 
     const setupError = new Error('implement onInvitationAccepted')

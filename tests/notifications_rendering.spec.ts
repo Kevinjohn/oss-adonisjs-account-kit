@@ -141,7 +141,7 @@ test.group('maintained notifications', () => {
   test('rejects untrusted and insecure action origins while preserving base paths', ({
     assert,
   }) => {
-    const urls = createActionUrls({
+    const { passwordReset } = createActionUrls({
       backendOrigin: 'https://api.example.test/v1/',
       appFrontendUrl: 'https://app.example.test/account/',
       destinations: {
@@ -152,7 +152,7 @@ test.group('maintained notifications', () => {
       },
       environment: 'production',
     })
-    assert.equal(urls.passwordReset('a/b'), 'https://app.example.test/account/reset/a%2Fb')
+    assert.equal(passwordReset('a/b'), 'https://app.example.test/account/reset/a%2Fb')
     assert.throws(
       () =>
         createActionUrls({

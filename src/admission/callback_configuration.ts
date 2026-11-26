@@ -1,5 +1,5 @@
 // Holds the admission callbacks an application provider registers.
-import { CallbackRegistry } from '../callback_registry.ts'
+import { CallbackConfiguration } from '../callback_configuration.ts'
 import type { AdmissionCallbacks } from './types.ts'
 
 /**
@@ -8,14 +8,14 @@ import type { AdmissionCallbacks } from './types.ts'
  *
  * @example
  * ```ts
- * import { AdmissionCallbackRegistry } from '@kevinjohn/adonisjs-account-kit/admission'
+ * import { AdmissionCallbackConfiguration } from '@kevinjohn/adonisjs-account-kit/admission'
  * import app from '@adonisjs/core/services/app'
  *
- * const registry = await app.container.make(AdmissionCallbackRegistry)
- * registry.register(() => ({ onAdmissionEvent }))
+ * const registry = await app.container.make(AdmissionCallbackConfiguration)
+ * registry.register(() => ({ onAdmissionNotification }))
  * ```
  */
-export class AdmissionCallbackRegistry extends CallbackRegistry<AdmissionCallbacks> {
+export class AdmissionCallbackConfiguration extends CallbackConfiguration<AdmissionCallbacks> {
   constructor() {
     super('account_admission')
   }

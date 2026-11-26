@@ -51,7 +51,7 @@ export async function executeManagedRequest<Credential>({
   } catch (error) {
     // A stale session can still sign out: end it here instead of refusing the logout.
     if (
-      route.name !== 'account.logout' ||
+      route.name !== 'account.credential.revoke' ||
       options.guard.strategy !== 'session' ||
       !(error instanceof E_ACCOUNT_KIT_INVALID_SESSION)
     )

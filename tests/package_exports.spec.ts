@@ -4,6 +4,7 @@ import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { Kernel } from '@adonisjs/core/ace'
 import { test } from '@japa/runner'
+import type { AccountKitCommandsLoader } from '../src/types_commands.ts'
 import { bootTestApp } from './helpers/app.ts'
 import { makeConfig, makeUsersAdapter } from './helpers/fakes.ts'
 import { resetSchema } from './helpers/schema.ts'
@@ -11,6 +12,7 @@ import { resetSchema } from './helpers/schema.ts'
 if (process.env.TEST_BUILT_EXPORTS === '1')
   test('loads every built public export and resolves the built class through the built provider', async ({
     assert,
+    expectTypeOf,
   }) => {
     const root = await import('@kevinjohn/adonisjs-account-kit')
     const types = await import('@kevinjohn/adonisjs-account-kit/types')
@@ -33,7 +35,7 @@ if (process.env.TEST_BUILT_EXPORTS === '1')
     const admissionCommands = await import('@kevinjohn/adonisjs-account-kit/admission/commands')
     assert.isFunction(root.AccountKit)
     assert.isFunction(root.defineConfig)
-    assert.isFunction(root.AccountKitCallbackRegistry)
+    assert.isFunction(root.AccountKitCallbackConfiguration)
     assert.isFunction(root.configure)
     assert.isFunction(root.createAllySocialProvider)
     assert.equal(ally.createAllySocialProvider, root.createAllySocialProvider)
@@ -72,6 +74,8 @@ if (process.env.TEST_BUILT_EXPORTS === '1')
     assert.isFunction(root.createLogNotifications)
     assert.isFunction(commands.getMetaData)
     assert.isFunction(commands.getCommand)
+    expectTypeOf(commands.getMetaData).toEqualTypeOf<AccountKitCommandsLoader['getMetaData']>()
+    expectTypeOf(commands.getCommand).toEqualTypeOf<AccountKitCommandsLoader['getCommand']>()
     assert.isFunction(defineCommands.defineCommands)
     assert.isFunction(auth.accountKitSessionGuard)
     assert.isFunction(http.registerManagedRoutes)
@@ -81,7 +85,7 @@ if (process.env.TEST_BUILT_EXPORTS === '1')
     assert.isFunction(transactionHelpers.readTimestamp)
     assert.isFunction(admission.defineConfig)
     assert.isFunction(admission.AccountAdmission)
-    assert.isFunction(admission.AdmissionCallbackRegistry)
+    assert.isFunction(admission.AdmissionCallbackConfiguration)
     for (const middleware of [
       await import('@kevinjohn/adonisjs-account-kit/middleware/admission'),
       await import('@kevinjohn/adonisjs-account-kit/middleware/managed_account'),
@@ -92,10 +96,38 @@ if (process.env.TEST_BUILT_EXPORTS === '1')
     assert.isFunction(admission.withAdmissionCleanup)
     assert.instanceOf(new admission.E_ACCOUNT_KIT_ADMISSION_DECISION(), root.E_ACCOUNT_KIT)
     assert.isFunction(admissionProvider.default)
+    const rootCommandList = await commands.getMetaData()
     const admissionCommandList = await admissionCommands.getMetaData()
-    assert.includeMembers(
-      admissionCommandList.map((command) => command.commandName),
-      ['account-kit:admission:approve', 'account-kit:admission:revoke']
+    assert.deepEqual(rootCommandList.map((command) => command.commandName).sort(), [
+      'account-kit:admission:install',
+      'account-kit:doctor',
+      'account-kit:invite',
+      'account-kit:openapi',
+      'account-kit:prune',
+      'account-kit:reset-link',
+      'account-kit:retirement-impact',
+      'account-kit:setup',
+    ])
+    assert.deepEqual(admissionCommandList.map((command) => command.commandName).sort(), [
+      'account-kit:admission:approve',
+      'account-kit:admission:bootstrap',
+      'account-kit:admission:grant-invitation',
+      'account-kit:admission:revoke',
+    ])
+    for (const metadata of rootCommandList) {
+      const command = await commands.getCommand(metadata)
+      assert.equal(command?.commandName, metadata.commandName)
+      assert.isNull(await admissionCommands.getCommand(metadata))
+    }
+    for (const metadata of admissionCommandList) {
+      const command = await admissionCommands.getCommand(metadata)
+      assert.equal(command?.commandName, metadata.commandName)
+      assert.isNull(await commands.getCommand(metadata))
+    }
+    const filtered = await defineCommands.defineCommands({ exclude: ['account-kit:prune'] })()
+    assert.deepEqual(
+      await filtered.getMetaData(),
+      rootCommandList.filter((command) => command.commandName !== 'account-kit:prune')
     )
     const built = await bootTestApp({ accountKitProvider: 'build' })
     try {
@@ -152,11 +184,6 @@ if (process.env.TEST_BUILT_EXPORTS === '1')
       const gate = await built.app.container.make(admission.AccountAdmission)
       assert.equal(gate.kit, first)
 
-      const metadata = await commands.getMetaData()
-      const pruneMetadata = metadata.find((item) => item.commandName === 'account-kit:prune')
-      assert.isDefined(pruneMetadata)
-      const pruneCommand = await commands.getCommand(pruneMetadata!)
-      assert.isNotNull(pruneCommand)
       const ace = new Kernel(built.app)
       ace.addLoader(commands as never)
       await ace.handle(['account-kit:prune', '--dry-run'])

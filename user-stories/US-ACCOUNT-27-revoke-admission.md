@@ -52,4 +52,4 @@ flowchart TD
  J --> N["On a later gated request, require reevaluates the stored approval"]
 ```
 
-**Code references:** [implementation](../src/admission/decisions.ts), [`tests/admission_decisions.spec.ts`](../tests/admission_decisions.spec.ts), [service and gate](../src/admission/service.ts), [committed events](../src/admission/events.ts)
+**Code references:** [implementation](../src/admission/decisions.ts), [`tests/admission_decisions.spec.ts`](../tests/admission_decisions.spec.ts), [service and gate](../src/admission/service.ts), [committed events](../src/admission/notifications.ts)

@@ -6,7 +6,7 @@ As an application integrator, I want to register callbacks from an application p
 **Access:** Application boot code, before the target registry first resolves (service startup or Account Kit diagnostics). The admission registry requires the optional admission provider.
 **Entry:** In the application provider's `boot()`, resolve `account_kit.callbacks` or `account_admission.callbacks` and call `register(factory)`.
 **Documentation:** [Registering callbacks from a provider](../README.md#registering-callbacks-from-a-provider)
-**Source:** [Account Kit registry](../src/account_kit_callback_registry.ts), [admission registry](../src/admission/callback_registry.ts)
+**Source:** [Account Kit registry](../src/account_kit_callback_configuration.ts), [admission registry](../src/admission/callback_configuration.ts)
 **Coverage:** [Registry and service resolution tests](../tests/callback_registry.spec.ts)
 
 ## Acceptance criteria
@@ -64,4 +64,4 @@ flowchart TD
 
 For the diagnostic checks after config resolution, see [US-ACCOUNT-32](US-ACCOUNT-32-diagnose-account-kit.md).
 
-**Code references:** [CallbackRegistry](../src/callback_registry.ts), [Account Kit provider](../providers/account_kit_provider.ts), [doctor command](../commands/doctor.ts), [resolveAccountKitConfig](../src/config_resolution.ts), [resolveConfig](../src/config.ts), [admission provider](../providers/account_admission_provider.ts), [resolveAdmissionConfig](../src/admission/config.ts)
+**Code references:** [CallbackRegistry](../src/callback_configuration.ts), [Account Kit provider](../providers/account_kit_provider.ts), [doctor command](../commands/doctor.ts), [resolveAccountKitConfig](../src/config_resolution.ts), [resolveConfig](../src/config.ts), [admission provider](../providers/account_admission_provider.ts), [resolveAdmissionConfig](../src/admission/config.ts)

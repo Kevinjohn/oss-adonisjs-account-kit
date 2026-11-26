@@ -11,7 +11,7 @@ import {
 } from '../src/errors.ts'
 import { deriveClientChallenge } from '../src/magic_link.ts'
 import { hashToken } from '../src/tokens.ts'
-import type { AccountKitConfig, AccountUser, LifecycleEvent, UserId } from '../src/types.ts'
+import type { AccountKitConfig, AccountUser, LifecycleNotification, UserId } from '../src/types.ts'
 import { useTestApp } from './helpers/app.ts'
 import {
   insertUser,
@@ -92,9 +92,9 @@ test.group('magicLink.request', (group) => {
     assert,
   }) => {
     const user = await insertUser(kit)
-    const events: LifecycleEvent[] = []
+    const events: LifecycleNotification[] = []
     const { account, recorder } = service({
-      onLifecycleEvent: async (event) => {
+      onLifecycleNotification: async (event) => {
         events.push(event)
       },
     })
@@ -229,7 +229,7 @@ test.group('magicLink.request', (group) => {
     await assert.rejects(() => request(failing.account), E_ACCOUNT_KIT_DELIVERY)
     assert.lengthOf(await kit.db.from('login_link_tokens'), 1)
     const observer = service({
-      onLifecycleEvent: async () => {
+      onLifecycleNotification: async () => {
         throw new Error('observer down')
       },
     })

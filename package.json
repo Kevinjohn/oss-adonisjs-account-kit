@@ -37,7 +37,10 @@
     "./http": "./build/http/main.js",
     "./transaction": "./build/transaction/main.js",
     "./ally": "./build/src/ally_social_provider.js",
-    "./commands": "./build/commands/main.js",
+    "./commands": {
+      "types": "./build/src/types_commands.d.ts",
+      "default": "./build/commands/main.js"
+    },
     "./define_commands": "./build/src/define_commands.js",
     "./auth": "./build/auth/main.js",
     "./admission": "./build/src/admission/main.js",
@@ -64,7 +67,7 @@
     "check:changed": "node --import=@poppinss/ts-exec --enable-source-maps bin/check_changed.ts",
     "check": "node --import=@poppinss/ts-exec --enable-source-maps bin/check.ts",
     "precompile": "pnpm lint",
-    "compile": "tsdown && tsc --emitDeclarationOnly --declaration",
+    "compile": "tsdown && tsc --emitDeclarationOnly --declaration && adonis-kit index build/commands",
     "postcompile": "pnpm copy:templates",
     "build": "pnpm compile",
     "release": "bash bin/release_check.sh",
@@ -111,6 +114,7 @@
     "@formatjs/icu-messageformat-parser": "^3.5.22",
     "@japa/api-client": "^3.2.1",
     "@japa/assert": "^4.2.0",
+    "@japa/expect-type": "^2.0.4",
     "@japa/file-system": "^3.0.0",
     "@japa/runner": "^5.3.0",
     "@kevinjohn/adonisjs-lucid-soft-delete": "https://github.com/Kevinjohn/oss-adonisjs-lucid-soft-delete/releases/download/v0.3.3/kevinjohn-adonisjs-lucid-soft-delete-0.3.3.tgz",
@@ -186,7 +190,6 @@
       "./http/main.ts",
       "./auth/main.ts",
       "./transaction/main.ts",
-      "./commands/main.ts",
       "./src/define_commands.ts",
       "./commands/prune.ts",
       "./commands/setup.ts",
@@ -194,7 +197,6 @@
       "./commands/doctor.ts",
       "./commands/invite.ts",
       "./commands/reset_link.ts",
-      "./commands/operator_output.ts",
       "./commands/openapi.ts",
       "./src/admission/main.ts",
       "./providers/account_admission_provider.ts",
@@ -204,6 +206,11 @@
       "./src/http/managed_proof_headers_middleware.ts",
       "./src/admission/middleware.ts"
     ],
+    "deps": {
+      "neverBundle": [
+        "../commands/main.js"
+      ]
+    },
     "outDir": "./build",
     "clean": true,
     "format": "esm",

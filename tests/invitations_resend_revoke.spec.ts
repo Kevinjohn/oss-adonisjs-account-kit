@@ -338,7 +338,7 @@ test.group('invitations.resend', (group) => {
     const events: string[] = []
     const { account } = service({
       notify: recorder.notify,
-      onLifecycleEvent: async (event) => {
+      onLifecycleNotification: async (event) => {
         events.push(event.type)
       },
     })
@@ -349,7 +349,7 @@ test.group('invitations.resend', (group) => {
       makeConfig({
         users: makeUsersAdapter(kit.db, kit.hash),
         notify: recorder.notify,
-        onLifecycleEvent: async (event) => {
+        onLifecycleNotification: async (event) => {
           events.push(event.type)
         },
       })

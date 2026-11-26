@@ -45,11 +45,10 @@ test.group('account kit configuration and service surface', (group) => {
     assert.notInclude(resolved.enabled, 'invitations')
   })
 
-  test('registration availability is required in the public configuration type', ({ assert }) => {
-    type AllowsOmission =
-      Omit<AccountKitConfig, 'registration'> extends AccountKitConfig ? true : false
-    const allowsOmission: AllowsOmission = false
-    assert.isFalse(allowsOmission)
+  test('registration availability is required in the public configuration type', ({
+    expectTypeOf,
+  }) => {
+    expectTypeOf<Omit<AccountKitConfig, 'registration'>>().not.toExtend<AccountKitConfig>()
   })
 
   test('accepts token secret length boundaries and rejects invalid values', ({ assert }) => {
@@ -274,13 +273,13 @@ test.group('account kit configuration and service surface', (group) => {
   }) => {
     const seen: unknown[] = []
     const input = Object.assign(makeConfig({ users: makeUsersAdapter(kit.db, kit.hash) }), {
-      onLifecycleEvent(this: unknown) {
+      onLifecycleNotification(this: unknown) {
         seen.push(this)
         return Promise.resolve()
       },
     })
     const resolved = defineConfig(input)
-    await resolved.onLifecycleEvent?.({} as never)
+    await resolved.onLifecycleNotification?.({} as never)
     assert.lengthOf(seen, 1)
     assert.strictEqual(seen[0], input)
   })
@@ -320,7 +319,7 @@ test.group('account kit configuration and service surface', (group) => {
       get emailConstraint() {
         return 'users_email_unique'
       }
-      async onLifecycleEvent() {
+      async onLifecycleNotification() {
         seen.push(this.#marker)
       }
       async exportAccountData() {
@@ -333,7 +332,7 @@ test.group('account kit configuration and service surface', (group) => {
     assert.strictEqual(resolved.users, users)
     assert.strictEqual(resolved.socialAuthentication, socialAuthentication)
     assert.equal(resolved.emailConstraint, 'users_email_unique')
-    await resolved.onLifecycleEvent?.({} as never)
+    await resolved.onLifecycleNotification?.({} as never)
     assert.deepEqual(seen, ['class'])
     assert.equal(await resolved.exportAccountData?.({} as never, {} as never), 'class')
   })

@@ -6,7 +6,7 @@ import {
   E_ACCOUNT_KIT_POST_COMMIT,
 } from '../src/errors.ts'
 import { generateToken, hashToken } from '../src/tokens.ts'
-import type { CredentialChangeContext, LifecycleEvent } from '../src/types.ts'
+import type { CredentialChangeContext, LifecycleNotification } from '../src/types.ts'
 import { useTestApp } from './helpers/app.ts'
 import { insertUser, makeNotify, makeService, tokenFrom } from './helpers/fakes.ts'
 import { locksRows } from './helpers/dialect.ts'
@@ -26,7 +26,7 @@ test.group('credential and lifecycle effects', (group) => {
       table.string('operation_id').notNullable()
     })
     const contexts: CredentialChangeContext[] = []
-    const events: LifecycleEvent[] = []
+    const events: LifecycleNotification[] = []
     let fail = true
     const { account, recorder } = makeService(kit, {
       onCredentialsChangedTransaction: async (_changed, context, trx) => {
@@ -34,7 +34,7 @@ test.group('credential and lifecycle effects', (group) => {
         await trx.table('test_revocations').insert({ operation_id: context.operationId })
         if (fail) throw new Error('revoke failed')
       },
-      onLifecycleEvent: async (event) => {
+      onLifecycleNotification: async (event) => {
         events.push(event)
       },
     })
@@ -90,12 +90,12 @@ test.group('credential and lifecycle effects', (group) => {
       created_at: dbTime(kit, DateTime.utc()),
     })
     let fail = true
-    const events: LifecycleEvent[] = []
+    const events: LifecycleNotification[] = []
     const { account, recorder } = makeService(kit, {
       onCredentialsChangedTransaction: async () => {
         if (fail) throw new Error('revoke failed')
       },
-      onLifecycleEvent: async (event) => {
+      onLifecycleNotification: async (event) => {
         events.push(event)
       },
     })
@@ -134,7 +134,7 @@ test.group('credential and lifecycle effects', (group) => {
           throw failures[1]
         },
       },
-      onLifecycleEvent: async (event) => {
+      onLifecycleNotification: async (event) => {
         order.push(`event:${event.operationId}`)
         throw failures[2]
       },
@@ -165,7 +165,7 @@ test.group('credential and lifecycle effects', (group) => {
     assert,
   }) => {
     const user = await insertUser(kit)
-    const events: LifecycleEvent[] = []
+    const events: LifecycleNotification[] = []
     const deliveryFailure = new Error('mail failed')
     const notify = makeNotify().notify
     const { account } = makeService(kit, {
@@ -176,7 +176,7 @@ test.group('credential and lifecycle effects', (group) => {
           throw deliveryFailure
         },
       },
-      onLifecycleEvent: async (event) => {
+      onLifecycleNotification: async (event) => {
         events.push(event)
       },
     })
@@ -195,9 +195,9 @@ test.group('credential and lifecycle effects', (group) => {
 
   test('verification emits once for the actual change, never on repeat', async ({ assert }) => {
     const user = await insertUser(kit, { verified: false })
-    const events: LifecycleEvent[] = []
+    const events: LifecycleNotification[] = []
     const { account, recorder } = makeService(kit, {
-      onLifecycleEvent: async (event) => {
+      onLifecycleNotification: async (event) => {
         events.push(event)
       },
     })
@@ -255,10 +255,10 @@ test.group('credential and lifecycle effects', (group) => {
     assert,
   }) => {
     const user = await insertUser(kit)
-    const events: LifecycleEvent[] = []
+    const events: LifecycleNotification[] = []
     const listenerFailure = new Error('audit failed')
     const { account, recorder } = makeService(kit, {
-      onLifecycleEvent: async (event) => {
+      onLifecycleNotification: async (event) => {
         events.push(event)
         throw listenerFailure
       },
@@ -319,7 +319,7 @@ test.group('credential and lifecycle effects', (group) => {
         order.push('legacy')
         throw first
       },
-      onLifecycleEvent: async () => {
+      onLifecycleNotification: async () => {
         order.push('event')
         throw last
       },
@@ -366,7 +366,7 @@ test.group('credential and lifecycle effects', (group) => {
         order.push('legacy')
         throw errors[0]
       },
-      onLifecycleEvent: async (event) => {
+      onLifecycleNotification: async (event) => {
         assert.equal(event.type, 'email_change.completed')
         order.push('event')
         throw errors[2]
@@ -399,7 +399,7 @@ test.group('credential and lifecycle effects', (group) => {
     })
     let attempts = 0
     const ids: string[] = []
-    const events: LifecycleEvent[] = []
+    const events: LifecycleNotification[] = []
     const { account, recorder } = makeService(kit, {
       onCredentialsChangedTransaction: async (_changed, context, trx) => {
         attempts++
@@ -407,7 +407,7 @@ test.group('credential and lifecycle effects', (group) => {
         await trx.table('test_retry_revocations').insert({ operation_id: context.operationId })
         if (attempts === 1) throw Object.assign(new Error('retry'), { code: 'SQLITE_BUSY' })
       },
-      onLifecycleEvent: async (event) => {
+      onLifecycleNotification: async (event) => {
         events.push(event)
       },
     })

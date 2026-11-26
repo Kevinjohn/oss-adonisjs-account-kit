@@ -11,7 +11,7 @@ import type {
   AccountKitConfig,
   CredentialChangeContext,
   CurrentAccountInput,
-  LifecycleEvent,
+  LifecycleNotification,
   SessionsRevokedContext,
   Trx,
   UserId,
@@ -48,7 +48,7 @@ async function appRows(kit: ReturnType<typeof useTestApp>): Promise<number[]> {
 
 test.group('sign-in management with sessions', (group) => {
   const kit = useTestApp(group)
-  const events: LifecycleEvent[] = []
+  const events: LifecycleNotification[] = []
   const changes: CredentialChangeContext[] = []
   group.each.setup(() => {
     events.length = 0
@@ -59,7 +59,7 @@ test.group('sign-in management with sessions', (group) => {
       enabled: ['sessionManagement'],
       authentication: { strategy: 'session', guard: 'web' },
       minRequestMs: 0,
-      onLifecycleEvent: async (event) => void events.push(event),
+      onLifecycleNotification: async (event) => void events.push(event),
       onCredentialsChanged: async (_user, context) => void changes.push(context),
       ...overrides,
     })
@@ -367,7 +367,7 @@ test.group('sign-in management with sessions', (group) => {
   test('a failing observer still reports which sign-in was revoked', async ({ assert }) => {
     await insertUser(kit)
     const { account } = service({
-      onLifecycleEvent: async () => {
+      onLifecycleNotification: async () => {
         throw new Error('observer down')
       },
     })
