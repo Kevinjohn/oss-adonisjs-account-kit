@@ -1,5 +1,5 @@
 import { createHash, randomBytes } from 'node:crypto'
-import type { Cast } from './cast.js'
+import type { Cast } from './cast.ts'
 export type HttpOptions = { body?: Record<string, unknown>; token?: string }
 type HttpResult = { status: number; body: Record<string, string>; raw: string }
 type ScenarioTools = {

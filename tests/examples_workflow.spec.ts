@@ -1,7 +1,7 @@
 import { readFile } from 'node:fs/promises'
 import { join, matchesGlob } from 'node:path'
 import { test } from '@japa/runner'
-import { repoRoot } from './helpers/tracked_markdown.js'
+import { repoRoot } from './helpers/tracked_markdown.ts'
 
 // A pull request that changes something the examples job reads must run that job, or the break
 // first shows up on the weekly schedule or at release.

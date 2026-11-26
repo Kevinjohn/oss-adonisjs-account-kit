@@ -6,13 +6,13 @@ import { fileURLToPath } from 'node:url'
 import { test } from '@japa/runner'
 import { MigrationRunner } from '@adonisjs/lucid/migration'
 import { format, resolveConfig } from 'prettier'
-import { migrationNames, migrationSchema, type UserIdType } from '../configure.js'
+import { migrationNames, migrationSchema, type UserIdType } from '../configure.ts'
 import {
   type ApiVariantFile,
   exampleRoot,
   renderApiVariant,
-} from '../bin/helpers/consumer/api_variants.js'
-import { bootTestApp, type TestApp } from './helpers/app.js'
+} from '../bin/helpers/consumer/api_variants.ts'
+import { bootTestApp, type TestApp } from './helpers/app.ts'
 
 const stubsRoot = fileURLToPath(new URL('../stubs', import.meta.url))
 const exampleMigrations = join(exampleRoot, 'database/migrations')

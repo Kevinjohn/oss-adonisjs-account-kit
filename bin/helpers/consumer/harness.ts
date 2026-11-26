@@ -3,7 +3,7 @@ import { createHash } from 'node:crypto'
 import { spawnSync } from 'node:child_process'
 import { readFile } from 'node:fs/promises'
 import { relative } from 'node:path'
-import { repoRoot, secret } from './settings.js'
+import { repoRoot, secret } from './settings.ts'
 
 export const output: { command: string; text: string }[] = []
 type CommandRecord = { command: string; args: string[]; cwd: string; exitCode: number | null }

@@ -1,7 +1,7 @@
 import { readFile } from 'node:fs/promises'
 import { test } from '@japa/runner'
-import * as errors from '../src/errors.js'
-import { planManagedRoutes, type ManagedCapability } from '../src/http/routes.js'
+import * as errors from '../src/errors.ts'
+import { planManagedRoutes, type ManagedCapability } from '../src/http/routes.ts'
 
 function isErrorClass(value: unknown): value is typeof errors.E_ACCOUNT_KIT {
   return (

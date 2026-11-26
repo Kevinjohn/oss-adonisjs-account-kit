@@ -4,7 +4,7 @@ import { spawn } from 'node:child_process'
 import { createServer } from 'node:net'
 import { mkdir, readFile, writeFile, chmod, rm, symlink } from 'node:fs/promises'
 import { join } from 'node:path'
-import { alive, exists, fixture, until } from '../helpers/pg_service_fixture.js'
+import { alive, exists, fixture, until } from '../helpers/pg_service_fixture.ts'
 
 test.group('pg_service_process_safety.spec', (group) => {
   group.each.timeout(60_000)

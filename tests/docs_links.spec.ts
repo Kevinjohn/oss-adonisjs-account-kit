@@ -4,7 +4,7 @@ import { readFile } from 'node:fs/promises'
 import { join, posix } from 'node:path'
 import { test } from '@japa/runner'
 import { createMarkdownRenderer } from 'vitepress'
-import { repoRoot, trackedMarkdown } from './helpers/tracked_markdown.js'
+import { repoRoot, trackedMarkdown } from './helpers/tracked_markdown.ts'
 
 /** Tracked Markdown outside dependencies; ignored local notes are not published. */
 function trackedDocuments(): string[] {

@@ -4,7 +4,7 @@ import { execFileSync, spawnSync } from 'node:child_process'
 import { mkdtempSync, readFileSync, rmSync, unlinkSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { delimiter, join } from 'node:path'
-import { countTests, planChecks, readmeSpecs, stepProblem } from '../../bin/check_changed_plan.js'
+import { countTests, planChecks, readmeSpecs, stepProblem } from '../../bin/check_changed_plan.ts'
 
 test.group('check_changed_plan.spec', (group) => {
   group.each.timeout(60_000)

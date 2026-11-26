@@ -2,7 +2,7 @@ import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { test } from '@japa/runner'
 import { parse, TYPE, type MessageFormatElement } from '@formatjs/icu-messageformat-parser'
-import { repoRoot, trackedMarkdown } from './helpers/tracked_markdown.js'
+import { repoRoot, trackedMarkdown } from './helpers/tracked_markdown.ts'
 
 type Blocks = Record<string, string>
 

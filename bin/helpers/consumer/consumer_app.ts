@@ -1,9 +1,9 @@
 import { readFile, readdir, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
-import { run } from './harness.js'
-import { userIdType, usersTable } from './settings.js'
-export { databaseEnvironment } from './consumer_environment.js'
-export { installArchive } from './consumer_archive.js'
+import { run } from './harness.ts'
+import { userIdType, usersTable } from './settings.ts'
+export { databaseEnvironment } from './consumer_environment.ts'
+export { installArchive } from './consumer_archive.ts'
 
 export async function packageMigrations(appRoot: string) {
   const dir = join(appRoot, 'database/migrations')

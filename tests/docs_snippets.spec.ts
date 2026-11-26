@@ -1,7 +1,7 @@
 import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { test } from '@japa/runner'
-import { repoRoot, trackedMarkdown } from './helpers/tracked_markdown.js'
+import { repoRoot, trackedMarkdown } from './helpers/tracked_markdown.ts'
 
 /** TypeScript controller snippets in tracked Markdown, which readers copy into their apps. */
 async function controllerSnippets(): Promise<{ document: string; code: string }[]> {

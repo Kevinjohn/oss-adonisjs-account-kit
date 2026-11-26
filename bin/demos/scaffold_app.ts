@@ -1,7 +1,7 @@
 // Scaffolds a fresh AdonisJS API app beside a tarball of this checkout, for the demo scripts.
 import { existsSync, mkdirSync, mkdtempSync } from 'node:fs'
 import { basename, dirname, join, resolve } from 'node:path'
-import { packCheckout, run } from './pack_checkout.js'
+import { packCheckout, run } from './pack_checkout.ts'
 
 /** Reads the app directory from the command line, then packs the checkout and creates the app. */
 export function createAdonisJsApp(script: string) {

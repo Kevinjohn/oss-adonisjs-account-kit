@@ -4,14 +4,14 @@ import { execFileSync, spawnSync } from 'node:child_process'
 import { mkdirSync, readFileSync, realpathSync } from 'node:fs'
 import { join } from 'node:path'
 import { stripVTControlCharacters } from 'node:util'
-import { Cast } from './cast.js'
+import { Cast } from './cast.ts'
 import {
   assertDatabaseInventory,
   shadowPaths,
   starterPaths,
   verifySnapshot,
-} from './starter_contract.js'
-import { validateDemoIdentity } from './demo_identity.js'
+} from './starter_contract.ts'
+import { validateDemoIdentity } from './demo_identity.ts'
 type SetupReport = {
   pillars: Record<string, string>
   changes: { path: string; action: string }[]

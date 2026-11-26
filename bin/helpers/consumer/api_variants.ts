@@ -3,7 +3,7 @@
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { format, resolveConfig } from 'prettier'
-import type { UserIdType } from '../../../configure.js'
+import type { UserIdType } from '../../../configure.ts'
 
 export const exampleRoot = fileURLToPath(new URL('../../../examples/api/', import.meta.url))
 
