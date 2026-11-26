@@ -21,3 +21,9 @@ export interface AccountKitCommandsLoader {
   getMetaData(): Promise<CommandMetaData[]>
   getCommand(metaData: CommandMetaData): Promise<typeof BaseCommand | null>
 }
+
+/** Metadata for the commands registered by the package's `./commands` loader. */
+export declare const getMetaData: AccountKitCommandsLoader['getMetaData']
+
+/** Loads a command from its metadata. */
+export declare const getCommand: AccountKitCommandsLoader['getCommand']

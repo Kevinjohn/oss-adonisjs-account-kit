@@ -1,8 +1,8 @@
 import { test } from '@japa/runner'
 import * as coreCommands from '../commands/main.ts'
-import ApproveAdmission from '../src/admission/commands/approve.ts'
-import RevokeAdmission from '../src/admission/commands/revoke.ts'
-import GrantInvitationEvidence from '../src/admission/commands/grant_invitation.ts'
+import ApproveAdmission from '../commands/admission/approve.ts'
+import RevokeAdmission from '../commands/admission/revoke.ts'
+import GrantInvitationEvidence from '../commands/admission/grant_invitation.ts'
 import * as admissionCommands from '../src/admission/commands/main.ts'
 import type { AdmissionConfig } from '../src/admission/types.ts'
 import {
