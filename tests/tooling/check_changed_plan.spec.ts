@@ -173,10 +173,10 @@ test.group('check_changed_plan.spec', (group) => {
     ])
     assert.ok(plan('bin/check_changed_plan.ts').tests.skip)
     assert.deepEqual(
-      plan('bin/classify_changed.mjs')['check-changed'].command,
+      plan('bin/classify_changed.ts')['check-changed'].command,
       plan('bin/check_changed_plan.ts')['check-changed'].command
     )
-    assert.ok(plan('bin/classify_changed.mjs').tests.skip)
+    assert.ok(plan('bin/classify_changed.ts').tests.skip)
     assert.deepEqual(
       plan('tests/tooling/check_changed_process.spec.ts')['check-changed'].command,
       plan('bin/check_changed_plan.ts')['check-changed'].command

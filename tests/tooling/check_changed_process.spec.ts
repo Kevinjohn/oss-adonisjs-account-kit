@@ -54,7 +54,7 @@ test.group('check:changed process signals', (group) => {
         JSON.stringify({ extends: '@adonisjs/tsconfig/tsconfig.package.json' })
       )
       await symlink(join(repository, 'node_modules'), join(root, 'node_modules'), 'dir')
-      for (const name of ['check_changed.ts', 'check_changed_plan.ts', 'classify_changed.mjs'])
+      for (const name of ['check_changed.ts', 'check_changed_plan.ts', 'classify_changed.ts'])
         await copyFile(join(repository, 'bin', name), join(root, 'bin', name))
       await writeFile(
         join(root, 'bin/git'),

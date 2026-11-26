@@ -7,7 +7,7 @@ import { existsSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { countTests, planChecks, stepProblem } from './check_changed_plan.ts'
-import { classify } from './classify_changed.mjs'
+import { classify } from './classify_changed.ts'
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 function exitWithUsageError(message: string): never {
