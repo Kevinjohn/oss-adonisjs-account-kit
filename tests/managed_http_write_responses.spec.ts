@@ -77,6 +77,70 @@ test.group('managed HTTP dispatch', () => {
     assert.deepEqual(output, { status: 202, body })
   })
 
+  test('the mounted token revocation forwards the selected credential and trusted account', async ({
+    assert,
+  }) => {
+    const { router, routes, context } = fakeManagedHttp()
+    const ctx = context()
+    const selected = { id: 11, value: 'selected-token' }
+    const other = { id: 12, value: 'other-token' }
+    const credentials = new Map([
+      [selected.id, selected],
+      [other.id, other],
+    ])
+    const input = { userId: 7, tokenId: selected.id }
+    const requestGuard = {
+      strategy: 'access_tokens' as const,
+      name: 'api',
+      establish: async () => selected,
+      terminate: async (credential: typeof selected | undefined) => {
+        assert.strictEqual(credential, selected)
+        credentials.delete(credential!.id)
+      },
+    }
+    let revocations = 0
+    const kit = {
+      managedHttp: { assertGuard: () => {}, consume: async () => {} },
+      authentication: {
+        current: async () => ({ id: 7, active: true }),
+        revokeCredential: async (
+          guard: typeof requestGuard,
+          credential: typeof selected,
+          current: typeof input
+        ) => {
+          revocations++
+          assert.strictEqual(guard, requestGuard)
+          assert.strictEqual(credential, selected)
+          assert.strictEqual(current, input)
+          await guard.terminate(credential)
+        },
+      },
+    } as unknown as AccountKit
+    registerManagedRoutes(router, {
+      prefix: '/api/v1',
+      kit: async () => kit,
+      enabled: ['authentication'],
+      guard: stubGuard<typeof selected>({
+        strategy: 'access_tokens',
+        current: async () => input,
+        publicCredential: (credential) => credential.value,
+        forRequest: (received) => {
+          assert.strictEqual(received, ctx)
+          return requestGuard
+        },
+        credentialForRevocation: async (received) => {
+          assert.strictEqual(received, ctx)
+          return selected
+        },
+      }),
+    })
+    const output = await routes.get('POST /api/v1/account/logout')!(ctx)
+    assert.deepEqual(output, { status: 204 })
+    assert.equal(revocations, 1)
+    assert.isFalse(credentials.has(selected.id))
+    assert.strictEqual(credentials.get(other.id), other)
+  })
+
   test('account writes return only their documented response bodies', async ({ assert }) => {
     const { router, routes, context } = fakeManagedHttp()
     const account = {

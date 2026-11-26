@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- Name credential revocation callbacks and registration availability helpers for their behavior.
+- Rename the managed guard callback `logoutCredential` to `credentialForRevocation`; the old key is no longer accepted. Name registration availability and account settings helpers for their behavior.
 - Run the pre-install change classifier with native Node 24 TypeScript support.
 
 - Move the auth, HTTP and transaction subpath entries under `src/` and keep their public export keys.

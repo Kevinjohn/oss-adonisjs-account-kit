@@ -4,14 +4,14 @@ As a signed-in account holder, I want to sign out of the current session or toke
 
 **Status:** Current
 **Access:** Host authenticates the current request and passes its credential/guard context.
-**Entry:** Host calls `authentication.logout` or mounts `account.logout` (POST `account/logout`). An application using `accountKitSessionGuard` can obtain the request adapter with `ctx.auth.use(name).forRequest()`.
+**Entry:** Host calls `authentication.revokeCredential` or mounts `account.credential.revoke` (POST `account/logout`). An application using `accountKitSessionGuard` can obtain the request adapter with `ctx.auth.use(name).forRequest()`.
 **Documentation:** [authentication.md](../docs/guide/authentication.md)
 **Source:** [`src/authentication.ts`](../src/authentication.ts)
 **Coverage:** [`tests/authentication.spec.ts`](../tests/authentication.spec.ts)
 
 ## Acceptance criteria
 
-- **Inputs and result:** `authentication.logout(guard, credential?, current?)` returns `void`. The host authenticates the request and supplies its guard; a session registry row is removed when a current session handle is supplied and session management is enabled.
+- **Inputs and result:** `authentication.revokeCredential(guard, credential?, current?)` returns `void`. The host authenticates the request and supplies its guard; managed access-token routes require `credentialForRevocation(context)` to select the current token; a session registry row is removed when a current session handle is supplied and session management is enabled.
 - Managed session logout specifically terminates a session whose guard evidence was read but whose current account check raises `E_ACCOUNT_KIT_INVALID_SESSION`, returning 204. If the guard itself refuses evidence, the route cannot enter that recovery branch.
 
 ## User flow
@@ -29,10 +29,10 @@ flowchart TD
 
 ```mermaid
 flowchart TD
-  M["Managed account.logout reads guard evidence and calls authentication.current"] -->|Current account accepted| N["Resolve request guard and optional logout credential"]
+  M["Managed account.credential.revoke reads guard evidence and calls authentication.current"] -->|Current account accepted| N["Resolve request guard and selected credentialForRevocation"]
   M -->|Session evidence read; E_ACCOUNT_KIT_INVALID_SESSION from account check| S["Terminate browser session and return 204"]
   M -->|Guard refuses evidence or other account-check error| X["Propagate refusal"]
-  N --> A["authentication.logout"]
+  N --> A["authentication.revokeCredential"]
   H["Host supplies guard and available credential/current evidence"] --> A
   A --> B["Require authentication configuration"]
   B --> C["Delete account-owned registry row for supplied session handle when enabled"]

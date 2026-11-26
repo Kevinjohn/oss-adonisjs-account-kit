@@ -10,7 +10,7 @@ import {
 import { sqlName, addSetupDiagnostic } from './shared.ts'
 import { addRoutesDiagnostics } from './validate_routes.ts'
 import { addAuthenticationDiagnostics } from './validate_authentication.ts'
-import { addRegistrationDiagnostics } from './validate_registration_settings.ts'
+import { addAccountSettingsDiagnostics } from './validate_account_settings.ts'
 import { addMailDiagnostics } from './validate_mail.ts'
 import { addSocialDiagnostics } from './validate_social.ts'
 import type { SelectedSetupOrigins } from './diagnostics.ts'
@@ -107,7 +107,7 @@ export function collectSetupDiagnostics(
       'Provide #services/account_kit_users before activation'
     )
   addAuthenticationDiagnostics(diagnostics, choices, state, production)
-  addRegistrationDiagnostics(diagnostics, choices, state)
+  addAccountSettingsDiagnostics(diagnostics, choices, state)
   addMailDiagnostics(diagnostics, choices, state, production, env, selectedOrigins)
   addSocialDiagnostics(diagnostics, choices, state, production, env, selectedOrigins)
   addRetirementDiagnostics(diagnostics, choices, state, options)
