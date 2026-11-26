@@ -157,7 +157,7 @@ jobs:
 
   # The committed example is the default cell; the harness renders the other users table and ID
   # type cells over a copy of it, all from one packed candidate. Pull requests run the default cell
-  # only; the variants run on the schedule, on dispatch and at release.
+  # only; the variants run on the schedule and on dispatch.
   consumer-variants:
     if: ${{ github.event_name != 'pull_request' && (github.event_name == 'workflow_dispatch' || !github.event.repository.private) }}
     runs-on: ubuntu-latest

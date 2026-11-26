@@ -68,9 +68,10 @@ runs its formatting check and the specs that read it. `pnpm check:changed` makes
 locally and prints it. Anything else, including a mixed change, runs the full matrix. `checks-gate`
 is the one status that reports the result.
 
-The `compat` workflow checks minimum and latest peer versions weekly and before a release. It also
-checks the packed consumer application and experimental MySQL 8.4 compatibility. The `examples`
-workflow checks recipes and example applications.
+The `compat` workflow checks minimum and latest peer versions, the packed consumer application
+and experimental MySQL 8.4 compatibility. The `examples` workflow checks recipes and example
+applications. Both run weekly, on relevant pull requests and on manual dispatch. Releases require
+the successful `checks` push run for the release commit on `main`.
 
 The _Tested against_ table in `README.md` mirrors `.github/workflows/checks.yml` and
 `.github/workflows/compat.yml`; change them in the same PR.

@@ -1,3 +1,4 @@
+import { spawnSync } from 'node:child_process'
 import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { test } from '@japa/runner'
@@ -21,19 +22,84 @@ function jobs(workflow: string): Map<string, { block: string; needs: string[] }>
   return result
 }
 
-// A release started from another branch must stop before the checks spend their minutes.
-test('every release job waits for the main-only guard', async ({ assert }) => {
+test('packaging waits for successful CI and publication waits for packaging', async ({
+  assert,
+}) => {
   const workflow = await readFile(join(repoRoot, '.github/workflows/release.yml'), 'utf8')
   const all = jobs(workflow)
+  assert.sameMembers([...all.keys()], ['ci', 'package', 'release'])
+  assert.deepEqual(all.get('ci')?.needs, [])
+  assert.deepEqual(all.get('package')?.needs, ['ci'])
+  assert.deepEqual(all.get('release')?.needs, ['package'])
+  for (const [, job] of all) assert.notMatch(job.block, /^ {4}if:/m)
   assert.match(
-    workflow,
-    /main-only:\n(?: {4}.*\n)*? {6}- run: test "\$GITHUB_REF" = "refs\/heads\/main"/
+    all.get('ci')?.block ?? '',
+    /^ {4}permissions:\n {6}actions: read\n {6}contents: read$/m
   )
-  const guarded = (job: string): boolean =>
-    (all.get(job)?.needs ?? []).some((need) => need === 'main-only' || guarded(need))
-  const unguarded = [...all.keys()].filter((job) => job !== 'main-only' && !guarded(job))
-  assert.isAbove(all.size, 1)
-  assert.deepEqual(unguarded, [])
+})
+
+test('the CI gate accepts only a successful push run with both database jobs on the release SHA', async ({
+  assert,
+}) => {
+  const workflow = await readFile(join(repoRoot, '.github/workflows/release.yml'), 'utf8')
+  const ci = jobs(workflow).get('ci')?.block ?? ''
+  const script = ci.split(/^ {8}run: \|\n/m)[1]?.replace(/^ {10}/gm, '')
+  assert.isNotEmpty(script)
+
+  const sha = 'a'.repeat(40)
+  const runs = JSON.stringify([{ databaseId: 42, headSha: sha }])
+  const passingJobs = ['checks (better-sqlite3)', 'checks (pg)'].map((name) => ({
+    name,
+    status: 'completed',
+    conclusion: 'success',
+  }))
+  const skippedJobs = JSON.stringify({
+    jobs: [
+      passingJobs[0],
+      { ...passingJobs[1], conclusion: 'skipped' },
+      { name: 'checks-gate', status: 'completed', conclusion: 'success' },
+    ],
+  })
+  const gh = `gh() {
+    case "$*" in
+      "run list --repo demo/account-kit --workflow checks.yml --branch main --event push --commit ${sha} --limit 1 --json databaseId,headSha")
+        printf '%s\\n' "$RUNS" ;;
+      "run watch 42 --repo demo/account-kit --interval 30 --exit-status")
+        echo watch
+        return "$WATCH_STATUS" ;;
+      "api repos/demo/account-kit/actions/runs/42/jobs?filter=latest&per_page=100")
+        printf '%s\\n' "$JOBS"
+        return "$API_STATUS" ;;
+      *) echo "Unexpected gh call: $*" >&2; return 99 ;;
+    esac
+  }`
+  for (const [name, overrides, status, output] of [
+    ['matching run', {}, 0, 'watch\ntrue'],
+    ['wrong SHA', { RUNS: runs.replace(sha, 'b'.repeat(40)) }, 1, 'No checks.yml push run'],
+    ['missing run', { RUNS: '[]' }, 1, 'No checks.yml push run'],
+    ['invalid run ID', { RUNS: runs.replace('42', '"42"') }, 1, 'No checks.yml push run'],
+    ['other branch', { GITHUB_REF: 'refs/heads/topic' }, 1, 'release runs on main only'],
+    ['failed watch', { WATCH_STATUS: '23' }, 23, 'watch'],
+    ['skipped job', { JOBS: skippedJobs }, 1, 'watch\nfalse'],
+    ['API error', { API_STATUS: '24' }, 24, 'watch\ntrue'],
+  ] as const) {
+    const result = spawnSync('bash', ['-c', `${gh}\n${script}`], {
+      encoding: 'utf8',
+      env: {
+        PATH: process.env.PATH,
+        GITHUB_REPOSITORY: 'demo/account-kit',
+        GITHUB_REF: 'refs/heads/main',
+        GITHUB_SHA: sha,
+        RUNS: runs,
+        JOBS: JSON.stringify({ jobs: passingJobs }),
+        WATCH_STATUS: '0',
+        API_STATUS: '0',
+        ...overrides,
+      },
+    })
+    assert.equal(result.status, status, `${name}: ${result.stderr}`)
+    assert.include(result.stdout, output, name)
+  }
 })
 
 // Install and build scripts run dependency code; none of it may hold a token that can create
@@ -93,13 +159,4 @@ test('packaging tests the release archive and checks the consumer digest before 
   assert.include(block, '--candidate-tarball="tmp/release/$TARBALL"')
   assert.include(block, 'TARBALL: ${{ steps.check.outputs.tarball }}')
   assert.include(block, 'SHA256: ${{ steps.check.outputs.sha256 }}')
-})
-
-// Packaging waits for each retained reusable release workflow.
-test('packaging waits for every reusable workflow the release calls', async ({ assert }) => {
-  const release = await readFile(join(repoRoot, '.github/workflows/release.yml'), 'utf8')
-  const all = jobs(release)
-  const called = [...all].filter(([, job]) => /^ {4}uses: /m.test(job.block)).map(([name]) => name)
-  assert.sameMembers(called, ['checks', 'compat', 'examples'])
-  assert.sameMembers(all.get('package')?.needs ?? [], called)
 })
