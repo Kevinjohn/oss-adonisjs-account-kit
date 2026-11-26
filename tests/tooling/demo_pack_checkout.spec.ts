@@ -6,7 +6,7 @@ import { chmod, mkdtemp, mkdir, readFile, readdir, rm, writeFile } from 'node:fs
 import { tmpdir } from 'node:os'
 import { basename, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { starterAce, starterConsole } from '../../bin/demos/starter_contract.js'
+import { starterAce, starterConsole } from '../../bin/demos/starter_contract.ts'
 
 const repoRoot = fileURLToPath(new URL('../../', import.meta.url))
 const createFeature = join(repoRoot, 'bin/demos/create_app.ts')

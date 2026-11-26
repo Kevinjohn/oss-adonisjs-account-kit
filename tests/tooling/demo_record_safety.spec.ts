@@ -1,5 +1,5 @@
-import { writeDemoIdentity } from '../../bin/demos/demo_identity.js'
-import { starterAce, starterConsole } from '../../bin/demos/starter_contract.js'
+import { writeDemoIdentity } from '../../bin/demos/demo_identity.ts'
+import { starterAce, starterConsole } from '../../bin/demos/starter_contract.ts'
 import { test } from '@japa/runner'
 import assert from 'node:assert/strict'
 import { spawn } from 'node:child_process'

@@ -1,10 +1,10 @@
 // Minimum compatibility: run the compatibility fixture against the exact dependency floors.
 import { cp, mkdir } from 'node:fs/promises'
 import { join } from 'node:path'
-import { databaseEnvironment, installArchive } from './consumer_app.js'
-import { run } from './harness.js'
-import { resetExclusivePostgresSchema } from './postgres.js'
-import { fixtureRoot, runRoot } from './settings.js'
+import { databaseEnvironment, installArchive } from './consumer_app.ts'
+import { run } from './harness.ts'
+import { resetExclusivePostgresSchema } from './postgres.ts'
+import { fixtureRoot, runRoot } from './settings.ts'
 
 export async function runMinimumCompatibility(candidate: string, runName: string) {
   const appRoot = join(await runRoot(), runName)

@@ -2,7 +2,7 @@ import { spawnSync } from 'node:child_process'
 import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { test } from '@japa/runner'
-import { repoRoot } from './helpers/tracked_markdown.js'
+import { repoRoot } from './helpers/tracked_markdown.ts'
 
 /** Each job's block under `jobs:`, keyed by name, with its `needs` list. */
 function jobs(workflow: string): Map<string, { block: string; needs: string[] }> {

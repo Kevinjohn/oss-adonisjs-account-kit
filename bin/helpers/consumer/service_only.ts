@@ -2,9 +2,9 @@
 import { createRequire } from 'node:module'
 import { mkdir, readFile, realpath, writeFile } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
-import { databaseEnvironment } from './consumer_app.js'
-import { run } from './harness.js'
-import { database, fixtureRoot, runRoot } from './settings.js'
+import { databaseEnvironment } from './consumer_app.ts'
+import { run } from './harness.ts'
+import { database, fixtureRoot, runRoot } from './settings.ts'
 
 export const optionalBackendIntegrations = [
   '@adonisjs/auth',

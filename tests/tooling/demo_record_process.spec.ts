@@ -5,9 +5,9 @@ import { mkdtemp, mkdir, readFile, rm, writeFile, chmod, readdir } from 'node:fs
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { starterAce, starterConsole } from '../../bin/demos/starter_contract.js'
-import { writeDemoIdentity } from '../../bin/demos/demo_identity.js'
-import { recordingFailure, stopServer } from '../../bin/demos/record.js'
+import { starterAce, starterConsole } from '../../bin/demos/starter_contract.ts'
+import { writeDemoIdentity } from '../../bin/demos/demo_identity.ts'
+import { recordingFailure, stopServer } from '../../bin/demos/record.ts'
 
 const rootDir = fileURLToPath(new URL('../../', import.meta.url))
 const recorder = join(rootDir, 'bin/demos/record.ts')

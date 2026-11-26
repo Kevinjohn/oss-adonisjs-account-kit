@@ -6,7 +6,7 @@ import { spawn, spawnSync } from 'node:child_process'
 import { existsSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { countTests, planChecks, stepProblem } from './check_changed_plan.js'
+import { countTests, planChecks, stepProblem } from './check_changed_plan.ts'
 import { classify } from './classify_changed.mjs'
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')

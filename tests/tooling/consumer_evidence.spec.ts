@@ -19,7 +19,7 @@ import {
   generateServiceSource,
   optionalBackendIntegrations,
   serviceOnlyManifest,
-} from '../../bin/helpers/consumer/service_only.js'
+} from '../../bin/helpers/consumer/service_only.ts'
 
 const root = join(import.meta.dirname, '../..')
 const frameworkPackages = [

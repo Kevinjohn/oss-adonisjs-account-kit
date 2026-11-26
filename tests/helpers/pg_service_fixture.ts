@@ -19,7 +19,7 @@ import { fileURLToPath } from 'node:url'
 import { setTimeout as delay } from 'node:timers/promises'
 import type { Readable } from 'node:stream'
 import type { TestContext } from '@japa/runner/core'
-import { tools } from './pg_service_fake_tools.js'
+import { tools } from './pg_service_fake_tools.ts'
 
 const source = fileURLToPath(new URL('../../bin/pg.sh', import.meta.url))
 export async function exists(path: string) {

@@ -4,9 +4,9 @@ import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { test } from '@japa/runner'
 import { MigrationRunner } from '@adonisjs/lucid/migration'
-import type { TestApp } from './helpers/app.js'
-import { bootTestApp } from './helpers/app.js'
-import { renderAdmissionMigration } from './helpers/admission_schema.js'
+import type { TestApp } from './helpers/app.ts'
+import { bootTestApp } from './helpers/app.ts'
+import { renderAdmissionMigration } from './helpers/admission_schema.ts'
 
 const exampleMigration = new URL(
   '../examples/api/database/migrations/1791906378315_account_kit_admission_create_account_admissions.ts',

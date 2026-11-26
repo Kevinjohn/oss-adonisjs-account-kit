@@ -2,7 +2,7 @@ import { existsSync } from 'node:fs'
 import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { test } from '@japa/runner'
-import { repoRoot, trackedMarkdown } from './helpers/tracked_markdown.js'
+import { repoRoot, trackedMarkdown } from './helpers/tracked_markdown.ts'
 
 /** Tracked root and docs/ Markdown files, without the changelog. */
 function trackedDocuments(): string[] {

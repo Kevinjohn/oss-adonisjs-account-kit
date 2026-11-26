@@ -8,12 +8,12 @@ import {
   databaseEnvironment,
   installArchive,
   packageMigrations,
-} from './consumer_app.js'
-import { digest, expectFailure, hashFiles, run } from './harness.js'
-import { renderApiVariant } from './api_variants.js'
-import { copyFixture } from './fixture.js'
-import { resetExclusivePostgresSchema } from './postgres.js'
-import { fixtureRoot, prepareOnly, runRoot, userIdType, usersTable } from './settings.js'
+} from './consumer_app.ts'
+import { digest, expectFailure, hashFiles, run } from './harness.ts'
+import { renderApiVariant } from './api_variants.ts'
+import { copyFixture } from './fixture.ts'
+import { resetExclusivePostgresSchema } from './postgres.ts'
+import { fixtureRoot, prepareOnly, runRoot, userIdType, usersTable } from './settings.ts'
 
 /** Checks the generated config as written, before the app's formatter can repair it. */
 async function checkGeneratedStyle(appRoot: string, env: NodeJS.ProcessEnv) {

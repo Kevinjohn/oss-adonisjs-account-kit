@@ -1,9 +1,9 @@
 import { createRequire } from 'node:module'
 import { readFile, realpath, writeFile } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
-import { run } from './harness.js'
-import { ensureExclusivePostgresDatabase, withPostgresClient } from './postgres.js'
-import { compatibility, database, repoRoot } from './settings.js'
+import { run } from './harness.ts'
+import { ensureExclusivePostgresDatabase, withPostgresClient } from './postgres.ts'
+import { compatibility, database, repoRoot } from './settings.ts'
 
 function setCompatibilityVersions(manifest: {
   dependencies: Record<string, string>

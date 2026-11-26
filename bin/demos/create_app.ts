@@ -3,9 +3,9 @@
 import { appendFileSync, cpSync } from 'node:fs'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { run } from './pack_checkout.js'
-import { createAdonisJsApp } from './scaffold_app.js'
-import { writeDemoIdentity } from './demo_identity.js'
+import { run } from './pack_checkout.ts'
+import { createAdonisJsApp } from './scaffold_app.ts'
+import { writeDemoIdentity } from './demo_identity.ts'
 
 const overlay = fileURLToPath(new URL('overlay', import.meta.url))
 const { appDir, archivePath } = createAdonisJsApp('create_app.ts')

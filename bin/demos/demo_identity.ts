@@ -7,7 +7,7 @@ import {
   readStarter,
   verifySnapshot,
   type StarterSnapshot,
-} from './starter_contract.js'
+} from './starter_contract.ts'
 
 export type DemoRole = 'feature-recording' | 'setup-recording'
 

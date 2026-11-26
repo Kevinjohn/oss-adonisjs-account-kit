@@ -1,8 +1,8 @@
 import { copyFile, mkdir } from 'node:fs/promises'
 import { join } from 'node:path'
 import { defineConfig } from 'vitepress'
-import { githubLinks, repository } from './github_links.mjs'
-import { nav, sidebar } from './navigation.mjs'
+import { githubLinks, repository } from './github_links.ts'
+import { nav, sidebar } from './navigation.ts'
 
 export default defineConfig({
   title: 'Account Kit',

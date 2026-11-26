@@ -1,7 +1,7 @@
 // Prepares the dedicated PostgreSQL database that consumer runs own.
 import { createRequire } from 'node:module'
 import { join } from 'node:path'
-import { database, secret } from './settings.js'
+import { database, secret } from './settings.ts'
 
 /** A client for one database on the consumer server, loaded from the app's own `pg`. */
 export function pgClient(appRoot: string, databaseName: string) {

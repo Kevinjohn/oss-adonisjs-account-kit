@@ -1,8 +1,8 @@
 import { readFile } from 'node:fs/promises'
 import { join, posix } from 'node:path'
 import { test } from '@japa/runner'
-import { sourceExamples, sourceRegion } from './helpers/source_examples.js'
-import { repoRoot, trackedMarkdown } from './helpers/tracked_markdown.js'
+import { sourceExamples, sourceRegion } from './helpers/source_examples.ts'
+import { repoRoot, trackedMarkdown } from './helpers/tracked_markdown.ts'
 
 /** Each problem with a document's sourced examples, as `document:line: message`. */
 async function problems(document: string, contents: string): Promise<string[]> {

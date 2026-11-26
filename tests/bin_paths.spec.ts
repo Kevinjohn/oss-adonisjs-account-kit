@@ -3,7 +3,7 @@ import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { test } from '@japa/runner'
-import { repoRoot, trackedMarkdown } from './helpers/tracked_markdown.js'
+import { repoRoot, trackedMarkdown } from './helpers/tracked_markdown.ts'
 
 // Paths that climb out of bin/ name repository files. A script that resolves a moved file fails
 // only when someone runs it, often after a long setup.

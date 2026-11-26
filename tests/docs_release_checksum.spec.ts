@@ -1,7 +1,7 @@
 import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { test } from '@japa/runner'
-import { repoRoot } from './helpers/tracked_markdown.js'
+import { repoRoot } from './helpers/tracked_markdown.ts'
 
 // SECURITY.md tells users to check the archive against the SHA-256 in the release notes, so the
 // documented workflow must publish the notes produced by the checked release gate.

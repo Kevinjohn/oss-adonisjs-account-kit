@@ -10,9 +10,9 @@ import {
 } from 'node:fs'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { run } from './pack_checkout.js'
-import { createAdonisJsApp } from './scaffold_app.js'
-import { writeDemoIdentity } from './demo_identity.js'
+import { run } from './pack_checkout.ts'
+import { createAdonisJsApp } from './scaffold_app.ts'
+import { writeDemoIdentity } from './demo_identity.ts'
 
 const choices = fileURLToPath(
   new URL('../../docs/reference/setup_choices.api.example.json', import.meta.url)
