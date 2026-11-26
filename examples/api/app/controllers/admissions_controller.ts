@@ -3,6 +3,7 @@ import { inject } from '@adonisjs/core'
 import { AccountAdmission } from '@kevinjohn/adonisjs-account-kit/admission'
 import { accountInput } from '#services/account_input'
 import { admissionListValidator, userIdParam } from '#validators/admission'
+import { AdmissionDecisionsService } from '#services/admission_decisions_service'
 
 /**
  * The account's own admission status and request, reachable while not admitted, and the owner's
@@ -11,40 +12,45 @@ import { admissionListValidator, userIdParam } from '#validators/admission'
  */
 @inject()
 export default class AdmissionsController {
-  constructor(private readonly admission: AccountAdmission) {}
+  #admission: AccountAdmission
+  #decisions: AdmissionDecisionsService
 
-  async show(ctx: HttpContext) {
-    const { decision } = await this.admission.current(accountInput(ctx))
-    return ctx.response.ok(decision)
+  constructor(admission: AccountAdmission, decisions: AdmissionDecisionsService) {
+    this.#admission = admission
+    this.#decisions = decisions
   }
 
-  async request(ctx: HttpContext) {
-    const record = await this.admission.request(accountInput(ctx))
-    return ctx.response.ok({ requestedAt: record.requestedAt })
+  async show({ auth, session, response }: HttpContext) {
+    const { decision } = await this.#admission.current(accountInput({ auth, session }))
+    return response.ok(decision)
   }
 
-  async index(ctx: HttpContext) {
-    const actor = await ctx.auth.getUserOrFail()
-    const { status, cursor, limit } = await ctx.request.validateUsing(admissionListValidator)
-    return ctx.response.ok(await this.admission.list({ actorId: actor.id, status, cursor, limit }))
+  async request({ auth, session, response }: HttpContext) {
+    const record = await this.#admission.request(accountInput({ auth, session }))
+    return response.ok({ requestedAt: record.requestedAt })
   }
 
-  async approve(ctx: HttpContext) {
-    return this.decide(ctx, 'approve')
+  async index({ auth, request, response }: HttpContext) {
+    const actor = await auth.getUserOrFail()
+    const { status, cursor, limit } = await request.validateUsing(admissionListValidator)
+    return response.ok(await this.#admission.list({ actorId: actor.id, status, cursor, limit }))
   }
 
-  async reject(ctx: HttpContext) {
-    return this.decide(ctx, 'reject')
+  async approve({ auth, params, response }: HttpContext) {
+    const actor = auth.getUserOrFail()
+    const userId = userIdParam(params.id)
+    return response.ok(await this.#decisions.decide(actor.id, userId, 'approve'))
   }
 
-  async revoke(ctx: HttpContext) {
-    return this.decide(ctx, 'revoke')
+  async reject({ auth, params, response }: HttpContext) {
+    const actor = auth.getUserOrFail()
+    const userId = userIdParam(params.id)
+    return response.ok(await this.#decisions.decide(actor.id, userId, 'reject'))
   }
 
-  private async decide(ctx: HttpContext, transition: 'approve' | 'reject' | 'revoke') {
-    const actor = await ctx.auth.getUserOrFail()
-    const userId = userIdParam(ctx.params.id)
-    const record = await this.admission[transition]({ actorId: actor.id, userId })
-    return ctx.response.ok({ userId: record.userId, approval: record.approval })
+  async revoke({ auth, params, response }: HttpContext) {
+    const actor = auth.getUserOrFail()
+    const userId = userIdParam(params.id)
+    return response.ok(await this.#decisions.decide(actor.id, userId, 'revoke'))
   }
 }

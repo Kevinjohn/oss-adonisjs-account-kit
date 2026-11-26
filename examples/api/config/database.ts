@@ -33,6 +33,7 @@ const dbConfig = defineConfig({
       useNullAsDefault: true,
 
       migrations: {
+        disableRollbacksInProduction: true,
         /**
          * Sort migration files naturally by filename.
          */
@@ -69,7 +70,11 @@ const dbConfig = defineConfig({
         password: env.get('DB_PASSWORD') || undefined,
         database: env.get('DB_DATABASE'),
       },
-      migrations: { naturalSort: true, paths: ['database/migrations'] },
+      migrations: {
+        disableRollbacksInProduction: true,
+        naturalSort: true,
+        paths: ['database/migrations'],
+      },
       debug: app.inDev,
     },
   },

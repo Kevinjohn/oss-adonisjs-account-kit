@@ -9,33 +9,31 @@ import { proofFailure, proofHeaders } from '#services/http_responses'
 import { reportCommittedFailure } from '#services/committed_failure_diagnostic'
 
 export default class EmailChangesController {
-  async inspectEmailChange(ctx: HttpContext) {
-    proofHeaders(ctx)
-    if (
-      !(await accountKit.emailPasswordManagement.inspectEmailChange({ token: ctx.params.token }))
-    ) {
-      return proofFailure(ctx, 'E_ACCOUNT_KIT_INVALID_EMAIL_TOKEN')
+  async inspectEmailChange({ response, params, request }: HttpContext) {
+    proofHeaders({ response })
+    if (!(await accountKit.emailPasswordManagement.inspectEmailChange({ token: params.token }))) {
+      return proofFailure({ request, response }, 'E_ACCOUNT_KIT_INVALID_EMAIL_TOKEN')
     }
-    return ctx.response.ok({ confirmation: true })
+    return response.ok({ confirmation: true })
   }
 
-  async completeEmailChange(ctx: HttpContext) {
-    proofHeaders(ctx)
+  async completeEmailChange({ response, params, request, logger }: HttpContext) {
+    proofHeaders({ response })
     try {
       const user = await accountKit.emailPasswordManagement.completeEmailChange({
-        token: ctx.params.token,
+        token: params.token,
       })
-      return ctx.response.ok({
+      return response.ok({
         email: user.email,
         verified: user.unverifiedEmail === null || user.unverifiedEmail !== user.email,
       })
     } catch (error) {
       if (error instanceof E_ACCOUNT_KIT_INVALID_TOKEN) {
-        return proofFailure(ctx, 'E_ACCOUNT_KIT_INVALID_EMAIL_TOKEN')
+        return proofFailure({ request, response }, 'E_ACCOUNT_KIT_INVALID_EMAIL_TOKEN')
       }
       if (error instanceof E_ACCOUNT_KIT_DELIVERY || error instanceof E_ACCOUNT_KIT_POST_COMMIT) {
-        reportCommittedFailure(ctx.logger, error, 'email_change.complete')
-        return ctx.response.ok({ changed: true })
+        reportCommittedFailure(logger, error, 'email_change.complete')
+        return response.ok({ changed: true })
       }
       throw error
     }

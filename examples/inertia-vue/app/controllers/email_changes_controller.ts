@@ -75,19 +75,19 @@ export default class EmailChangesController {
     return inertia.render('auth/confirm_email_change', { token: params.token, valid })
   }
 
-  async complete(ctx: HttpContext) {
+  async complete({ params, session, response, logger, auth }: HttpContext) {
     try {
-      await kit.emailPasswordManagement.completeEmailChange({ token: ctx.params.token })
+      await kit.emailPasswordManagement.completeEmailChange({ token: params.token })
     } catch (error) {
       if (error instanceof errors.E_ACCOUNT_KIT_INVALID_TOKEN) {
-        ctx.session.flash('error', 'This link is invalid, already used, or expired.')
-        return ctx.response.redirect().withQs(false).toRoute('session.create')
+        session.flash('error', 'This link is invalid, already used, or expired.')
+        return response.redirect().withQs(false).toRoute('session.create')
       }
       if (!isDeliveryFailure(error)) throw error
-      ctx.logger.error({ event: 'email_change_follow_up_failed' }, 'email change follow-up failed')
+      logger.error({ event: 'email_change_follow_up_failed' }, 'email change follow-up failed')
     }
-    if (await ctx.auth.use('web').check()) await accountKitSessionGuard(ctx).terminate()
-    ctx.session.flash('success', 'Email changed. Sign in with your new address.')
-    return ctx.response.redirect().withQs(false).toRoute('session.create')
+    if (await auth.use('web').check()) await accountKitSessionGuard({ auth, session }).terminate()
+    session.flash('success', 'Email changed. Sign in with your new address.')
+    return response.redirect().withQs(false).toRoute('session.create')
   }
 }

@@ -16,25 +16,25 @@ export default class PasswordResetsController {
     return response.accepted(acknowledgement)
   }
 
-  async inspect(ctx: HttpContext) {
-    proofHeaders(ctx)
-    const valid = await accountKit.passwordReset.inspect({ token: ctx.params.token })
+  async inspect({ response, params, request }: HttpContext) {
+    proofHeaders({ response })
+    const valid = await accountKit.passwordReset.inspect({ token: params.token })
     return valid
-      ? ctx.response.ok({ valid: true })
-      : proofFailure(ctx, 'E_ACCOUNT_KIT_INVALID_PASSWORD_TOKEN')
+      ? response.ok({ valid: true })
+      : proofFailure({ request, response }, 'E_ACCOUNT_KIT_INVALID_PASSWORD_TOKEN')
   }
 
-  async complete(ctx: HttpContext) {
-    proofHeaders(ctx)
-    const { password } = await ctx.request.validateUsing(passwordValidator)
+  async complete({ response, request, logger, params }: HttpContext) {
+    proofHeaders({ response })
+    const { password } = await request.validateUsing(passwordValidator)
     try {
-      await committedFollowUp(ctx.logger, 'password_reset.complete', () =>
-        accountKit.passwordReset.reset({ token: ctx.params.token, password })
+      await committedFollowUp(logger, 'password_reset.complete', () =>
+        accountKit.passwordReset.reset({ token: params.token, password })
       )
-      return ctx.response.accepted({ message: 'Password reset.' })
+      return response.accepted({ message: 'Password reset.' })
     } catch (error) {
       if (error instanceof E_ACCOUNT_KIT_INVALID_TOKEN)
-        return proofFailure(ctx, 'E_ACCOUNT_KIT_INVALID_PASSWORD_TOKEN')
+        return proofFailure({ request, response }, 'E_ACCOUNT_KIT_INVALID_PASSWORD_TOKEN')
       throw error
     }
   }

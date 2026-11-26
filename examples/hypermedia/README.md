@@ -128,8 +128,9 @@ Copy the minimum relevant pieces and adapt names to the host app:
   `#services/account_kit_notifications` import in `config/account_kit.ts`: it is the example's
   development notifier, which prints links instead of sending email.
 - `app/services/session_guard.ts`, `app/services/delivery_failure.ts`,
-  `app/services/token_page_headers.ts`, `app/services/safe_old_input.ts` (the exception handler
-  imports it), and the session-revision middleware.
+  `app/services/token_page_headers.ts`, `app/services/safe_old_input.ts` (the profile controller
+  imports it), `app/validators/old_input.ts` (the exception handler imports it), and the
+  session-revision middleware.
 - The account controllers, validators and named middleware, then the matching form pages and
   shared `@form`, field, error and flash components.
 - Native session and auth guard configuration, request limits, CSRF protection and the

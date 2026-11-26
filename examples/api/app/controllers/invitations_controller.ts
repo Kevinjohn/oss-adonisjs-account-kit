@@ -20,54 +20,59 @@ function invitationIdParam(value: string): number {
 }
 
 export default class InvitationsController {
-  async send(ctx: HttpContext) {
-    const actor = await ctx.auth.getUserOrFail()
+  async send({ auth, request, response, logger }: HttpContext) {
+    const actor = await auth.getUserOrFail()
     if (actor.currentAccessToken && !actor.currentAccessToken.allows('invitations:create')) {
-      return accountError(ctx, 403, 'missing_ability', 'This token cannot create invitations.')
+      return accountError(
+        { request, response },
+        403,
+        'missing_ability',
+        'This token cannot create invitations.'
+      )
     }
-    const { email, role } = await ctx.request.validateUsing(invitationValidator)
-    const invitation = await committedFollowUp(ctx.logger, 'invitation.send', () =>
+    const { email, role } = await request.validateUsing(invitationValidator)
+    const invitation = await committedFollowUp(logger, 'invitation.send', () =>
       accountKit.invitations.send({ actorId: actor.id, email, role })
     )
     return invitation
-      ? ctx.response.created({ id: invitation.id })
-      : ctx.response.accepted({ requested: true })
+      ? response.created({ id: invitation.id })
+      : response.accepted({ requested: true })
   }
 
-  async list(ctx: HttpContext) {
-    const actor = await ctx.auth.getUserOrFail()
-    const { limit, cursor } = await ctx.request.validateUsing(invitationListValidator)
-    return ctx.response.ok(await accountKit.invitations.list({ actorId: actor.id, limit, cursor }))
+  async list({ auth, request, response }: HttpContext) {
+    const actor = await auth.getUserOrFail()
+    const { limit, cursor } = await request.validateUsing(invitationListValidator)
+    return response.ok(await accountKit.invitations.list({ actorId: actor.id, limit, cursor }))
   }
 
-  async inspect(ctx: HttpContext) {
-    proofHeaders(ctx)
-    const invitation = await accountKit.invitations.inspect({ token: ctx.params.token })
+  async inspect({ response, params, request }: HttpContext) {
+    proofHeaders({ response })
+    const invitation = await accountKit.invitations.inspect({ token: params.token })
     return invitation
-      ? ctx.response.ok(invitation)
-      : proofFailure(ctx, 'E_ACCOUNT_KIT_INVALID_TOKEN')
+      ? response.ok(invitation)
+      : proofFailure({ request, response }, 'E_ACCOUNT_KIT_INVALID_TOKEN')
   }
 
-  async accept(ctx: HttpContext) {
-    proofHeaders(ctx)
-    const { password, fullName } = await ctx.request.validateUsing(invitationAcceptValidator)
+  async accept({ response, request, logger, params }: HttpContext) {
+    proofHeaders({ response })
+    const { password, fullName } = await request.validateUsing(invitationAcceptValidator)
     try {
-      const user = await committedFollowUp(ctx.logger, 'invitation.accept', () =>
+      const user = await committedFollowUp(logger, 'invitation.accept', () =>
         accountKit.invitations.accept({
-          token: ctx.params.token,
+          token: params.token,
           password,
           registrationData: { fullName },
         })
       )
-      if (!user) return ctx.response.accepted({ accepted: true })
-      return ctx.response.created({
+      if (!user) return response.accepted({ accepted: true })
+      return response.created({
         id: user.id,
         email: user.email,
         verified: user.unverifiedEmail === null || user.unverifiedEmail !== user.email,
       })
     } catch (error) {
       if (error instanceof E_ACCOUNT_KIT_INVALID_TOKEN) {
-        return proofFailure(ctx, 'E_ACCOUNT_KIT_INVALID_TOKEN')
+        return proofFailure({ request, response }, 'E_ACCOUNT_KIT_INVALID_TOKEN')
       }
       throw error
     }

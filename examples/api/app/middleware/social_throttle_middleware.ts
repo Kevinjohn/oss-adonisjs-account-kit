@@ -4,7 +4,8 @@ import limiter from '@adonisjs/limiter/services/main'
 import type { HttpContext } from '@adonisjs/core/http'
 import type { NextFn } from '@adonisjs/core/types/http'
 import { E_ACCOUNT_KIT_THROTTLED } from '@kevinjohn/adonisjs-account-kit'
-import env from '#start/env'
+import config from '@adonisjs/core/services/config'
+import type { Secret } from '@adonisjs/core/helpers'
 import { accountInput } from '#middleware/account_access_middleware'
 
 type Operation = 'begin' | 'confirm' | 'callback' | 'registration' | 'redeem' | 'proof' | 'unlink'
@@ -23,7 +24,10 @@ const budgets: Record<Operation, number> = {
 export default class SocialThrottleMiddleware {
   async handle(ctx: HttpContext, next: NextFn, options: { operation: Operation; actor?: boolean }) {
     const value = options.actor ? String(accountInput(ctx).userId) : ctx.request.ip()
-    const key = createHmac('sha256', env.get('APP_KEY').release())
+    const key = createHmac(
+      'sha256',
+      config.get<Secret<string>>('reference.socialThrottleSecret').release()
+    )
       .update(JSON.stringify(['social-reference', options.operation, value]))
       .digest('hex')
     try {

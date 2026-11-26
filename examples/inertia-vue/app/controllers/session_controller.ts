@@ -8,17 +8,17 @@ export default class SessionController {
     return inertia.render('auth/login', {})
   }
 
-  async store(ctx: HttpContext) {
-    const { email, password } = await ctx.request.validateUsing(loginValidator)
+  async store({ request, auth, session, response }: HttpContext) {
+    const { email, password } = await request.validateUsing(loginValidator)
     await kit.authentication.login(
-      { email, password, clientKey: ctx.request.ip() },
-      accountKitSessionGuard(ctx)
+      { email, password, clientKey: request.ip() },
+      accountKitSessionGuard({ auth, session })
     )
-    return ctx.response.redirect().toRoute('dashboard')
+    return response.redirect().toRoute('dashboard')
   }
 
-  async destroy(ctx: HttpContext) {
-    await kit.authentication.revokeCredential(accountKitSessionGuard(ctx))
-    return ctx.response.redirect().toRoute('session.create')
+  async destroy({ auth, session, response }: HttpContext) {
+    await kit.authentication.revokeCredential(accountKitSessionGuard({ auth, session }))
+    return response.redirect().toRoute('session.create')
   }
 }

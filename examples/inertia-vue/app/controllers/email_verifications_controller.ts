@@ -27,19 +27,18 @@ export default class EmailVerificationsController {
    * The address owner sets the account password here, replacing the one chosen at signup, so
    * whoever registered the address cannot keep access. Every session ends, so sign in again.
    */
-  async update(ctx: HttpContext) {
-    const { request, response, session, params } = ctx
+  async update({ request, response, session, params, logger, auth }: HttpContext) {
     const { password } = await request.validateUsing(verifyEmailValidator)
     try {
       await kit.emailVerification.complete({ token: params.token, password })
     } catch (error) {
       if (!isDeliveryFailure(error)) throw error
-      ctx.logger.error(
+      logger.error(
         { event: 'email_verification_follow_up_failed' },
         'email verification follow-up failed'
       )
     }
-    if (await ctx.auth.use('web').check()) await accountKitSessionGuard(ctx).terminate()
+    if (await auth.use('web').check()) await accountKitSessionGuard({ auth, session }).terminate()
     session.flash('success', 'Email confirmed. Sign in with your new password.')
     return response.redirect().withQs(false).toRoute('session.create')
   }

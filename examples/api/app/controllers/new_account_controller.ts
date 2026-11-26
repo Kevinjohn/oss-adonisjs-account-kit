@@ -17,8 +17,7 @@ import {
 import { rememberLastUsedMethod } from '#services/last_used_method'
 
 export default class NewAccountController {
-  async store(ctx: HttpContext) {
-    const { request, response, serialize } = ctx
+  async store({ request, response, serialize, logger, auth, session }: HttpContext) {
     const { fullName, email, password } = await request.validateUsing(signupValidator)
     try {
       await accountKit.registration.register({ email, password, registrationData: { fullName } })
@@ -29,7 +28,7 @@ export default class NewAccountController {
         })
       }
       if (error instanceof E_ACCOUNT_KIT_DELIVERY || error instanceof E_ACCOUNT_KIT_POST_COMMIT) {
-        reportCommittedFailure(ctx.logger, error, 'registration.signup')
+        reportCommittedFailure(logger, error, 'registration.signup')
         return response.accepted({
           accountCreated: true,
           message:
@@ -44,10 +43,10 @@ export default class NewAccountController {
     try {
       result =
         strategy === 'session'
-          ? await accountKit.authentication.login(input, accountKitSessionGuard(ctx))
+          ? await accountKit.authentication.login(input, accountKitSessionGuard({ auth, session }))
           : await accountKit.authentication.login(input, accessTokenGuard())
     } catch {
-      reportCredentialEstablishmentFailure(ctx.logger, 'registration.credential_establish')
+      reportCredentialEstablishmentFailure(logger, 'registration.credential_establish')
       return response.accepted({
         accountCreated: true,
         message:
@@ -55,7 +54,7 @@ export default class NewAccountController {
       })
     }
     const user = await User.findOrFail(result.account.id)
-    rememberLastUsedMethod(ctx, 'password')
+    rememberLastUsedMethod({ response }, 'password')
     return serialize({
       user: UserTransformer.transform(user),
       ...(strategy === 'access_tokens'

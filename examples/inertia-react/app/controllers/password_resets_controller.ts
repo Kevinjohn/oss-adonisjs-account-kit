@@ -33,19 +33,15 @@ export default class PasswordResetsController {
     return inertia.render('auth/reset_password', { token: params.token, valid })
   }
 
-  async update(ctx: HttpContext) {
-    const { request, response, session, params } = ctx
+  async update({ request, response, session, params, logger, auth }: HttpContext) {
     const { password } = await request.validateUsing(resetPasswordValidator)
     try {
       await kit.passwordReset.reset({ token: params.token, password })
     } catch (error) {
       if (!isDeliveryFailure(error)) throw error
-      ctx.logger.error(
-        { event: 'password_reset_follow_up_failed' },
-        'password reset follow-up failed'
-      )
+      logger.error({ event: 'password_reset_follow_up_failed' }, 'password reset follow-up failed')
     }
-    if (await ctx.auth.use('web').check()) await accountKitSessionGuard(ctx).terminate()
+    if (await auth.use('web').check()) await accountKitSessionGuard({ auth, session }).terminate()
     session.flash('success', 'Your password has been reset. Sign in with the new password.')
     return response.redirect().withQs(false).toRoute('session.create')
   }

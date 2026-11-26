@@ -12,9 +12,9 @@ export default class PasswordsController {
    * Changing the password ends every session. Storing the revision it returns keeps this one;
    * regenerating gives it a new id, so a copied cookie for the old id does not survive.
    */
-  async update(ctx: HttpContext) {
-    const { currentPassword, password } = await ctx.request.validateUsing(changePasswordValidator)
-    const user = ctx.auth.getUserOrFail()
+  async update({ request, auth, logger, session, response }: HttpContext) {
+    const { currentPassword, password } = await request.validateUsing(changePasswordValidator)
+    const user = auth.getUserOrFail()
     let revision: string | null
     let followUp = ''
     try {
@@ -28,7 +28,7 @@ export default class PasswordsController {
       const committed = passwordChangeRevision(error)
       if (committed === undefined) throw error
       revision = committed
-      ctx.logger.error(
+      logger.error(
         { event: 'password_change_follow_up_failed' },
         'Password changed but a follow-up failed'
       )
@@ -37,9 +37,9 @@ export default class PasswordsController {
           ? ' The notification email could not be sent.'
           : ' A follow-up step failed.'
     }
-    ctx.session.regenerate()
-    ctx.session.put('accountKitRevision', revision ?? '')
-    ctx.session.flash('success', `Password changed. Other devices have been signed out.${followUp}`)
-    return ctx.response.redirect().withQs(false).toPath('/settings/password')
+    session.regenerate()
+    session.put('accountKitRevision', revision ?? '')
+    session.flash('success', `Password changed. Other devices have been signed out.${followUp}`)
+    return response.redirect().withQs(false).toPath('/settings/password')
   }
 }

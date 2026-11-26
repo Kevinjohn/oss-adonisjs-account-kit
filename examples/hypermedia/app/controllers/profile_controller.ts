@@ -10,11 +10,11 @@ export default class ProfileController {
     return view.render('pages/settings/profile', { fullName: user.fullName, email: user.email })
   }
 
-  async update(ctx: HttpContext) {
-    const { fullName, currentPassword } = await ctx.request.validateUsing(updateProfileValidator)
+  async update({ request, auth, session, response }: HttpContext) {
+    const { fullName, currentPassword } = await request.validateUsing(updateProfileValidator)
     try {
       await kit.emailPasswordManagement.updateProfile({
-        actorId: ctx.auth.getUserOrFail().id,
+        actorId: auth.getUserOrFail().id,
         currentPassword,
         registrationData: { fullName },
       })
@@ -24,11 +24,11 @@ export default class ProfileController {
         !(error instanceof errors.E_ACCOUNT_KIT_IDENTITY_NOT_CONFIRMED)
       )
         throw error
-      ctx.session.flash('error', 'Your current password is incorrect. Check it and try again.')
-      ctx.session.flash('input', safeOldInput({ fullName }))
-      return ctx.response.redirect().back()
+      session.flash('error', 'Your current password is incorrect. Check it and try again.')
+      session.flash('input', safeOldInput({ fullName }))
+      return response.redirect().back()
     }
-    ctx.session.flash('success', 'Your profile has been updated.')
-    return ctx.response.redirect().toPath('/settings/profile')
+    session.flash('success', 'Your profile has been updated.')
+    return response.redirect().toPath('/settings/profile')
   }
 }

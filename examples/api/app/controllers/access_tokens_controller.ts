@@ -7,8 +7,7 @@ import { accessTokenGuard } from '#services/account_kit_guards'
 import { rememberLastUsedMethod } from '#services/last_used_method'
 
 export default class AccessTokensController {
-  async store(ctx: HttpContext) {
-    const { request, serialize } = ctx
+  async store({ request, serialize, response }: HttpContext) {
     const { email, password } = await request.validateUsing(loginValidator)
 
     const result = await accountKit.authentication.login(
@@ -16,7 +15,7 @@ export default class AccessTokensController {
       accessTokenGuard()
     )
     const user = await User.findOrFail(result.account.id)
-    rememberLastUsedMethod(ctx, 'password')
+    rememberLastUsedMethod({ response }, 'password')
     return serialize({ user: UserTransformer.transform(user), token: result.credential.value })
   }
 

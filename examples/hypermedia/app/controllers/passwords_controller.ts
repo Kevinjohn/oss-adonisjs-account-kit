@@ -8,9 +8,9 @@ export default class PasswordsController {
     return view.render('pages/settings/password')
   }
 
-  async update(ctx: HttpContext) {
-    const { currentPassword, password } = await ctx.request.validateUsing(changePasswordValidator)
-    const user = ctx.auth.getUserOrFail()
+  async update({ request, auth, session, response }: HttpContext) {
+    const { currentPassword, password } = await request.validateUsing(changePasswordValidator)
+    const user = auth.getUserOrFail()
     let notified = true
     let revision: string | null
     try {
@@ -29,16 +29,16 @@ export default class PasswordsController {
         error instanceof errors.E_INVALID_CREDENTIALS ||
         error instanceof errors.E_ACCOUNT_KIT_IDENTITY_NOT_CONFIRMED
       ) {
-        ctx.session.flash('error', 'Your current password is incorrect. Check it and try again.')
-        return ctx.response.redirect().back()
+        session.flash('error', 'Your current password is incorrect. Check it and try again.')
+        return response.redirect().back()
       } else throw error
     }
     const unsent = notified ? '' : ' We could not send the confirmation email.'
     // The change ended every session. Storing its revision keeps this one; regenerating gives it a
     // new id, so a copied cookie for the old id does not survive.
-    ctx.session.regenerate()
-    ctx.session.put('accountKitRevision', revision ?? '')
-    ctx.session.flash('success', `Password changed. Other sessions have been signed out.${unsent}`)
-    return ctx.response.redirect().toPath('/settings/password')
+    session.regenerate()
+    session.put('accountKitRevision', revision ?? '')
+    session.flash('success', `Password changed. Other sessions have been signed out.${unsent}`)
+    return response.redirect().toPath('/settings/password')
   }
 }

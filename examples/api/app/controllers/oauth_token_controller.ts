@@ -9,18 +9,18 @@ import { authStrategy } from '#services/auth_strategy'
 import { tokenRedeemValidator } from '#validators/social'
 
 export default class OauthTokenController {
-  async redeem(ctx: HttpContext) {
-    ctx.response.header('Cache-Control', 'no-store')
+  async redeem({ response, request, serialize }: HttpContext) {
+    response.header('Cache-Control', 'no-store')
     if (authStrategy() !== 'access_tokens')
       throw new E_ACCOUNT_KIT_INVALID_INPUT('Token exchange is unavailable')
-    const { code, verifier } = await ctx.request.validateUsing(tokenRedeemValidator)
+    const { code, verifier } = await request.validateUsing(tokenRedeemValidator)
     const result = await accountKit.socialAuthentication.redeemHandoff({
       code,
       verifier,
       guard: accessTokenGuard(),
     })
     const user = await User.findOrFail(result.account.id)
-    rememberLastUsedMethod(ctx, result.provider)
-    return ctx.serialize({ user: UserTransformer.transform(user), token: result.credential.value })
+    rememberLastUsedMethod({ response }, result.provider)
+    return serialize({ user: UserTransformer.transform(user), token: result.credential.value })
   }
 }

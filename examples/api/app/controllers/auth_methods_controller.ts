@@ -8,21 +8,24 @@ import { accountInput } from '#middleware/account_access_middleware'
 import { lastUsedMethod } from '#services/last_used_method'
 
 export default class AuthMethodsController {
-  async methods(ctx: HttpContext) {
-    const current = accountInput(ctx)
+  async methods({ auth, session, response, request }: HttpContext) {
+    const current = accountInput({ auth, session })
     const [account, identities] = await Promise.all([
       accountKit.authentication.current(current),
       accountKit.socialAuthentication.list({ current }),
     ])
     const config = await configProvider.resolve<ResolvedConfig>(app, accountKitConfig)
     const configuredProviders = Object.keys(config?.socialAuthentication?.providers ?? {})
-    return ctx.response.ok({
+    return response.ok({
       password: account.hasPassword,
       configuredProviders,
-      lastUsedMethod: lastUsedMethod(ctx, {
-        password: account.hasPassword,
-        providers: configuredProviders,
-      }),
+      lastUsedMethod: lastUsedMethod(
+        { request },
+        {
+          password: account.hasPassword,
+          providers: configuredProviders,
+        }
+      ),
       social: identities.map((identity) => ({ id: identity.id, provider: identity.provider })),
     })
   }

@@ -7,9 +7,8 @@ import { authStrategy } from '#services/auth_strategy'
 import { reportCommittedFailure } from '#services/committed_failure_diagnostic'
 
 export default class AccountPasswordController {
-  async update(ctx: HttpContext) {
-    const { request, response, logger } = ctx
-    const input = accountInput(ctx)
+  async update({ request, response, logger, auth, session }: HttpContext) {
+    const input = accountInput({ auth, session })
     const { currentPassword, newPassword } = await request.validateUsing(credentialChangeValidator)
     // Keep the caller's own token; every other sign-in ends.
     const keepCurrent = 'tokenId' in input && input.tokenId ? { tokenId: input.tokenId } : {}
@@ -31,8 +30,8 @@ export default class AccountPasswordController {
     }
     if (authStrategy() === 'session') {
       // A new session id, so a copied cookie for this session does not survive the change.
-      ctx.session.regenerate()
-      ctx.session.put('accountKitRevision', revision ?? '')
+      session.regenerate()
+      session.put('accountKitRevision', revision ?? '')
     }
     return response.ok({ changed: true })
   }

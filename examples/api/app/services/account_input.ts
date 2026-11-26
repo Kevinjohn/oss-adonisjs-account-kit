@@ -1,7 +1,7 @@
 import type { HttpContext } from '@adonisjs/core/http'
 import { authStrategy, selectedGuardName } from '#services/auth_strategy'
 
-export function accountInput(ctx: HttpContext) {
+export function accountInput(ctx: Pick<HttpContext, 'auth' | 'session'>) {
   const user = ctx.auth.use(selectedGuardName()).getUserOrFail()
   const revision = ctx.session.get('accountKitRevision')
   return authStrategy() === 'session'

@@ -110,11 +110,11 @@ test('non-default variants change the users table, the ID columns and the model'
   )
   assert.include(
     flat(strings, 'database/migrations/1791906000000_create_role_assignments.ts'),
-    ".references('account_users.id')"
+    ".references('id').inTable('account_users')"
   )
   assert.include(
     flat(strings, 'database/migrations/1800000000003_make_user_full_name_nullable.ts'),
-    "usersTable='account_users'"
+    "tableName='account_users'"
   )
   const model = flat(strings, 'app/models/user.ts')
   assert.include(model, "statictable='account_users'")

@@ -23,6 +23,7 @@ const dbConfig = defineConfig({
       },
       useNullAsDefault: true,
       migrations: {
+        disableRollbacksInProduction: true,
         naturalSort: true,
         paths: ['database/migrations'],
       },
@@ -49,7 +50,7 @@ const dbConfig = defineConfig({
     //     password: env.get('DB_PASSWORD'),
     //     database: env.get('DB_DATABASE'),
     //   },
-    //   migrations: {
+    //   migrations: { disableRollbacksInProduction: true,
     //     naturalSort: true,
     //     paths: ['database/migrations'],
     //   },
@@ -73,7 +74,7 @@ const dbConfig = defineConfig({
     //     password: env.get('DB_PASSWORD'),
     //     database: env.get('DB_DATABASE'),
     //   },
-    //   migrations: {
+    //   migrations: { disableRollbacksInProduction: true,
     //     naturalSort: true,
     //     paths: ['database/migrations'],
     //   },
@@ -97,7 +98,7 @@ const dbConfig = defineConfig({
     //     password: env.get('DB_PASSWORD'),
     //     database: env.get('DB_DATABASE'),
     //   },
-    //   migrations: {
+    //   migrations: { disableRollbacksInProduction: true,
     //     naturalSort: true,
     //     paths: ['database/migrations'],
     //   },
@@ -119,7 +120,7 @@ const dbConfig = defineConfig({
     //     authToken: env.get('LIBSQL_AUTH_TOKEN'),
     //   },
     //   useNullAsDefault: true,
-    //   migrations: {
+    //   migrations: { disableRollbacksInProduction: true,
     //     naturalSort: true,
     //     paths: ['database/migrations'],
     //   },

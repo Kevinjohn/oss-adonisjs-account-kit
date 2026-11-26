@@ -15,8 +15,8 @@ export default class NewAccountController {
    * Creates the account and attempts to send a verification link, then signs the new user in. The
    * account stays limited until the link is used.
    */
-  async store(ctx: HttpContext) {
-    const { fullName, email, password } = await ctx.request.validateUsing(signupValidator)
+  async store({ request, logger, auth, session, response }: HttpContext) {
+    const { fullName, email, password } = await request.validateUsing(signupValidator)
     let followUp: 'delivery' | 'observer' | undefined
     try {
       await kit.registration.register({ email, password, registrationData: { fullName } })
@@ -29,7 +29,7 @@ export default class NewAccountController {
       if (!isDeliveryFailure(error)) throw error
       followUp = error instanceof E_ACCOUNT_KIT_DELIVERY ? 'delivery' : 'observer'
       // Log the event, not the error: its cause can carry the transport's message and proof URL.
-      ctx.logger.error(
+      logger.error(
         { event: 'signup_follow_up_failed' },
         'Account creation committed but a follow-up failed'
       )
@@ -44,29 +44,29 @@ export default class NewAccountController {
 
     try {
       await kit.authentication.login(
-        { email, password, clientKey: ctx.request.ip() },
-        accountKitSessionGuard(ctx)
+        { email, password, clientKey: request.ip() },
+        accountKitSessionGuard({ auth, session })
       )
     } catch (error) {
-      ctx.logger.error(
+      logger.error(
         { event: 'signup_sign_in_failed', code: (error as { code?: unknown }).code },
         'Account created but initial sign in failed'
       )
-      ctx.session.flash(
+      session.flash(
         'success',
         committedMessage
           ? `${committedMessage} We could not sign you in. Please sign in and use the dashboard resend action after one minute if you need a new link.`
           : 'Your account was created, but we could not sign you in. Please sign in to continue.'
       )
-      return ctx.response.redirect().toRoute('session.create')
+      return response.redirect().toRoute('session.create')
     }
 
-    ctx.session.flash(
+    session.flash(
       'success',
       committedMessage
         ? `${committedMessage} Use the dashboard resend action after one minute if you need a new link.`
         : 'Account created. Check your email for a verification link.'
     )
-    return ctx.response.redirect().toRoute('dashboard')
+    return response.redirect().toRoute('dashboard')
   }
 }

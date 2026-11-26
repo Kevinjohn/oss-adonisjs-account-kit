@@ -1,7 +1,7 @@
 import { inject } from '@adonisjs/core'
 import { E_ACCOUNT_KIT_ACCOUNT_ACCESS_DENIED, AccountKit } from '@kevinjohn/adonisjs-account-kit'
 import { AccountAdmission } from '@kevinjohn/adonisjs-account-kit/admission'
-import { isAdmittedOwner } from './account_kit_authorization.js'
+import { isAdmittedOwner } from '#services/account_kit_authorization'
 
 @inject()
 export class AccountAccessInspection {
