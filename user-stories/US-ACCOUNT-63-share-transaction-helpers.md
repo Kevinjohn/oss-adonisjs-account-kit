@@ -16,7 +16,7 @@ As a package consumer, I want to use Account Kit’s transaction helpers so that
 
 ## Acceptance criteria
 
-- Construct `new TransactionManager(db)` and call `manager.run(callback)` with the supplied client for database operations. `manager.lockRow(trx, table, id)` uses a row lock on PostgreSQL and MySQL; on SQLite the transaction already holds the writer lock. Use `sqlTimestamp` and `readTimestamp` to round-trip the stored value. Successful commit returns the callback result.
+- Construct `new TransactionManager(db)` and call `manager.run(callback)` with the supplied client for database operations. `manager.lockRow(trx, table, id)` uses a row lock on PostgreSQL and MySQL; on SQLite the transaction already holds the writer lock. Use `sqlTimestamp(trx, at)` with an explicit Luxon `DateTime` and `readTimestamp(value)` to round-trip the stored value; the write helper does not default to the current time. Successful commit returns the callback result.
 - SQLite requires its migrated singleton lock row. Missing table or row aborts the transaction. A retryable SQLite busy failure before commit can rerun the database-only callback. A post-commit fault reports the committed write, so the caller must avoid replaying it.
 
 ## User flow
