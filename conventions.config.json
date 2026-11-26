@@ -1,0 +1,198 @@
+{
+  "departures": {
+    "file": "DECISIONS.md",
+    "heading": "Departures",
+    "entries": [
+      {
+        "entry": 2,
+        "item": "IMP-5",
+        "path": "bin/demos/create_setup_app.ts"
+      },
+      {
+        "entry": 2,
+        "item": "IMP-5",
+        "path": "bin/demos/overlay/config/account_kit.ts"
+      },
+      {
+        "entry": 2,
+        "item": "IMP-5",
+        "path": "bin/demos/overlay/start/account_kit_routes.ts"
+      },
+      {
+        "entry": 2,
+        "item": "IMP-5",
+        "path": "bin/demos/starter_contract.ts"
+      },
+      {
+        "entry": 2,
+        "item": "IMP-5",
+        "path": "bin/helpers/consumer/api_variants.ts"
+      },
+      {
+        "entry": 2,
+        "item": "IMP-5",
+        "path": "bin/helpers/consumer/consumer_app.ts"
+      },
+      {
+        "entry": 2,
+        "item": "IMP-5",
+        "path": "bin/test_recipe.ts"
+      },
+      {
+        "entry": 2,
+        "item": "IMP-5",
+        "path": "src/setup/generated_account_config.ts"
+      },
+      {
+        "entry": 2,
+        "item": "IMP-5",
+        "path": "src/setup/generated_http.ts"
+      },
+      {
+        "entry": 2,
+        "item": "IMP-5",
+        "path": "src/setup/generated_routes.ts"
+      },
+      {
+        "entry": 2,
+        "item": "IMP-5",
+        "path": "tests/admission_install_command.spec.ts"
+      },
+      {
+        "entry": 2,
+        "item": "IMP-5",
+        "path": "tests/configure.spec.ts"
+      },
+      {
+        "entry": 2,
+        "item": "IMP-5",
+        "path": "tests/helpers/setup_project_fixture.ts"
+      },
+      {
+        "entry": 2,
+        "item": "IMP-5",
+        "path": "tests/setup_config_diagnostics.spec.ts"
+      },
+      {
+        "entry": 2,
+        "item": "IMP-5",
+        "path": "tests/setup_config_provenance.spec.ts"
+      },
+      {
+        "entry": 2,
+        "item": "IMP-5",
+        "path": "tests/setup_inspection.spec.ts"
+      },
+      {
+        "entry": 2,
+        "item": "IMP-5",
+        "path": "tests/setup_mail_prerequisites.spec.ts"
+      },
+      {
+        "entry": 2,
+        "item": "IMP-5",
+        "path": "tests/setup_migrations.spec.ts"
+      },
+      {
+        "entry": 2,
+        "item": "IMP-5",
+        "path": "tests/setup_selected_env_name.spec.ts"
+      },
+      {
+        "entry": 2,
+        "item": "IMP-5",
+        "path": "tests/setup_session_prerequisites.spec.ts"
+      },
+      {
+        "entry": 2,
+        "item": "IMP-5",
+        "path": "tests/setup_shield_prerequisites.spec.ts"
+      },
+      {
+        "entry": 2,
+        "item": "IMP-5",
+        "path": "tests/setup_source_edits.spec.ts"
+      },
+      {
+        "entry": 2,
+        "item": "IMP-5",
+        "path": "tests/setup_validate.spec.ts"
+      },
+      {
+        "entry": 2,
+        "item": "NAM-3",
+        "path": "bin/helpers/consumer/api_variants.ts"
+      },
+      {
+        "entry": 2,
+        "item": "PKG-6",
+        "path": "package.json"
+      },
+      {
+        "entry": 3,
+        "item": "PKG-1",
+        "path": "auth"
+      },
+      {
+        "entry": 3,
+        "item": "PKG-1",
+        "path": "http"
+      },
+      {
+        "entry": 3,
+        "item": "PKG-1",
+        "path": "transaction"
+      },
+      {
+        "entry": 3,
+        "item": "PKG-1",
+        "path": "docs"
+      },
+      {
+        "entry": 4,
+        "item": "IMP-5",
+        "path": "bin/check_changed.ts"
+      },
+      {
+        "entry": 4,
+        "item": "IMP-5",
+        "path": "tests/tooling/classify_changed.spec.ts"
+      },
+      {
+        "entry": 4,
+        "item": "IMP-5",
+        "path": "docs/.vitepress/theme/index.ts"
+      },
+      {
+        "entry": 5,
+        "item": "PKG-23",
+        "path": "src/setup/generated_env_helpers.ts"
+      },
+      {
+        "entry": 5,
+        "item": "PKG-23",
+        "path": "src/setup/session_config.ts"
+      },
+      {
+        "entry": 2,
+        "item": "IMP-5",
+        "path": "bin/demos/create_app.ts"
+      },
+      {
+        "entry": 2,
+        "item": "IMP-5",
+        "path": "tests/admission_boundary.spec.ts"
+      },
+      {
+        "entry": 2,
+        "item": "IMP-5",
+        "path": "tests/setup_apply.spec.ts"
+      },
+      {
+        "entry": 2,
+        "item": "IMP-5",
+        "path": "tests/tooling/demo_record_safety.spec.ts"
+      }
+    ]
+  }
+}
