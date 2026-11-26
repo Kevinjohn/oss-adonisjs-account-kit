@@ -32,10 +32,10 @@ concurrency:
 
 jobs:
   # Classifies the change before anything is installed. A root README-only change gets the
-  # `focused` job; everything else, and every manual or release run, gets the full `checks` matrix.
+  # `focused` job; everything else, including manual runs, gets the full `checks` matrix.
   plan:
     # Push and pull request runs start once the repository is public, where hosted minutes are
-    # free. Manual and release runs always start.
+    # free. Manual runs always start.
     if: ${{ github.event_name == 'workflow_dispatch' || !github.event.repository.private }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -49,7 +49,7 @@ jobs:
           fetch-depth: 0
       - id: classify
         env:
-          # A release inherits `workflow_dispatch`, so these events never carry a base to diff.
+          # Manual dispatch has no base to diff.
           BASE: ${{ (github.event_name == 'pull_request' && github.event.pull_request.base.sha) || (github.event_name == 'push' && github.event.before) || '' }}
         run: |
           echo "base=$BASE" >> "$GITHUB_OUTPUT"

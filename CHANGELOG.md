@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+### Changed
+
+- The release workflow waits for the existing checks on the exact release commit and tests the
+  newly packed archive before publication.
+
 ## 0.9.0 - 2026-11-26
 
 ### Changed

@@ -224,7 +224,7 @@ The [error reference](docs/reference/errors.md) lists the constructors and shows
 
 This table describes configured CI coverage, not the result of a pending workflow run.
 
-| Check                          | Checks workflow (pull requests) | Compatibility workflow (scheduled, pre-release, matching pull requests)            |
+| Check                          | Checks workflow (pull requests) | Compatibility workflow (scheduled, manual, matching pull requests)                 |
 | ------------------------------ | ------------------------------- | ---------------------------------------------------------------------------------- |
 | Node.js                        | 24                              | 24                                                                                 |
 | AdonisJS core, Lucid and peers | Locked versions                 | Minimum and latest peer versions                                                   |

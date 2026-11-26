@@ -1,31 +1,45 @@
 name: release
 on:
   workflow_dispatch:
-# Only the job that creates the release can write; the checks it calls get read access.
+# Only the job that creates the release can write.
 permissions:
   contents: read
 concurrency:
   group: release-${{ github.ref }}
   cancel-in-progress: false
 jobs:
-  # Refuse other branches before the checks spend their minutes.
-  main-only:
+  ci:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 40
+    permissions:
+      actions: read
+      contents: read
     steps:
-      - run: test "$GITHUB_REF" = "refs/heads/main" || { echo "release runs on main only"; exit 1; }
-  checks:
-    needs: main-only
-    uses: ./.github/workflows/checks.yml
-  compat:
-    needs: main-only
-    uses: ./.github/workflows/compat.yml
-  examples:
-    needs: main-only
-    uses: ./.github/workflows/examples.yml
+      - name: Verify CI for the release commit
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF" = "refs/heads/main" || { echo "release runs on main only"; exit 1; }
+          if ! run_id=$(gh run list --repo "$GITHUB_REPOSITORY" --workflow checks.yml --branch main \
+            --commit "$GITHUB_SHA" --limit 1 --json databaseId,headSha,event |
+            jq -er --arg sha "$GITHUB_SHA" '
+              .[0] | select(.headSha == $sha and (.event == "push" or .event == "workflow_dispatch"))
+              | .databaseId | select(type == "number" and . > 0 and floor == .)
+            '); then
+            echo "::error::No eligible checks.yml run found for $GITHUB_SHA on main."
+            exit 1
+          fi
+          gh run watch "$run_id" --repo "$GITHUB_REPOSITORY" --interval 30 --exit-status
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$run_id/jobs?filter=latest&per_page=100" |
+            jq -e '
+              .jobs | map(select(.status == "completed" and .conclusion == "success") | .name)
+              | index("checks (better-sqlite3)") != null and index("checks (pg)") != null
+            '
   # Installing and building run dependency code, so they hold a read-only token.
   package:
-    needs: [checks, compat, examples]
+    needs: ci
     runs-on: ubuntu-latest
     timeout-minutes: 20
     outputs:
