@@ -1,4 +1,4 @@
-import { migrationNames, buildMigrationSchema } from './migration_definitions.ts'
+import { migrationNames, buildMigrationTemplateData } from './migration_definitions.ts'
 import { orderMigrations } from './migration_order.ts'
 import { defaultMigrationDirectory } from './migration_paths.ts'
 import type { SetupChoices, SetupFileChange, SetupInspection, SetupPlan } from './types.ts'
@@ -200,7 +200,7 @@ export async function planSetup(
   }
   const migrationTimestamp = options.timestamp ?? Date.now()
   const schema = await generateIfInputsAllow(['user.'], () =>
-    buildMigrationSchema(choices.user.table, choices.user.idType)
+    buildMigrationTemplateData(choices.user.table, choices.user.idType)
   )
   // Template reads sit outside `generateIfInputsAllow` and run without a schema: no reported choice explains
   // a read failure.

@@ -21,7 +21,12 @@ test('packs the build and top-level documents, not docs, examples or planning do
       })
     )
     await writeFile(join(root, '.gitignore'), await readFile(join(repoRoot, '.gitignore')))
-    const publicFiles = ['build/index.js', 'README-AGENTS.md', 'CHANGELOG.md']
+    const publicFiles = [
+      'build/index.js',
+      'build/make/migration/create_account_admissions.stub',
+      'README-AGENTS.md',
+      'CHANGELOG.md',
+    ]
     const privateFiles = [
       'docs/guide/usage.md',
       'examples/api/README.md',

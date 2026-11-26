@@ -14,7 +14,7 @@ import { withFixture } from './helpers/setup_prerequisites.ts'
 function failTemplateReads(cleanup: (handler: () => void) => void) {
   const access = fs.promises.access
   fs.promises.access = async (path, mode) => {
-    if (String(path).includes(`${sep}migrations${sep}`) && String(path).endsWith('.stub'))
+    if (String(path).includes(`${sep}make${sep}migration${sep}`) && String(path).endsWith('.stub'))
       throw Object.assign(new Error('EIO: template'), { code: 'EIO' })
     return access(path, mode)
   }

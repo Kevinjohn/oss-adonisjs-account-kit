@@ -33,7 +33,10 @@ const userIdTypes = ['integer', 'string', 'uuid'] as const
 export type UserIdType = (typeof userIdTypes)[number]
 
 /** Metadata for newly generated migrations; existing application files are never rewritten. */
-export function buildMigrationSchema(usersTable = 'users', userIdType: UserIdType = 'integer') {
+export function buildMigrationTemplateData(
+  usersTable = 'users',
+  userIdType: UserIdType = 'integer'
+) {
   if (!isSqlIdentifier(usersTable))
     throw new RuntimeException('account_kit: users-table must be a plain SQL identifier')
   if (!userIdTypes.includes(userIdType))
