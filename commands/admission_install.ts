@@ -2,7 +2,7 @@ import { environmentOverrides } from './environment_overrides.ts'
 import { readFile } from 'node:fs/promises'
 import { relative, resolve, sep } from 'node:path'
 import { BaseCommand, flags } from '@adonisjs/core/ace'
-import { buildMigrationSchema, type UserIdType } from '../src/setup/migration_definitions.ts'
+import { buildMigrationTemplateData, type UserIdType } from '../src/setup/migration_definitions.ts'
 import { inspectMigrationDirectory, migrationStubPath } from '../src/setup/migration_paths.ts'
 import { orderMigrations } from '../src/setup/migration_order.ts'
 import { readRegularFile } from '../src/setup/safe_path.ts'
@@ -37,11 +37,11 @@ export default class InstallAdmission extends BaseCommand {
 
   async run(): Promise<void> {
     const root = resolve(this.app.makePath(''))
-    let schema: ReturnType<typeof buildMigrationSchema>
+    let schema: ReturnType<typeof buildMigrationTemplateData>
     let migrationPath: string
     let existing: boolean
     try {
-      schema = buildMigrationSchema(
+      schema = buildMigrationTemplateData(
         this.usersTable ?? 'users',
         (this.userIdType ?? 'integer') as UserIdType
       )
@@ -69,7 +69,7 @@ export default class InstallAdmission extends BaseCommand {
 
     if (existing) this.logger.info(`Skipped ${migrationPath}`)
     else
-      await codemods.makeUsingStub(stubsRoot, 'migrations/create_account_admissions.stub', {
+      await codemods.makeUsingStub(stubsRoot, 'make/migration/create_account_admissions.stub', {
         migration: {
           ...schema,
           path: migrationStubPath(this.app.migrationsPath(), resolve(root, migrationPath)),

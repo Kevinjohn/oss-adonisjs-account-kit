@@ -32,7 +32,8 @@ test('packs the build and top-level documents, not docs, examples or planning do
       'build/src/transaction/main.d.ts',
       'build/stubs/main.js',
       'build/config/account_kit.stub',
-      'build/migrations/create_account_sessions.stub',
+      'build/make/migration/create_account_admissions.stub',
+      'build/make/migration/create_account_sessions.stub',
       'README-AGENTS.md',
       'CHANGELOG.md',
     ]

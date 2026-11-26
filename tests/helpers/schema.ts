@@ -3,7 +3,7 @@ import { mkdir, rm, symlink, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { MigrationRunner } from '@adonisjs/lucid/migration'
-import { migrationNames, migrationSchema } from '../../configure.ts'
+import { migrationNames, migrationTemplateData } from '../../configure.ts'
 import type { TestApp } from './app.ts'
 
 type SchemaBuilder = ReturnType<TestApp['db']['connection']>['schema']
@@ -68,10 +68,10 @@ export async function resetSchema(
   for (const [index, name] of migrationNames.entries()) {
     const filename = `${timestamp + index}_account_kit_${name}.ts`
     const destination = join(kit.migrationDirectory, filename)
-    const stub = await stubs.build(`migrations/${name}.stub`, { source: stubsRoot })
+    const stub = await stubs.build(`make/migration/${name}.stub`, { source: stubsRoot })
     const prepared = await stub.prepare({
       migration: {
-        ...migrationSchema(usersTable, options.stringUserIds ? 'string' : 'integer'),
+        ...migrationTemplateData(usersTable, options.stringUserIds ? 'string' : 'integer'),
         path: migrationStubPath(kit.app.migrationsPath(), destination),
       },
     })

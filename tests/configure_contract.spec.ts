@@ -6,7 +6,7 @@ import { test } from '@japa/runner'
 import type Configure from '@adonisjs/core/commands/configure'
 import { RuntimeException } from '@adonisjs/core/exceptions'
 import { CodeTransformer } from '@adonisjs/assembler/code_transformer'
-import { configure, migrationNames, migrationSchema } from '../configure.ts'
+import { configure, migrationNames, migrationTemplateData } from '../configure.ts'
 
 function fakeCommand(
   root: string,
@@ -37,7 +37,7 @@ function fakeCommand(
     },
     async makeUsingStub(_root: string, name: string, data: Record<string, unknown>) {
       calls.stubs.push(name)
-      if (name.startsWith('migrations/'))
+      if (name.startsWith('make/migration/'))
         calls.migrations.push(data.migration as Record<string, unknown>)
     },
     async updateRcFile(
@@ -268,7 +268,7 @@ test('configure requires an explicit registration assertion for dynamic provider
   }
 }).timeout(30_000)
 
-test('migrationSchema reports invalid schema flags with RuntimeException', ({ assert }) => {
-  assert.throws(() => migrationSchema('bad-name'), RuntimeException)
-  assert.throws(() => migrationSchema('users', 'bigint' as never), RuntimeException)
+test('migrationTemplateData reports invalid schema flags with RuntimeException', ({ assert }) => {
+  assert.throws(() => migrationTemplateData('bad-name'), RuntimeException)
+  assert.throws(() => migrationTemplateData('users', 'bigint' as never), RuntimeException)
 })

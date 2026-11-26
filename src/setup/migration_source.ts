@@ -3,7 +3,7 @@ import { access } from 'node:fs/promises'
 import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { Application } from '@adonisjs/core/app'
-import type { buildMigrationSchema } from './migration_definitions.ts'
+import type { buildMigrationTemplateData } from './migration_definitions.ts'
 import { stubsRoot } from '../../stubs/main.ts'
 
 type StubsManager = Awaited<ReturnType<Application<any>['stubs']['create']>>
@@ -27,7 +27,7 @@ function loadPackageStubs(): Promise<StubsManager> {
 
 /** Locates one template and returns its stub path. It reads no setup choice. */
 export async function requireMigrationTemplatePath(name: string): Promise<string> {
-  const stubPath = `migrations/${name}.stub`
+  const stubPath = `make/migration/${name}.stub`
   try {
     await access(join(stubsRoot, stubPath))
   } catch (error) {
@@ -40,7 +40,7 @@ export async function requireMigrationTemplatePath(name: string): Promise<string
 /** Renders a located template with the schema built from the choices. */
 export async function migrationContent(
   stubPath: string,
-  schema: ReturnType<typeof buildMigrationSchema>
+  schema: ReturnType<typeof buildMigrationTemplateData>
 ): Promise<string> {
   const stubs = await loadPackageStubs()
   const stub = await stubs.build(stubPath, { source: stubsRoot })

@@ -62,7 +62,7 @@ Run the generated migrations before using the selected services. The package-own
 `add_account_columns_to_users` migration adds nullable `email_verified_at`, `unverified_email`, and
 `credentials_changed_at` columns, and makes the existing `password` column nullable. The other
 migrations create the package tables for proofs, invitations, transaction locking, social identity
-and authentication state. The [migration stubs](https://github.com/Kevinjohn/oss-adonisjs-account-kit/tree/main/stubs/migrations)
+and authentication state. The [migration stubs](https://github.com/Kevinjohn/oss-adonisjs-account-kit/tree/main/stubs/make/migration)
 show their exact schema. New
 registrations create an inactive account with matching `email` and `unverified_email`, then activate
 it through the verification flow.
@@ -75,7 +75,7 @@ above; its user migration alters the configured users table, so that table must 
 adds the three nullable account columns and makes `password` nullable. It does not alter the `email`
 column, normalise addresses, populate verification state, change application roles or model hooks,
 or migrate any old proof table. Review the
-[`add_account_columns_to_users` stub](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/main/stubs/migrations/add_account_columns_to_users.stub) before
+[`add_account_columns_to_users` stub](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/main/stubs/make/migration/add_account_columns_to_users.stub) before
 running it.
 
 Before enabling registration, activation, password reset, email change, or social flows, the

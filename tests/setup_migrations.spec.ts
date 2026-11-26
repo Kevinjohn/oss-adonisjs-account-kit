@@ -5,7 +5,7 @@ import { inspectSetup } from '../src/setup/inspect.ts'
 import { planSetup } from '../src/setup/plan.ts'
 import { applySetup } from '../src/setup/apply.ts'
 import { migrationContent, requireMigrationTemplatePath } from '../src/setup/migration_source.ts'
-import { migrationNames, buildMigrationSchema } from '../src/setup/migration_definitions.ts'
+import { migrationNames, buildMigrationTemplateData } from '../src/setup/migration_definitions.ts'
 import { requireSetupChoices } from '../src/setup/parse.ts'
 import { orderMigrations } from '../src/setup/migration_order.ts'
 import { fixture, registerSetupTeardown } from './helpers/setup_project_fixture.ts'
@@ -303,7 +303,7 @@ export default defineConfig({ connection: 'sqlite', connections: { sqlite: { cli
     const path = `${directory}/1999999999999_account_kit_${operation}.ts`
     const contents = await migrationContent(
       await requireMigrationTemplatePath(operation),
-      buildMigrationSchema()
+      buildMigrationTemplateData()
     )
     await writeFile(join(root, path), contents)
     const hidden = join(root, 'database/migrations/.archive')

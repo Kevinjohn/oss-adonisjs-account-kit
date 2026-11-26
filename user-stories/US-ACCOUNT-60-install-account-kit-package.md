@@ -48,7 +48,7 @@ Scope: the exported `configure` function and its Assembler codemods. The host ow
 
 ```mermaid
 flowchart TD
-    A["configure(command)"] --> B["buildMigrationSchema validates users-table and user-id-type"]
+    A["configure(command)"] --> B["buildMigrationTemplateData validates users-table and user-id-type"]
     B --> C{"Flags valid?"}
     C -->|No| D["Log error and set exitCode 1"]
     C -->|Yes| E["hasRegisteredProvider inspects adonisrc.ts"]
@@ -64,4 +64,4 @@ flowchart TD
     J -->|Failure| X
 ```
 
-**Code references:** [`configure`](../configure.ts), [`buildMigrationSchema`](../src/setup/migration_definitions.ts), [`providers inspection`](../src/setup/providers_inspection.ts), [command registration inspection](../src/setup/commands_inspection.ts), [migration directory](../src/setup/migration_paths.ts), [migration ordering](../src/setup/migration_order.ts), [`config stub`](../stubs/config/account_kit.stub), [`tests/configure.spec.ts`](../tests/configure.spec.ts)
+**Code references:** [`configure`](../configure.ts), [`buildMigrationTemplateData`](../src/setup/migration_definitions.ts), [`providers inspection`](../src/setup/providers_inspection.ts), [command registration inspection](../src/setup/commands_inspection.ts), [migration directory](../src/setup/migration_paths.ts), [migration ordering](../src/setup/migration_order.ts), [`config stub`](../stubs/config/account_kit.stub), [`tests/configure.spec.ts`](../tests/configure.spec.ts)

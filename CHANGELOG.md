@@ -3,8 +3,8 @@
 ## Unreleased
 
 - Rename the managed guard callback `logoutCredential` to `credentialForRevocation`; the old key is no longer accepted. Name registration availability and account settings helpers for their behavior.
+- Name migration placeholder helpers `migrationTemplateData` and place migration templates under `stubs/make/migration/`.
 - Run the pre-install change classifier with native Node 24 TypeScript support.
-
 - Move the auth, HTTP and transaction subpath entries under `src/` and keep their public export keys.
 
 - Align reference application controllers, configuration, migrations and input recovery with AdonisJS conventions; check bounded display-field recovery with focused tests.

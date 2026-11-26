@@ -3,7 +3,7 @@ import { test } from '@japa/runner'
 import { writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
-import { migrationSchema } from '../configure.ts'
+import { migrationTemplateData } from '../configure.ts'
 import { useTestApp } from './helpers/app.ts'
 
 test.group('users migration', (group) => {
@@ -12,12 +12,12 @@ test.group('users migration', (group) => {
   async function loadMigration() {
     const destination = join(kit.migrationDirectory, `${Date.now()}_users_migration_probe.ts`)
     const stubs = await kit.app.stubs.create()
-    const stub = await stubs.build('migrations/add_account_columns_to_users.stub', {
+    const stub = await stubs.build('make/migration/add_account_columns_to_users.stub', {
       source: fileURLToPath(new URL('../stubs', import.meta.url)),
     })
     const prepared = await stub.prepare({
       migration: {
-        ...migrationSchema('users', 'integer'),
+        ...migrationTemplateData('users', 'integer'),
         path: migrationStubPath(kit.app.migrationsPath(), destination),
       },
     })

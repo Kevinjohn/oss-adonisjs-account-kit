@@ -3,7 +3,7 @@ import { writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { MigrationRunner } from '@adonisjs/lucid/migration'
-import { migrationSchema, type UserIdType } from '../../configure.ts'
+import { migrationTemplateData, type UserIdType } from '../../configure.ts'
 import type { TestApp } from './app.ts'
 
 export const admissionMigrationSuffix = '_account_kit_admission_create_account_admissions.ts'
@@ -15,12 +15,12 @@ export async function renderAdmissionMigration(
   options: { usersTable?: string; userIdType?: UserIdType } = {}
 ): Promise<string> {
   const stubs = await kit.app.stubs.create()
-  const stub = await stubs.build('migrations/create_account_admissions.stub', {
+  const stub = await stubs.build('make/migration/create_account_admissions.stub', {
     source: fileURLToPath(new URL('../../stubs', import.meta.url)),
   })
   const prepared = await stub.prepare({
     migration: {
-      ...migrationSchema(options.usersTable ?? 'users', options.userIdType ?? 'integer'),
+      ...migrationTemplateData(options.usersTable ?? 'users', options.userIdType ?? 'integer'),
       path: migrationStubPath(kit.app.migrationsPath(), destination),
     },
   })
