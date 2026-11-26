@@ -20,15 +20,14 @@ function safeAccount(user: AccountUser) {
 }
 
 export default class ProfileController {
-  async show(ctx: HttpContext) {
-    const input = accountInput(ctx)
-    return ctx.serialize(await accountKit.authentication.current(input))
+  async show({ auth, session, serialize }: HttpContext) {
+    const input = accountInput({ auth, session })
+    return serialize(await accountKit.authentication.current(input))
   }
 
-  async update(ctx: HttpContext) {
-    const actor = await ctx.auth.getUserOrFail()
-    const { currentPassword, email, fullName } =
-      await ctx.request.validateUsing(profileUpdateValidator)
+  async update({ auth, request, serialize, logger, response }: HttpContext) {
+    const actor = await auth.getUserOrFail()
+    const { currentPassword, email, fullName } = await request.validateUsing(profileUpdateValidator)
     try {
       const updated = await accountKit.emailPasswordManagement.updateProfile({
         actorId: actor.id,
@@ -36,12 +35,12 @@ export default class ProfileController {
         ...(email === undefined ? {} : { email }),
         ...(fullName === undefined ? {} : { registrationData: { fullName } }),
       })
-      return ctx.serialize(safeAccount(updated))
+      return serialize(safeAccount(updated))
     } catch (error) {
       if (!(error instanceof E_ACCOUNT_KIT_DELIVERY || error instanceof E_ACCOUNT_KIT_POST_COMMIT))
         throw error
-      reportCommittedFailure(ctx.logger, error, 'profile.update')
-      return ctx.response.ok({ updated: true })
+      reportCommittedFailure(logger, error, 'profile.update')
+      return response.ok({ updated: true })
     }
   }
 }

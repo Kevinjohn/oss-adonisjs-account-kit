@@ -9,36 +9,36 @@ export default class SessionController {
     return view.render('pages/auth/login')
   }
 
-  async store(ctx: HttpContext) {
-    const { email, password } = await ctx.request.validateUsing(loginValidator)
+  async store({ request, auth, session, response }: HttpContext) {
+    const { email, password } = await request.validateUsing(loginValidator)
     let active: boolean
     try {
       const { account } = await kit.authentication.login(
-        { email, password, clientKey: ctx.request.ip() },
-        accountKitSessionGuard(ctx)
+        { email, password, clientKey: request.ip() },
+        accountKitSessionGuard({ auth, session })
       )
       active = account.active
     } catch (error) {
       // E_ACCOUNT_KIT_THROTTLED reaches the exception handler, which asks the person to wait.
       if (!(error instanceof errors.E_INVALID_CREDENTIALS)) throw error
-      ctx.session.flash(
+      session.flash(
         'error',
         'The email or password is incorrect. Check your details and try again.'
       )
-      ctx.session.flashOnly(['email'])
-      return ctx.response.redirect().back()
+      session.flashOnly(['email'])
+      return response.redirect().back()
     }
-    ctx.session.flash(
+    session.flash(
       'success',
       active
         ? 'You are signed in.'
         : 'You are signed in. Confirm your email to access protected account pages.'
     )
-    return ctx.response.redirect().toRoute('dashboard')
+    return response.redirect().toRoute('dashboard')
   }
 
-  async destroy(ctx: HttpContext) {
-    await kit.authentication.revokeCredential(accountKitSessionGuard(ctx))
-    return ctx.response.redirect().toRoute('session.create')
+  async destroy({ auth, session, response }: HttpContext) {
+    await kit.authentication.revokeCredential(accountKitSessionGuard({ auth, session }))
+    return response.redirect().toRoute('session.create')
   }
 }

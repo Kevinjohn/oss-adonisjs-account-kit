@@ -6,7 +6,7 @@ type Method = 'password' | SocialProviderName
 const cookieName = 'account_kit_last_method'
 
 /** A signed visitor preference; it contains no account identity and grants no access. */
-export function rememberLastUsedMethod(ctx: HttpContext, method: Method) {
+export function rememberLastUsedMethod(ctx: Pick<HttpContext, 'response'>, method: Method) {
   try {
     ctx.response.cookie(cookieName, method, {
       httpOnly: true,
@@ -21,7 +21,7 @@ export function rememberLastUsedMethod(ctx: HttpContext, method: Method) {
 }
 
 export function lastUsedMethod(
-  ctx: HttpContext,
+  ctx: Pick<HttpContext, 'request'>,
   options: { password: boolean; providers: readonly string[] }
 ): Method | null {
   const value: unknown = ctx.request.cookie(cookieName)

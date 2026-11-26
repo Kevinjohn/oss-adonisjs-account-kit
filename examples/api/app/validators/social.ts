@@ -51,3 +51,8 @@ export const passwordProofValidator = vine.create({
 export const socialUnlinkValidator = vine.create({
   proof: vine.string().minLength(1),
 })
+
+export const socialProviderCallbackValidator = vine.create({
+  error: vine.string().optional(),
+  code: vine.string().optional(),
+})

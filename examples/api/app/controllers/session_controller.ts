@@ -12,15 +12,14 @@ export default class SessionController {
     return { csrfToken: request.csrfToken }
   }
 
-  async store(ctx: HttpContext) {
-    const { request, serialize } = ctx
+  async store({ request, serialize, auth, session, response }: HttpContext) {
     const { email, password } = await request.validateUsing(loginValidator)
     const result = await accountKit.authentication.login(
       { email, password, clientKey: request.ip() },
-      accountKitSessionGuard(ctx)
+      accountKitSessionGuard({ auth, session })
     )
     const user = await User.findOrFail(result.account.id)
-    rememberLastUsedMethod(ctx, 'password')
+    rememberLastUsedMethod({ response }, 'password')
     return serialize({ user: UserTransformer.transform(user) })
   }
 

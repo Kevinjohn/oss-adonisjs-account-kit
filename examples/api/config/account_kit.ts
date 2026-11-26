@@ -13,8 +13,8 @@ import {
   withInvitationEvidence,
 } from '@kevinjohn/adonisjs-account-kit/admission'
 import { notifications } from '#services/account_kit_notifications'
-import { createNotify } from './account_kit_notifications.js'
-import { onCredentialsChangedTransaction } from './account_kit_credential_notice.js'
+import { createNotify } from '#config/account_kit_notifications'
+import { onCredentialsChangedTransaction } from '#config/account_kit_credential_notice'
 import {
   canAccess,
   invitableRoles,

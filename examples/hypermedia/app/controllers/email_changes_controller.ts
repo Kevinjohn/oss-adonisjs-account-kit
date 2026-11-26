@@ -16,17 +16,17 @@ export default class EmailChangesController {
     })
   }
 
-  async store(ctx: HttpContext) {
-    const { email, currentPassword } = await ctx.request.validateUsing(requestEmailChangeValidator)
-    const user = ctx.auth.getUserOrFail()
+  async store({ request, auth, session, response, logger }: HttpContext) {
+    const { email, currentPassword } = await request.validateUsing(requestEmailChangeValidator)
+    const user = auth.getUserOrFail()
     if (user.unverifiedEmail === user.email) {
-      ctx.session.flash('error', 'Confirm your current email before requesting another change.')
-      return ctx.response.redirect().back()
+      session.flash('error', 'Confirm your current email before requesting another change.')
+      return response.redirect().back()
     }
     if (email === user.email) {
-      ctx.session.flash('error', 'Enter a different address from your current email.')
-      ctx.session.flashOnly(['email'])
-      return ctx.response.redirect().back()
+      session.flash('error', 'Enter a different address from your current email.')
+      session.flashOnly(['email'])
+      return response.redirect().back()
     }
     try {
       await kit.emailPasswordManagement.requestEmailChange({
@@ -39,36 +39,36 @@ export default class EmailChangesController {
         error instanceof errors.E_INVALID_CREDENTIALS ||
         error instanceof errors.E_ACCOUNT_KIT_IDENTITY_NOT_CONFIRMED
       ) {
-        ctx.session.flash('error', 'Your current password is incorrect. Check it and try again.')
-        ctx.session.flashOnly(['email'])
-        return ctx.response.redirect().back()
+        session.flash('error', 'Your current password is incorrect. Check it and try again.')
+        session.flashOnly(['email'])
+        return response.redirect().back()
       }
       if (error instanceof errors.E_ACCOUNT_KIT_EMAIL_ALREADY_REGISTERED) {
-        ctx.session.flash('error', 'This address cannot be used. Try another address.')
-        ctx.session.flashOnly(['email'])
-        return ctx.response.redirect().back()
+        session.flash('error', 'This address cannot be used. Try another address.')
+        session.flashOnly(['email'])
+        return response.redirect().back()
       }
       if (!isDeliveryFailure(error)) throw error
-      ctx.logger.error(
+      logger.error(
         { event: 'email_change_follow_up_failed' },
         'Email change saved but a follow-up failed'
       )
-      ctx.session.flash(
+      session.flash(
         'error',
         'The request was saved, but we could not confirm that the email was sent. Check the new address for a link.'
       )
-      return ctx.response.redirect().back()
+      return response.redirect().back()
     }
-    ctx.session.flash(
+    session.flash(
       'success',
       'Check the development server output for a confirmation link. Your current email stays active until you confirm it.'
     )
-    return ctx.response.redirect().toPath('/settings/email')
+    return response.redirect().toPath('/settings/email')
   }
 
-  async cancel(ctx: HttpContext) {
-    const { cancelCurrentPassword } = await ctx.request.validateUsing(cancelEmailChangeValidator)
-    const user = ctx.auth.getUserOrFail()
+  async cancel({ request, auth, session, response }: HttpContext) {
+    const { cancelCurrentPassword } = await request.validateUsing(cancelEmailChangeValidator)
+    const user = auth.getUserOrFail()
     try {
       await kit.emailPasswordManagement.updateProfile({
         actorId: user.id,
@@ -81,37 +81,37 @@ export default class EmailChangesController {
         !(error instanceof errors.E_ACCOUNT_KIT_IDENTITY_NOT_CONFIRMED)
       )
         throw error
-      ctx.session.flash('error', 'Your current password is incorrect. Check it and try again.')
-      return ctx.response.redirect().back()
+      session.flash('error', 'Your current password is incorrect. Check it and try again.')
+      return response.redirect().back()
     }
-    ctx.session.flash('success', 'The pending email change was canceled.')
-    return ctx.response.redirect().toPath('/settings/email')
+    session.flash('success', 'The pending email change was canceled.')
+    return response.redirect().toPath('/settings/email')
   }
 
-  async confirm(ctx: HttpContext) {
-    sendTokenPageHeaders(ctx.response)
-    const valid = await kit.emailPasswordManagement.inspectEmailChange({ token: ctx.params.token })
-    return ctx.view.render('pages/auth/confirm_email_change', { token: ctx.params.token, valid })
+  async confirm({ response, params, view }: HttpContext) {
+    sendTokenPageHeaders(response)
+    const valid = await kit.emailPasswordManagement.inspectEmailChange({ token: params.token })
+    return view.render('pages/auth/confirm_email_change', { token: params.token, valid })
   }
 
-  async complete(ctx: HttpContext) {
+  async complete({ params, session, response, logger }: HttpContext) {
     try {
-      await kit.emailPasswordManagement.completeEmailChange({ token: ctx.params.token })
+      await kit.emailPasswordManagement.completeEmailChange({ token: params.token })
     } catch (error) {
       if (error instanceof errors.E_ACCOUNT_KIT_INVALID_TOKEN) {
-        ctx.session.flash(
+        session.flash(
           'error',
           'This email link is invalid, already used, or expired. Sign in to request another change.'
         )
-        return ctx.response.redirect().withQs(false).toRoute('session.create')
+        return response.redirect().withQs(false).toRoute('session.create')
       }
       if (!isDeliveryFailure(error)) throw error
-      ctx.logger.error(
+      logger.error(
         { event: 'email_change_follow_up_failed' },
         'Email change committed but a follow-up failed'
       )
     }
-    ctx.session.flash('success', 'Email changed. Sign in with your new address.')
-    return ctx.response.redirect().withQs(false).toRoute('session.create')
+    session.flash('success', 'Email changed. Sign in with your new address.')
+    return response.redirect().withQs(false).toRoute('session.create')
   }
 }
