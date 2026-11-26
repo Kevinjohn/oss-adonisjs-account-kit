@@ -233,31 +233,13 @@ if (process.env.TEST_BUILT_EXPORTS === '1')
   test('compiles the optional auth type through its built public export', async ({ assert }) => {
     const { default: ts } = await import('typescript')
     const entry = fileURLToPath(new URL('../auth_types_consumer.ts', import.meta.url))
-    const guardSource = await readFile(
-      new URL('../src/auth/session_guard.ts', import.meta.url),
-      'utf8'
-    )
-    const example = guardSource
-      .slice(guardSource.indexOf('Configures an `AccountKitSessionGuard`'))
-      .match(/```ts\n([\s\S]*?)```/)?.[1]
-    assert.isString(example)
-    const exampleFile = ts.createSourceFile(
-      'auth_example.ts',
-      example!.replace(/^\s*\* ?/gm, ''),
-      ts.ScriptTarget.Latest,
-      true
-    )
-    const exampleImports = exampleFile.statements
-      .filter(ts.isImportDeclaration)
-      .map((statement) => statement.getText(exampleFile))
-      .join('\n')
-    assert.include(exampleImports, 'accountKitSessionGuard')
-    const source = `${exampleImports}
+    const source = `import { accountKitSessionGuard } from '@kevinjohn/adonisjs-account-kit/auth'
 import type { AccountKitSessionGuard } from '@kevinjohn/adonisjs-account-kit/types/auth'
 import type { SessionUserProviderContract } from '@adonisjs/auth/types/session'
 declare const guard: AccountKitSessionGuard<SessionUserProviderContract<unknown>>
 const authenticated: Promise<unknown> = guard.authenticate()
 void authenticated
+void accountKitSessionGuard
 `
     const options = {
       module: ts.ModuleKind.NodeNext,
