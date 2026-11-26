@@ -1,5 +1,5 @@
 import { test } from '@japa/runner'
-import type { ManagedQuery, ManagedRequestBody } from '../http/main.ts'
+import type { ManagedQuery, ManagedRequestBody } from '../src/http/main.ts'
 
 test('the public invitation send body accepts scope', ({ expectTypeOf }) => {
   type SendBody = ManagedRequestBody<'account.invitation.send'>

@@ -4,6 +4,8 @@
 
 - Run the pre-install change classifier with native Node 24 TypeScript support.
 
+- Move the auth, HTTP and transaction subpath entries under `src/` and keep their public export keys.
+
 - Align reference application controllers, configuration, migrations and input recovery with AdonisJS conventions; check bounded display-field recovery with focused tests.
 
 ## 0.9.1 - 2026-11-26
