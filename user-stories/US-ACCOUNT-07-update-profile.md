@@ -12,6 +12,7 @@ As a signed-in account holder, I want to change profile fields accepted by the h
 ## Acceptance criteria
 
 - **Inputs and result:** `emailPasswordManagement.updateProfile({ actorId, email?, registrationData?, currentPassword?, recentProof?, keepCurrent? })` returns the account. At least `email` or `registrationData` must be supplied; profile values are untrusted and mapped by configured registration fields. Every update requires current password or social-only recent proof, including a registrationData-only update. The proof purpose is `email_change` and the password-less path requires `socialAuthentication`. See [email branches](US-ACCOUNT-06-change-email.md) for updates that include email.
+- Supplying mapped profile fields when the adapter lacks `updateRegistrationData` refuses the whole transaction, including any accompanying email change.
 - The managed default validator accepts optional `email`, `registrationData`, `currentPassword` and `recentProof`. A host may replace the validator. Managed success returns 200 with the represented account.
 - If the managed write recognises a committed follow-up failure, it returns 202 with `{ committed: true }`.
 
@@ -35,10 +36,11 @@ flowchart TD
   A --> B["Reject empty or invalid email input; map supplied registrationData and throttle actor"]
   B --> C["Transaction confirms actor for email_change"]
   C -->|Refused| E["Abort transaction"]
-  C -->|Accepted| D["Write mapped fields if supplied and supported by adapter"]
-  D --> G{"Email supplied?"}
+  C -->|Accepted| D["Validate adapter support and write supplied mapped fields"]
+  D -->|Supplied fields unsupported| E
+  D -->|Accepted| G{"Email supplied?"}
   G -->|No| H["Reload account and commit without delivery"]
-  H -->|Committed fault| F["Propagate committed fault"]
+  H -->|Committed fault| F["Service propagates committed fault; managed wrapper reports it and returns 202 committed acknowledgement"]
   G -->|Yes| I["Apply the shared email branches in US-ACCOUNT-06 in the same transaction"]
   I --> J["Commit and return account or surface follow-up failure; inactive correction may refresh managed session even on committed error"]
   H -->|Managed success| R["Managed handler returns represented account"]

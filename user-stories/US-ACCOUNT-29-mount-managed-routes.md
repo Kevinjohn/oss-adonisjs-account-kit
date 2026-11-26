@@ -13,7 +13,7 @@ As an application integrator, I want to register the chosen service-backed endpo
 
 - **Inputs and result:** `registerManagedRoutes(router, { prefix, guard, kit, enabled, ... })` registers the enabled route groups under the chosen prefix and guard, plus the [session CSRF endpoint when applicable](US-ACCOUNT-61-obtain-session-csrf-token.md); `kit()` is required, while `verificationRequired` defaults to `true` when omitted. Exclusions and callbacks are host configuration. Route conflicts are checked when the router commits. The package supplies JSON handlers, not a frontend.
 
-- For proof URL failures before a managed handler runs, the host can install the default `ManagedProofHeadersMiddleware` from `@kevinjohn/adonisjs-account-kit/middleware/proof_headers` before body parser and Shield. Construct it with the matching route selection; it applies `Cache-Control: no-store` and `Referrer-Policy: no-referrer` to matching proof routes before calling the next middleware.
+- For proof URL failures before a managed handler runs, the host can install the default `ManagedProofHeadersMiddleware` from `@kevinjohn/adonisjs-account-kit/middleware/proof_headers` before body parser and Shield. Use the [early server middleware wrapper](../docs/recipes/password-reset-existing-login.md#configure-and-mount-only-password-reset) with `server.use`, matching the mounted `prefix`, `strategy`, `enabled` and `except` selection; it applies `Cache-Control: no-store` and `Referrer-Policy: no-referrer` to matching proof routes before calling the next middleware.
 
 - Selected handlers use the shared [managed request and response contract](REFERENCE.md#managed-request-and-response-boundary).
 
@@ -49,4 +49,4 @@ flowchart TD
  S --> T
 ```
 
-**Code references:** [registerManagedRoutes](../src/http/managed.ts), [route planning](../src/http/routes.ts), [option validation](../src/http/managed_options.ts), [early proof headers](../src/http/managed_proof_headers_middleware.ts), [`tests/managed_http_route_registration.spec.ts`](../tests/managed_http_route_registration.spec.ts), [`tests/managed_http_live_account.spec.ts`](../tests/managed_http_live_account.spec.ts)
+**Code references:** [registerManagedRoutes](../src/http/managed.ts), [route planning](../src/http/routes.ts), [option validation](../src/http/managed_options.ts), [early proof headers](../src/http/managed_proof_headers_middleware.ts), [proof-header failure and exclusion tests](../tests/managed_proof_headers.spec.ts), [`tests/managed_http_route_registration.spec.ts`](../tests/managed_http_route_registration.spec.ts), [`tests/managed_http_live_account.spec.ts`](../tests/managed_http_live_account.spec.ts)

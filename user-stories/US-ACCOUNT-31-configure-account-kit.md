@@ -16,7 +16,7 @@ As an application operator, I want to configure package integration from reviewe
 
 - Setup uses the [shared migration destination and ordering rules](../docs/guide/setup.md#reconfigure-saved-choices). Destination errors are blocking diagnostics. The host supplies the generated configuration’s callbacks, either inline or through the [provider callback registry](US-ACCOUNT-65-register-provider-callbacks.md).
 
-- Repeat `--env=NAME=value` to supply explicit environment overrides; names must be valid and unique. Setup does not use ambient shell values for this inspection. An explicit override takes precedence over files. Dotenv lookup then checks the mode-specific local file, the generic local file outside test/testing, the mode-specific file, and finally the base file. See [selected environment resolution](../src/setup/selected_environment_values.ts).
+- Repeat `--env=NAME=value` to supply explicit environment overrides; names must be valid and unique. Setup does not use ambient shell values for this inspection. Use `--env=NODE_ENV=production` to select production-mode dotenv files; `--production` adds deployment checks but does not select the dotenv mode. An explicit override takes precedence over files. Dotenv lookup then checks the mode-specific local file, the generic local file outside test/testing, the mode-specific file, and finally the base file. See [selected environment resolution](../src/setup/selected_environment_values.ts).
 - When saved choices are unchanged, a customised generated account config, environment example or existing migration is kept with an action diagnostic. Files reported as conflicts block apply.
 
 ## User flow
