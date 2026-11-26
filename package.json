@@ -22,7 +22,7 @@
     "build/services",
     "build/stubs",
     "build/config",
-    "build/migrations",
+    "build/make",
     "README-AGENTS.md",
     "SECURITY.md",
     "CHANGELOG.md"

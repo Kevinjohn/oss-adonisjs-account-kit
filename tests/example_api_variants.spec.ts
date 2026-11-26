@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url'
 import { test } from '@japa/runner'
 import { MigrationRunner } from '@adonisjs/lucid/migration'
 import { format, resolveConfig } from 'prettier'
-import { migrationNames, migrationSchema, type UserIdType } from '../configure.ts'
+import { migrationNames, migrationTemplateData, type UserIdType } from '../configure.ts'
 import {
   type ApiVariantFile,
   exampleRoot,
@@ -32,10 +32,10 @@ async function renderPackageMigration(
   userIdType: UserIdType
 ) {
   const stubs = await kit.app.stubs.create()
-  const stub = await stubs.build(`migrations/${name}.stub`, { source: stubsRoot })
+  const stub = await stubs.build(`make/migration/${name}.stub`, { source: stubsRoot })
   const prepared = await stub.prepare({
     migration: {
-      ...migrationSchema(usersTable, userIdType),
+      ...migrationTemplateData(usersTable, userIdType),
       path: migrationStubPath(kit.app.migrationsPath(), destination),
     },
   })
