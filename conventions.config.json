@@ -172,6 +172,26 @@
         "entry": 5,
         "item": "PKG-23",
         "path": "src/setup/session_config.ts"
+      },
+      {
+        "entry": 2,
+        "item": "IMP-5",
+        "path": "bin/demos/create_app.ts"
+      },
+      {
+        "entry": 2,
+        "item": "IMP-5",
+        "path": "tests/admission_boundary.spec.ts"
+      },
+      {
+        "entry": 2,
+        "item": "IMP-5",
+        "path": "tests/setup_apply.spec.ts"
+      },
+      {
+        "entry": 2,
+        "item": "IMP-5",
+        "path": "tests/tooling/demo_record_safety.spec.ts"
       }
     ]
   }
