@@ -135,6 +135,8 @@ requests from both saved sessions, rather than a reset response or database toke
 When copying the acceptance spec into an application, also copy its
 [test helper](../../examples/inertia-react/tests/helpers/recipes_inertia_react_password_reset.ts)
 into `tests/helpers/`. The recipe harness copies both files.
+Current scaffold runs select `pnpm test --files=inertia_react_password_reset.spec.ts`;
+dated evidence below retains the filename used by its recorded revision.
 
 | Case                    | Expected behaviour and assertions                                                                                          |
 | ----------------------- | -------------------------------------------------------------------------------------------------------------------------- |
@@ -258,6 +260,6 @@ and proves the password hash and both native sessions are unchanged.
 The P1 command remains the pinned React scaffold command above. The P6 evidence retains its
 generated manifest, installed versions, native-login output, generated inventory and exact replay
 environment. Both mutation checks used the printed retained replay command, which runs
-`pnpm test --files=inertia_react_password_reset.spec.ts` inside the scaffold. The archive digest
+`pnpm test --files=inertia-react-password-reset.spec.ts` inside the scaffold. The archive digest
 remained unchanged through restoration. Notification capture is local; this correction adds no
 recipient-delivery, PostgreSQL, other-browser, viewport or keyboard claim.

@@ -107,6 +107,8 @@ The accompanying browser spec is
 When copying the acceptance spec into an application, also copy its
 [test helper](../../examples/inertia-vue/tests/helpers/recipes_inertia_vue_password_reset.ts)
 into `tests/helpers/`. The recipe harness copies both files.
+Current scaffold runs select `pnpm test --files=inertia_vue_password_reset.spec.ts`;
+dated evidence below retains the filename used by its recorded revision.
 
 | Failure or invariant                                                                                                           | Browser evidence                                                                                                                                                                                       |
 | ------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
@@ -221,7 +223,7 @@ but wrongly invalidate an existing session.
 
 The pinned scaffold command above remains unchanged. P6 retains the generated manifest, installed
 versions, inventory, native-login output and replay environment. The P7 replay selects
-`pnpm test --files=inertia_vue_password_reset.spec.ts` in that retained scaffold. The reference
+`pnpm test --files=inertia-vue-password-reset.spec.ts` in that retained scaffold. The reference
 application and its existing 35-test unit, functional and browser suite are unchanged by these
 recipe-only assertions. Limits remain local SQLite, Chromium and local notification capture;
 no recipient delivery, PostgreSQL, other browser or new manual inspection is claimed.
