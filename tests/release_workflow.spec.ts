@@ -38,7 +38,7 @@ test('packaging waits for successful CI and publication waits for packaging', as
   )
 })
 
-test('the CI gate accepts only a successful push run with both database jobs on the release SHA', async ({
+test('the CI gate accepts only a push or manual run with both database jobs passing on the release SHA', async ({
   assert,
 }) => {
   const workflow = await readFile(join(repoRoot, '.github/workflows/release.yml'), 'utf8')
@@ -47,7 +47,7 @@ test('the CI gate accepts only a successful push run with both database jobs on 
   assert.isNotEmpty(script)
 
   const sha = 'a'.repeat(40)
-  const runs = JSON.stringify([{ databaseId: 42, headSha: sha }])
+  const runs = JSON.stringify([{ databaseId: 42, headSha: sha, event: 'push' }])
   const passingJobs = ['checks (better-sqlite3)', 'checks (pg)'].map((name) => ({
     name,
     status: 'completed',
@@ -62,7 +62,7 @@ test('the CI gate accepts only a successful push run with both database jobs on 
   })
   const gh = `gh() {
     case "$*" in
-      "run list --repo demo/account-kit --workflow checks.yml --branch main --event push --commit ${sha} --limit 1 --json databaseId,headSha")
+      "run list --repo demo/account-kit --workflow checks.yml --branch main --commit ${sha} --limit 1 --json databaseId,headSha,event")
         printf '%s\\n' "$RUNS" ;;
       "run watch 42 --repo demo/account-kit --interval 30 --exit-status")
         echo watch
@@ -75,9 +75,16 @@ test('the CI gate accepts only a successful push run with both database jobs on 
   }`
   for (const [name, overrides, status, output] of [
     ['matching run', {}, 0, 'watch\ntrue'],
-    ['wrong SHA', { RUNS: runs.replace(sha, 'b'.repeat(40)) }, 1, 'No checks.yml push run'],
-    ['missing run', { RUNS: '[]' }, 1, 'No checks.yml push run'],
-    ['invalid run ID', { RUNS: runs.replace('42', '"42"') }, 1, 'No checks.yml push run'],
+    ['matching manual run', { RUNS: runs.replace('push', 'workflow_dispatch') }, 0, 'watch\ntrue'],
+    ['wrong SHA', { RUNS: runs.replace(sha, 'b'.repeat(40)) }, 1, 'No eligible checks.yml run'],
+    [
+      'wrong event',
+      { RUNS: runs.replace('push', 'pull_request') },
+      1,
+      'No eligible checks.yml run',
+    ],
+    ['missing run', { RUNS: '[]' }, 1, 'No eligible checks.yml run'],
+    ['invalid run ID', { RUNS: runs.replace('42', '"42"') }, 1, 'No eligible checks.yml run'],
     ['other branch', { GITHUB_REF: 'refs/heads/topic' }, 1, 'release runs on main only'],
     ['failed watch', { WATCH_STATUS: '23' }, 23, 'watch'],
     ['skipped job', { JOBS: skippedJobs }, 1, 'watch\nfalse'],

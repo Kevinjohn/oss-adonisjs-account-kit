@@ -24,6 +24,7 @@ Every change follows these.
 
 You need Node.js 24 and pnpm. The repository pins Node 24 in `.nvmrc`; `better-sqlite3` is compiled
 against it and the tests fail under other versions.
+The release workflow test also uses Bash and jq.
 
 ```sh
 nvm use
@@ -71,7 +72,7 @@ is the one status that reports the result.
 The `compat` workflow checks minimum and latest peer versions, the packed consumer application
 and experimental MySQL 8.4 compatibility. The `examples` workflow checks recipes and example
 applications. Both run weekly, on relevant pull requests and on manual dispatch. Releases require
-the successful `checks` push run for the release commit on `main`.
+successful `checks` on the release commit on `main`, from a push or manual dispatch.
 
 The _Tested against_ table in `README.md` mirrors `.github/workflows/checks.yml` and
 `.github/workflows/compat.yml`; change them in the same PR.

@@ -6,14 +6,15 @@
    exact version. Review version-bearing examples and integration instructions in the same
    branch. When changing a pinned sibling-package archive, update its URL, version and checksum
    together; an Account Kit version bump does not select a new Masquerade release automatically.
-3. Merge the PR and confirm that a `checks` push run exists for the merge commit.
+3. Merge the PR and confirm that a `checks` run exists for the merge commit. If push CI is
+   disabled, run `checks` manually on `main`.
 4. Actions → release → Run workflow (on `main`).
 
 Apart from the owner checks in the [release gate](release-gate.md), nothing else is manual. The
 release is a GitHub prerelease with the tarball attached; its notes carry the install command and
 the SHA-256. `bash bin/release_check.sh` prepares a candidate locally.
-The release workflow waits for the existing `checks` push run on `main` at the exact release
-commit. Packaging stops if the run is missing or fails, or if either database job is skipped.
+The release workflow waits for the latest `checks` run on `main` at the exact release commit.
+The run must come from a push or manual dispatch, and both database jobs must pass.
 The `compat` and `examples` workflows run separately on their existing triggers.
 
 A `package` job with the read-only token builds and packs the release archive, then requires a
