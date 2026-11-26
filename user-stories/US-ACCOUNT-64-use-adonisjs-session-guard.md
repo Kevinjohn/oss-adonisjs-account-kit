@@ -6,7 +6,7 @@ As an application developer, I want AdonisJS Auth middleware to use Account Kit'
 **Access:** Requires the optional `@adonisjs/auth` 10 peer, AdonisJS session middleware and Account Kit session authentication. Use the same guard name in Auth and Account Kit. The request helpers require a revocable server-side session marked by `protectManagedSessionConfig(provider, { verifyStore })`.
 **Entry:** In `config/auth.ts`, configure `accountKitSessionGuard({ provider })` from `@kevinjohn/adonisjs-account-kit/auth` and select it in Auth middleware.
 **Documentation:** [Account Kit session guard](../docs/guide/authentication.md#account-kit-session-guard)
-**Source:** [Auth export](../auth/main.ts), [guard implementation](../src/auth/session_guard.ts)
+**Source:** [Auth export](../src/auth/main.ts), [guard implementation](../src/auth/session_guard.ts)
 **Coverage:** [Guard tests](../tests/session_guard.spec.ts), [Japa `loginAs` HTTP test](../tests/session_guard_login_as.spec.ts), [package export tests](../tests/package_exports.spec.ts)
 
 ## Acceptance criteria

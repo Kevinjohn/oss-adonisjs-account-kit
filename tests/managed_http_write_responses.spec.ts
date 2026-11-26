@@ -2,7 +2,7 @@ import { test } from '@japa/runner'
 import { type AccountKit } from '../src/account_kit.ts'
 import { E_ACCOUNT_KIT_DELIVERY, E_ACCOUNT_KIT_INVALID_SESSION } from '../src/errors.ts'
 import { registerManagedRoutes } from '../src/http/managed.ts'
-import type { ManagedQuery, ManagedRequestBody } from '../http/main.ts'
+import type { ManagedQuery, ManagedRequestBody } from '../src/http/main.ts'
 import type { ManagedSuccessBody } from '../src/http/contracts.ts'
 import { fakeManagedHttp, stubGuard } from './helpers/managed_http_fakes.ts'
 
