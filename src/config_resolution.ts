@@ -1,7 +1,7 @@
 // Builds the Account Kit config from `config/account_kit.ts` and the registered callbacks.
 import { configProvider } from '@adonisjs/core'
 import type { ApplicationService } from '@adonisjs/core/types'
-import { AccountKitCallbackRegistry } from './account_kit_callback_registry.ts'
+import { AccountKitCallbackConfiguration } from './account_kit_callback_configuration.ts'
 import { assertObject } from './config_assert.ts'
 import { resolveConfig, type defineConfig } from './config.ts'
 import { E_ACCOUNT_KIT_INVALID_CONFIGURATION } from './errors.ts'
@@ -69,7 +69,7 @@ export async function resolveRegisteredCallbacks(
   input: AccountKitConfig,
   preliminary: ResolvedConfig
 ): Promise<ResolvedConfig> {
-  const registry = await app.container.make(AccountKitCallbackRegistry)
+  const registry = await app.container.make(AccountKitCallbackConfiguration)
   const callbacks = await registry.resolve()
   if (!callbacks) {
     resolveConfig(input, false)

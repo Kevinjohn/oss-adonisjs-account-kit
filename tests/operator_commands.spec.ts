@@ -143,7 +143,7 @@ test.group('operator commands', (group) => {
 
   test('invite keeps the printed link when a follow-up fails and exits 1', async ({ assert }) => {
     const { kernel, stdout, stderr } = kernelFor(kit, {
-      onLifecycleEvent: async () => {
+      onLifecycleNotification: async () => {
         throw new Error('observer down')
       },
     })

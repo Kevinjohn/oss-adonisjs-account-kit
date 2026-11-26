@@ -195,7 +195,7 @@ export const managedEndpointSchemas: Record<ManagedEndpointName, EndpointSchemas
     }),
     conflict: true,
   },
-  'account.logout': {
+  'account.credential.revoke': {
     summary: 'Sign out the current session or access token',
     success: noContent,
   },

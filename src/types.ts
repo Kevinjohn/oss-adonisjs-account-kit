@@ -28,7 +28,7 @@ export type {
   AdmissionDecision,
   AdmissionDependencies,
   AdmissionDomainConfig,
-  AdmissionEvent,
+  AdmissionNotification,
   AdmissionInvitationEvidence,
   AdmissionPage,
   AdmissionRecord,

@@ -5,7 +5,7 @@ import {
   E_ACCOUNT_KIT_INVALID_INPUT,
   E_ACCOUNT_KIT_USER_NOT_FOUND,
 } from '../src/errors.ts'
-import type { AdmissionEvent } from '../src/admission/types.ts'
+import type { AdmissionNotification } from '../src/admission/types.ts'
 import { useAdmissionApp } from './helpers/admission_schema.ts'
 import { allRequirements, makeAdmission } from './helpers/admission.ts'
 import { insertUser } from './helpers/fakes.ts'
@@ -16,10 +16,10 @@ test.group('admission operator', (group) => {
   test('approves and revokes by email with no actor, through the same transitions', async ({
     assert,
   }) => {
-    const events: AdmissionEvent[] = []
+    const events: AdmissionNotification[] = []
     const { admission } = makeAdmission(kit, {
       ...allRequirements,
-      onAdmissionEvent: async (event) => void events.push(event),
+      onAdmissionNotification: async (event) => void events.push(event),
     })
     const person = await insertUser(kit, { email: 'boss@example.test' })
     const approved = await admission.operator.approve({ email: ' Boss@Example.TEST ' })
@@ -59,10 +59,10 @@ test.group('admission operator', (group) => {
   test('grants invitation evidence once, storing a role that grants nothing', async ({
     assert,
   }) => {
-    const events: AdmissionEvent[] = []
+    const events: AdmissionNotification[] = []
     const { admission } = makeAdmission(kit, {
       ...allRequirements,
-      onAdmissionEvent: async (event) => void events.push(event),
+      onAdmissionNotification: async (event) => void events.push(event),
     })
     const person = await insertUser(kit)
     const record = await admission.operator.grantInvitation({ email: person.email, role: 'owner' })

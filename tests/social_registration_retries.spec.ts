@@ -5,7 +5,7 @@ import { makeService, makeUsersAdapter } from './helpers/fakes.ts'
 import { clientChallenge, provider } from './helpers/social_identity.ts'
 import { locksRows } from './helpers/dialect.ts'
 import { dbTime } from './helpers/db_time.ts'
-import type { LifecycleEvent, Trx } from '../src/types.ts'
+import type { LifecycleNotification, Trx } from '../src/types.ts'
 
 test.group('social registration SQLite retries', () => {
   for (const entry of ['callback', 'continuation'] as const) {
@@ -22,7 +22,7 @@ test.group('social registration SQLite retries', () => {
           await resetSchema(kit)
           await kit.db.rawQuery('PRAGMA journal_mode = DELETE').exec()
           const users = makeUsersAdapter(kit.db, kit.hash)
-          const events: LifecycleEvent[] = []
+          const events: LifecycleNotification[] = []
           const { account, recorder } = makeService(kit, {
             users: {
               ...users,
@@ -57,7 +57,7 @@ test.group('social registration SQLite retries', () => {
             socialAuthentication: {
               providers: { github: provider('race-subject', 'race@example.test', verified) },
             },
-            onLifecycleEvent: async (event) => {
+            onLifecycleNotification: async (event) => {
               events.push(event)
             },
           })

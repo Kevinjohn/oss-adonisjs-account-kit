@@ -1,4 +1,4 @@
-import { CallbackRegistry } from './callback_registry.ts'
+import { CallbackConfiguration } from './callback_configuration.ts'
 import type { AccountKitCallbacks } from './types.ts'
 
 /**
@@ -7,14 +7,14 @@ import type { AccountKitCallbacks } from './types.ts'
  *
  * @example
  * ```ts
- * import { AccountKitCallbackRegistry } from '@kevinjohn/adonisjs-account-kit'
+ * import { AccountKitCallbackConfiguration } from '@kevinjohn/adonisjs-account-kit'
  * import app from '@adonisjs/core/services/app'
  *
- * const registry = await app.container.make(AccountKitCallbackRegistry)
+ * const registry = await app.container.make(AccountKitCallbackConfiguration)
  * registry.register(() => ({ users }))
  * ```
  */
-export class AccountKitCallbackRegistry extends CallbackRegistry<AccountKitCallbacks> {
+export class AccountKitCallbackConfiguration extends CallbackConfiguration<AccountKitCallbacks> {
   constructor() {
     super('account_kit')
   }

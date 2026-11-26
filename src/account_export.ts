@@ -11,7 +11,7 @@ import type { ServiceDependencies } from './service_dependencies.ts'
 import { readIsoTimestamp, sqlTimestamp } from './timestamps.ts'
 import { decodeScopeColumn } from './invitation_scope.ts'
 import { packageTables } from './package_tables.ts'
-import { isSessionRegistryEnabled } from './session_registry.ts'
+import { isSessionTrackingEnabled } from './session_tracking.ts'
 
 const faults = new WeakMap<AccountExport, InstanceType<typeof E_ACCOUNT_KIT_POST_COMMIT>>()
 
@@ -148,7 +148,7 @@ export async function exportAccountData(
         ...(config.authentication?.strategy === 'access_tokens'
           ? { accessTokens: await listExportedAccessTokens(trx, config, user.id) }
           : {}),
-        ...(isSessionRegistryEnabled(config)
+        ...(isSessionTrackingEnabled(config)
           ? { sessions: await listExportedSessions(trx, user.id) }
           : {}),
         pending: await readPendingAccountOperations(trx, user.id),

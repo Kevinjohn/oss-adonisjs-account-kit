@@ -125,5 +125,5 @@ export default defineConfig({
   onAccountDeletingTransaction: withAdmissionCleanup(),
   exportAccountData: async (user, trx) => exportAccountData(await admission(), user, trx),
   onCredentialsChangedTransaction,
-  onLifecycleEvent: async (event) => notifications.recordLifecycle(event),
+  onLifecycleNotification: async (event) => notifications.recordLifecycle(event),
 })

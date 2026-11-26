@@ -265,10 +265,10 @@ export interface CredentialChangeContext {
 }
 
 /**
- * An account event passed to `onLifecycleEvent` after commit, for audit logs and analytics. Carries
+ * An account event passed to `onLifecycleNotification` after commit, for audit logs and analytics. Carries
  * ids only, never tokens or addresses.
  */
-export type LifecycleEvent =
+export type LifecycleNotification =
   | {
       type:
         | 'registration.created'

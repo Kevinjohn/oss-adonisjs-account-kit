@@ -142,7 +142,7 @@ const definitions: readonly (Omit<ManagedRoute, 'path'> & { suffix: string })[] 
     proofKind: 'email',
   },
   {
-    name: 'account.logout',
+    name: 'account.credential.revoke',
     capability: 'authentication',
     method: 'POST',
     suffix: 'account/logout',

@@ -31,7 +31,7 @@ export interface ManagedRequestBodies {
   }
   'auth.emailChange.inspect': undefined
   'auth.emailChange.complete': undefined
-  'account.logout': undefined
+  'account.credential.revoke': undefined
   'account.profile.show': undefined
   'account.profile.update': {
     currentPassword?: string
@@ -109,7 +109,7 @@ export interface ManagedQueries {
   'auth.oauth.confirmation': undefined
   'auth.oauth.token': undefined
   'auth.methods': undefined
-  'account.logout': undefined
+  'account.credential.revoke': undefined
   'account.profile.show': undefined
   'account.profile.update': undefined
   'account.password.change': undefined
@@ -166,7 +166,7 @@ export interface ManagedSuccessBodies {
   'auth.invitation.accept': { account: CurrentAccount } | ManagedCommittedSuccess
   'auth.emailChange.inspect': { valid: true }
   'auth.emailChange.complete': { account: CurrentAccount } | ManagedCommittedSuccess
-  'account.logout': undefined
+  'account.credential.revoke': undefined
   'account.profile.show': { account: CurrentAccount }
   'account.profile.update': { account: CurrentAccount } | ManagedCommittedSuccess
   'account.password.change': { changed: true } | ManagedCommittedSuccess

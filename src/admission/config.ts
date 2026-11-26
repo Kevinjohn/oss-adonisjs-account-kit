@@ -20,7 +20,7 @@ function fail(field: string, message: string): never {
 /**
  * Validates the admission config. Throws at boot for a config with no requirement, a malformed
  * domain, or an invalid `authorize` callback. A missing `approval.authorize` may come from
- * `AdmissionCallbackRegistry`; it is checked when the admission service is first resolved.
+ * `AdmissionCallbackConfiguration`; it is checked when the admission service is first resolved.
  *
  * @example
  * ```ts
@@ -51,18 +51,18 @@ export function resolveAdmissionConfig(
   }
   if (typeof callbacks !== 'object' || callbacks === null)
     fail('callbacks', 'callbacks must be an object')
-  const { approvalAuthorize, onAdmissionEvent } = callbacks
+  const { approvalAuthorize, onAdmissionNotification } = callbacks
   if (approvalAuthorize !== undefined && input.approval?.authorize !== undefined)
     rejectDuplicateAdmissionSetting('approval.authorize')
-  if (onAdmissionEvent !== undefined && input.onAdmissionEvent !== undefined)
-    rejectDuplicateAdmissionSetting('onAdmissionEvent')
+  if (onAdmissionNotification !== undefined && input.onAdmissionNotification !== undefined)
+    rejectDuplicateAdmissionSetting('onAdmissionNotification')
   return checkAdmission(
     {
       ...input,
       ...(input.approval !== undefined && approvalAuthorize !== undefined
         ? { approval: { ...input.approval, authorize: approvalAuthorize } }
         : {}),
-      ...(onAdmissionEvent !== undefined ? { onAdmissionEvent } : {}),
+      ...(onAdmissionNotification !== undefined ? { onAdmissionNotification } : {}),
     },
     false
   )
@@ -77,7 +77,7 @@ function rejectDuplicateAdmissionSetting(field: string): never {
 
 function checkAdmission(config: AdmissionConfig, deferCallbacks: boolean): ResolvedAdmissionConfig {
   if (!isObject(config)) fail('admission', 'config must be an object')
-  const { domain, invitation, approval, onAdmissionEvent } = config
+  const { domain, invitation, approval, onAdmissionNotification } = config
   if (domain === undefined && invitation === undefined && approval === undefined)
     fail('admission', 'needs at least one of domain, invitation or approval')
 
@@ -121,15 +121,18 @@ function checkAdmission(config: AdmissionConfig, deferCallbacks: boolean): Resol
     resolvedApproval = { authorize: authorize as unknown as AdmissionAuthorizeCallbacks }
   }
 
-  if (onAdmissionEvent !== undefined && typeof onAdmissionEvent !== 'function')
-    fail('admission.onAdmissionEvent', 'onAdmissionEvent must be a function')
+  if (onAdmissionNotification !== undefined && typeof onAdmissionNotification !== 'function')
+    fail('admission.onAdmissionNotification', 'onAdmissionNotification must be a function')
 
   return {
     domain: resolvedDomain,
     invitation: invitation !== undefined,
     approval: resolvedApproval,
-    ...(onAdmissionEvent
-      ? { onAdmissionEvent: onAdmissionEvent as ResolvedAdmissionConfig['onAdmissionEvent'] }
+    ...(onAdmissionNotification
+      ? {
+          onAdmissionNotification:
+            onAdmissionNotification as ResolvedAdmissionConfig['onAdmissionNotification'],
+        }
       : {}),
   }
 }

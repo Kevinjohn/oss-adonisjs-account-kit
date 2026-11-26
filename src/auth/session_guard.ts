@@ -179,7 +179,7 @@ export class AccountKitSessionGuard<
    * @example
    * ```ts
    * const current = await guard.current()
-   * await kit.authentication.logout(guard.forRequest(), undefined, current)
+   * await kit.authentication.revokeCredential(guard.forRequest(), undefined, current)
    * ```
    */
   forRequest(): AuthenticationGuard<undefined> {

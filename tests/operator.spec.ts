@@ -6,7 +6,7 @@ import {
   E_ACCOUNT_KIT_USER_NOT_FOUND,
 } from '../src/errors.ts'
 import { test } from '@japa/runner'
-import type { LifecycleEvent } from '../src/types.ts'
+import type { LifecycleNotification } from '../src/types.ts'
 import { useTestApp } from './helpers/app.ts'
 import { denyAll, insertUser, makeService, tokenFrom } from './helpers/fakes.ts'
 
@@ -16,11 +16,11 @@ test.group('operator services', (group) => {
   test('operator invite skips actor authorisation and throttles, and sends by default', async ({
     assert,
   }) => {
-    const events: LifecycleEvent[] = []
+    const events: LifecycleNotification[] = []
     const { account, recorder } = makeService(kit, {
       authorize: denyAll,
       invitationThrottle: { sendRecipient: { requests: 1, duration: '1h' } },
-      onLifecycleEvent: async (event) => {
+      onLifecycleNotification: async (event) => {
         events.push(event)
       },
     })
@@ -160,7 +160,7 @@ test.group('operator services', (group) => {
 
   test('a failed follow-up returns the printed link with a safe fault', async ({ assert }) => {
     const { account } = makeService(kit, {
-      onLifecycleEvent: async () => {
+      onLifecycleNotification: async () => {
         throw new Error('observer failed at https://secret.example/token')
       },
     })
@@ -201,9 +201,9 @@ test.group('operator services', (group) => {
 
   test('operator reset link replaces the live token and sends by default', async ({ assert }) => {
     await insertUser(kit, { email: 'person@example.test' })
-    const events: LifecycleEvent[] = []
+    const events: LifecycleNotification[] = []
     const { account, recorder } = makeService(kit, {
-      onLifecycleEvent: async (event) => {
+      onLifecycleNotification: async (event) => {
         events.push(event)
       },
     })
@@ -233,7 +233,7 @@ test.group('operator services', (group) => {
       const failure = new Error('Reset URL unavailable')
       let fail = false
       let issued = 0
-      const events: LifecycleEvent[] = []
+      const events: LifecycleNotification[] = []
       const { account, recorder } = makeService(kit, {
         enabled: ['passwordReset'],
         urls: {
@@ -245,7 +245,7 @@ test.group('operator services', (group) => {
         onPasswordResetIssuedTransaction: async () => {
           issued++
         },
-        onLifecycleEvent: async (event) => {
+        onLifecycleNotification: async (event) => {
           events.push(event)
         },
       })

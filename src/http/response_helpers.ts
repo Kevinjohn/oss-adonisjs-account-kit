@@ -74,7 +74,7 @@ export function sendRuleViolationResponse(
     )
 }
 
-export function sendPasswordPolicyErrorResponse(
+export function sendPasswordRulesErrorResponse(
   context: HttpContext,
   field: 'password' | 'newPassword'
 ): unknown {

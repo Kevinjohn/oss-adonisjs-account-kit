@@ -171,7 +171,7 @@ test.group('managed account data routes', (group) => {
     assert.deepEqual(delivery.terminated, ['terminate'])
 
     const observer = mount('session', {
-      onLifecycleEvent: async () => {
+      onLifecycleNotification: async () => {
         throw new Error('observer down')
       },
     })

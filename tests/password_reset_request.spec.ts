@@ -159,7 +159,7 @@ test.group('passwordReset.request', (group) => {
       if (delivery) recorder.failOn('passwordResetProvision')
       const { account } = service({
         notify: recorder.notify,
-        onLifecycleEvent: async () => {
+        onLifecycleNotification: async () => {
           if (observer) throw observerFault
         },
       })
@@ -207,7 +207,7 @@ test.group('passwordReset.request', (group) => {
           throw failure
         })
       },
-      onLifecycleEvent: async () => {
+      onLifecycleNotification: async () => {
         lifecycle++
       },
     })

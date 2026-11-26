@@ -2,7 +2,7 @@ import { test } from '@japa/runner'
 import { AccountKit } from '../src/account_kit.ts'
 import { resolveConfig as defineConfig } from '../src/config.ts'
 import { E_ACCOUNT_KIT_CAPABILITY_DISABLED } from '../src/errors.ts'
-import { capabilities, capabilityRegistry, defaultCapabilities } from '../src/capabilities.ts'
+import { capabilities, capabilityRequirements, defaultCapabilities } from '../src/capabilities.ts'
 import type { Capability } from '../src/types.ts'
 import { useTestApp } from './helpers/app.ts'
 import { makeConfig, makeUsersAdapter } from './helpers/fakes.ts'
@@ -108,7 +108,7 @@ test.group('capability registry', () => {
       accountDeletion: true,
     }
     expectTypeOf<Capability>().toEqualTypeOf<keyof typeof union>()
-    assert.sameMembers(Object.keys(capabilityRegistry), Object.keys(union))
+    assert.sameMembers(Object.keys(capabilityRequirements), Object.keys(union))
     assert.deepEqual(capabilities, Object.keys(union))
     assert.deepEqual(defaultCapabilities, [
       'passwordReset',

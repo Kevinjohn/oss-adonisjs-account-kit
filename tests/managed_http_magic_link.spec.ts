@@ -306,7 +306,7 @@ test.group('managed magic-link routes', (group) => {
     const delivery = mount('session')
     delivery.service.recorder.failOn('magicLinkProvision')
     const observer = mount('session', {
-      onLifecycleEvent: async () => {
+      onLifecycleNotification: async () => {
         throw new Error('observer down')
       },
     })

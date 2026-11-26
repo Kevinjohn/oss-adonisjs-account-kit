@@ -7,7 +7,7 @@ import type {
   Capability,
   CredentialChangeContext,
   SessionsRevokedContext,
-  LifecycleEvent,
+  LifecycleNotification,
   AuthorizationCallbacks,
   UrlCallbacks,
   NotificationCallbacks,
@@ -22,7 +22,7 @@ import type {
 export interface AccountKitConfig {
   /**
    * Reads and writes your users. Use `createLucidAdapter` for a Lucid model. Required here or
-   * through `AccountKitCallbackRegistry`.
+   * through `AccountKitCallbackConfiguration`.
    */
   users?: UsersAdapter
   /**
@@ -80,7 +80,7 @@ export interface AccountKitConfig {
     trx: Trx
   ) => Promise<void>
   /** Receives account events after commit, for audit logs. */
-  onLifecycleEvent?: (event: LifecycleEvent) => Promise<void>
+  onLifecycleNotification?: (event: LifecycleNotification) => Promise<void>
   /**
    * The users table for a custom adapter without `resolveMetadata`. Default `users`. The Lucid
    * adapter derives it.
@@ -129,7 +129,7 @@ export interface AccountKitConfig {
     mapFields?: (input: unknown) => Promise<Record<string, unknown>> | Record<string, unknown>
   }
   /** Rules for new passwords, overriding the defaults one at a time. */
-  passwordPolicy?: Partial<PasswordPolicy>
+  passwordPolicy?: Partial<PasswordRules>
   /** Google and GitHub providers, for `socialAuthentication`. */
   socialAuthentication?: SocialAuthenticationConfig
   /** Options for `sessionManagement`. */
@@ -165,7 +165,7 @@ export interface SessionManagementConfig {
  * Rules for new passwords. Applies to registration, reset, invitation acceptance, activation and
  * password change; login still accepts an existing password.
  */
-export interface PasswordPolicy {
+export interface PasswordRules {
   /** Minimum length, at least 8. Default 8. */
   minLength: number
   /** Maximum length, or null for the service ceiling of 256. Default null. */
@@ -227,13 +227,13 @@ export interface ResolvedConfig extends Omit<
   minRequestMs: number
   tokenSecretLength: number
   authentication?: ResolvedAuthenticationConfig
-  passwordPolicy: PasswordPolicy
+  passwordPolicy: PasswordRules
   sessionManagement: Required<SessionManagementConfig>
   accountDeletion: Required<AccountDeletionConfig>
 }
 
 /**
- * Callbacks an application provider registers through `AccountKitCallbackRegistry` instead of
+ * Callbacks an application provider registers through `AccountKitCallbackConfiguration` instead of
  * passing them to `defineConfig`. Each field may come from one place only.
  */
 export interface AccountKitCallbacks {

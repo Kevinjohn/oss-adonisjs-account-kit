@@ -5,9 +5,9 @@ import { lockUser, transaction } from './db.ts'
 import {
   generateSessionHandle,
   recordSession,
-  isSessionRegistryEnabled,
+  isSessionTrackingEnabled,
   sessionTable,
-} from './session_registry.ts'
+} from './session_tracking.ts'
 import { hashToken } from './tokens.ts'
 import type {
   AccountUser,
@@ -47,7 +47,7 @@ export async function establishCredential<Credential>(
   options: IssuanceOptions
 ): Promise<Credential> {
   const label = options.label?.slice(0, 255) || null
-  const handle = isSessionRegistryEnabled(deps.config) ? generateSessionHandle() : undefined
+  const handle = isSessionTrackingEnabled(deps.config) ? generateSessionHandle() : undefined
   const replaced = handle && guard.strategy === 'session' ? guard.previousHandle?.() : undefined
   let credential: Credential | undefined
   try {

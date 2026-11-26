@@ -57,7 +57,7 @@ test.group('invitations.revoke', (group) => {
       makeConfig({
         users: makeUsersAdapter(kit.db, kit.hash),
         notify: recorder.notify,
-        onLifecycleEvent: async (event) => {
+        onLifecycleNotification: async (event) => {
           events.push(event.type)
         },
       })

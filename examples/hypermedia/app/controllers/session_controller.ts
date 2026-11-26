@@ -38,7 +38,7 @@ export default class SessionController {
   }
 
   async destroy(ctx: HttpContext) {
-    await kit.authentication.logout(accountKitSessionGuard(ctx))
+    await kit.authentication.revokeCredential(accountKitSessionGuard(ctx))
     return ctx.response.redirect().toRoute('session.create')
   }
 }

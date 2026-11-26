@@ -12,7 +12,7 @@ import { sqlTimestamp } from '../timestamps.ts'
 import type { AccountUser, Trx, UserId } from '../types.ts'
 import { requireApproval } from './capability.ts'
 import { evaluateAdmission } from './decision.ts'
-import { withAdmissionEvent } from './events.ts'
+import { withAdmissionNotification } from './notifications.ts'
 import { readAdmissionRow, toAdmissionRecord, upsertAdmissionRow } from './rows.ts'
 import type { AdmissionContext } from './service.ts'
 import type { AdmissionApprovalStatus, AdmissionRecord } from './types.ts'
@@ -76,7 +76,7 @@ export async function decideAdmission(
   const { authorize } = requireApproval(deps.config)
   const { users } = deps.accountConfig
   const operationId = randomUUID()
-  return withAdmissionEvent(
+  return withAdmissionNotification(
     deps.config,
     transaction(deps.db, async (trx) => {
       // Writing approval_actor_id takes a foreign-key lock on the actor's row, so two approvers

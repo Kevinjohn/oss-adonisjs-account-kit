@@ -1,5 +1,5 @@
 // The names of the tables the package migrations create.
-import { sessionTable } from './session_registry.ts'
+import { sessionTable } from './session_tracking.ts'
 
 export const packageTables = {
   passwordResetTokens: 'password_reset_tokens',

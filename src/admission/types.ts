@@ -23,8 +23,8 @@ export interface AdmissionDomainConfig {
   includeSubdomains?: boolean
 }
 
-/** An admission event passed to `onAdmissionEvent` after commit. Carries ids only. */
-export type AdmissionEvent =
+/** An admission event passed to `onAdmissionNotification` after commit. Carries ids only. */
+export type AdmissionNotification =
   | { type: 'admission.requested'; userId: UserId; operationId: string }
   | {
       type: 'admission.approved' | 'admission.rejected' | 'admission.revoked'
@@ -52,22 +52,22 @@ export interface AdmissionConfig {
   invitation?: { required: true }
   /**
    * Admit only people an approver, or an operator command, approved. `authorize` is required here
-   * or through `AdmissionCallbackRegistry`.
+   * or through `AdmissionCallbackConfiguration`.
    */
   approval?: { required: true; authorize?: AdmissionAuthorizeCallbacks }
   /** Receives admission events after commit, for audit logs and notifications. */
-  onAdmissionEvent?: (event: AdmissionEvent) => Promise<void>
+  onAdmissionNotification?: (event: AdmissionNotification) => Promise<void>
 }
 
 /**
- * Callbacks an application provider registers through `AdmissionCallbackRegistry` instead of
+ * Callbacks an application provider registers through `AdmissionCallbackConfiguration` instead of
  * passing them to `defineConfig`. Each field may come from one place only.
  */
 export interface AdmissionCallbacks {
   /** `AdmissionConfig.approval.authorize`. */
   approvalAuthorize?: AdmissionAuthorizeCallbacks
-  /** `AdmissionConfig.onAdmissionEvent`. */
-  onAdmissionEvent?: (event: AdmissionEvent) => Promise<void>
+  /** `AdmissionConfig.onAdmissionNotification`. */
+  onAdmissionNotification?: (event: AdmissionNotification) => Promise<void>
 }
 
 /** The admission configuration after `defineConfig` validated it. */
@@ -75,7 +75,7 @@ export interface ResolvedAdmissionConfig {
   domain: { allowed: readonly string[]; includeSubdomains: boolean } | null
   invitation: boolean
   approval: { authorize: AdmissionAuthorizeCallbacks } | null
-  onAdmissionEvent?: (event: AdmissionEvent) => Promise<void>
+  onAdmissionNotification?: (event: AdmissionNotification) => Promise<void>
 }
 
 /** Invitation evidence recorded for an account. */

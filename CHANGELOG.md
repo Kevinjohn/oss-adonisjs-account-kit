@@ -4,6 +4,25 @@
 
 ### Changed
 
+- **Breaking:** Rename `AccountKitCallbackRegistry` and `AdmissionCallbackRegistry` to
+  `AccountKitCallbackConfiguration` and `AdmissionCallbackConfiguration`. Their container binding
+  names and `register` methods are unchanged. Rename `LifecycleEvent` / `onLifecycleEvent` to
+  `LifecycleNotification` / `onLifecycleNotification`, and `AdmissionEvent` / `onAdmissionEvent`
+  to `AdmissionNotification` / `onAdmissionNotification`. Import `PasswordRules` instead of
+  `PasswordPolicy`; the `passwordPolicy` configuration key is unchanged.
+- **Breaking:** Replace `kit.authentication.logout(...)` with
+  `kit.authentication.revokeCredential(...)` for session or access-token termination. The managed
+  route name is now `account.credential.revoke`; its HTTP method and URL are unchanged.
+- Public type declarations have one definition in type-only modules and are available from
+  `/types` as well as their existing feature entry points. Stateful factories return class
+  instances while preserving their arguments, structural return types and extracted callbacks.
+- Invalid `authentication.canAccess` return values throw the framework's `RuntimeException`
+  instead of `E_ACCOUNT_KIT_ADAPTER_CONTRACT`. Invalid expiry messages name `account_kit` and
+  the affected key while preserving their cause.
+- The generated users migration quotes table and column identifiers through bindings and owns
+  its `tableName`. Transaction cleanup retains a thrown `undefined` as the first aggregate cause.
+- Type-contract tests run inside Japa with `@japa/expect-type`; shared models live in test helpers.
+
 - The release workflow waits for the existing checks on the exact release commit and tests the
   newly packed archive before publication.
 

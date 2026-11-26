@@ -1,7 +1,7 @@
 import { DateTime } from 'luxon'
 import { test } from '@japa/runner'
 import { E_ACCOUNT_KIT_INVALID_TOKEN } from '../src/errors.ts'
-import type { AccountKitConfig, LifecycleEvent } from '../src/types.ts'
+import type { AccountKitConfig, LifecycleNotification } from '../src/types.ts'
 import { useTestApp } from './helpers/app.ts'
 import { dbTime } from './helpers/db_time.ts'
 import { insertUser, makeService, tokenFrom } from './helpers/fakes.ts'
@@ -17,7 +17,7 @@ test.group('invitation match', (group) => {
   ) {
     const accepted: Array<{ userId: unknown; role: string | undefined; inTransaction: boolean }> =
       []
-    const events: LifecycleEvent[] = []
+    const events: LifecycleNotification[] = []
     const service = makeService(kit, {
       enabled: [
         'socialAuthentication',
@@ -42,7 +42,7 @@ test.group('invitation match', (group) => {
           inTransaction: row !== null && left.length === 0,
         })
       },
-      onLifecycleEvent: async (event) => {
+      onLifecycleNotification: async (event) => {
         if (event.type === 'invitation.accepted')
           // After commit: the consume is visible outside the transaction.
           assert(
@@ -89,7 +89,7 @@ test.group('invitation match', (group) => {
 
   // eslint-disable-next-line @unicorn/no-await-expression-member -- Assert the result at the call site.
   const invitationCount = async () => (await kit.db.from('account_invitations')).length
-  const accepted = (events: LifecycleEvent[]) =>
+  const accepted = (events: LifecycleNotification[]) =>
     events.filter((event) => event.type === 'invitation.accepted')
 
   function activationToken(service: ReturnType<typeof setup>) {

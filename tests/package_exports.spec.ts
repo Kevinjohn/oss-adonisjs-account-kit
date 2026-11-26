@@ -33,7 +33,7 @@ if (process.env.TEST_BUILT_EXPORTS === '1')
     const admissionCommands = await import('@kevinjohn/adonisjs-account-kit/admission/commands')
     assert.isFunction(root.AccountKit)
     assert.isFunction(root.defineConfig)
-    assert.isFunction(root.AccountKitCallbackRegistry)
+    assert.isFunction(root.AccountKitCallbackConfiguration)
     assert.isFunction(root.configure)
     assert.isFunction(root.createAllySocialProvider)
     assert.equal(ally.createAllySocialProvider, root.createAllySocialProvider)
@@ -81,7 +81,7 @@ if (process.env.TEST_BUILT_EXPORTS === '1')
     assert.isFunction(transactionHelpers.readTimestamp)
     assert.isFunction(admission.defineConfig)
     assert.isFunction(admission.AccountAdmission)
-    assert.isFunction(admission.AdmissionCallbackRegistry)
+    assert.isFunction(admission.AdmissionCallbackConfiguration)
     for (const middleware of [
       await import('@kevinjohn/adonisjs-account-kit/middleware/admission'),
       await import('@kevinjohn/adonisjs-account-kit/middleware/managed_account'),

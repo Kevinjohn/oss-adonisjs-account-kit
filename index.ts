@@ -6,7 +6,7 @@ export * as errors from './src/errors.ts'
 export type { sensitivePurposes, socialIntents } from './src/social_enums.ts'
 export type { socialProviderNames } from './src/social_providers.ts'
 export { AccountKit, defineConfig } from './src/account_kit.ts'
-export { AccountKitCallbackRegistry } from './src/account_kit_callback_registry.ts'
+export { AccountKitCallbackConfiguration } from './src/account_kit_callback_configuration.ts'
 
 export { createLucidAdapter } from './src/adapters/lucid.ts'
 export { createAllySocialProvider } from './src/ally_social_provider.ts'

@@ -5,7 +5,7 @@ import type { ManagedEndpointName } from './routes.ts'
 import type { ManagedHandler, ManagedRequest } from './managed_types.ts'
 import {
   renderIssuedAccountBody,
-  sendPasswordPolicyErrorResponse,
+  sendPasswordRulesErrorResponse,
   logRecoveryDiagnostic,
   reportCommittedFailure,
   sendRuleViolationResponse,
@@ -29,7 +29,7 @@ async function signUp<Credential>({
     ? await options.extensions.registration.validate(context)
     : await request.validateUsing(signupValidator)
   if (!kit.managedHttp.passwordAllowed(input.password))
-    return sendPasswordPolicyErrorResponse(context, 'password')
+    return sendPasswordRulesErrorResponse(context, 'password')
   try {
     await kit.registration.register({
       email: input.email,

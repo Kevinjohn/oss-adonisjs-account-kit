@@ -70,7 +70,7 @@ test.group('managed route plan', () => {
         ['auth.invitation.accept', 'POST', '/api/v1/auth/invitations/:token'],
         ['auth.emailChange.inspect', 'GET', '/api/v1/auth/email-change/:token'],
         ['auth.emailChange.complete', 'POST', '/api/v1/auth/email-change/:token'],
-        ['account.logout', 'POST', '/api/v1/account/logout'],
+        ['account.credential.revoke', 'POST', '/api/v1/account/logout'],
         ['account.profile.show', 'GET', '/api/v1/account/profile'],
         ['account.profile.update', 'PATCH', '/api/v1/account/profile'],
         ['account.password.change', 'POST', '/api/v1/account/password'],

@@ -6,9 +6,9 @@ import { E_ACCOUNT_KIT_CAPABILITY_DISABLED, E_ACCOUNT_KIT_INVALID_CONFIGURATION 
 import { resolveThrottleBudget } from './config_budget.ts'
 import { assertObject } from './config_assert.ts'
 import { isSqlIdentifier } from './sql_identifier.ts'
-import { capabilities, capabilityRegistry, defaultCapabilities } from './capabilities.ts'
+import { capabilities, capabilityRequirements, defaultCapabilities } from './capabilities.ts'
 import { resolveAuthentication } from './config_authentication.ts'
-import { resolvePasswordPolicy } from './config_password_policy.ts'
+import { resolvePasswordRules } from './config_password_policy.ts'
 import { resolveAccountDeletion } from './config_account_deletion.ts'
 import { resolveSessionManagement } from './config_session_management.ts'
 import { assertSocialAuthenticationConfig } from './config_social_authentication.ts'
@@ -69,7 +69,7 @@ function bindCallbacks<T extends object>(container: object | undefined, defaults
 /**
  * Validates the Account Kit config and fills in defaults. Throws at boot, with the field name, for
  * a missing callback an enabled capability needs or an out-of-range value. `users`, `authorize` and
- * `onInvitationAccepted` may be left out for `AccountKitCallbackRegistry` to supply; they are
+ * `onInvitationAccepted` may be left out for `AccountKitCallbackConfiguration` to supply; they are
  * checked when the service is first resolved.
  *
  * @example
@@ -147,14 +147,14 @@ export function resolveConfig(config: AccountKitConfig, deferCallbacks = true): 
       )
   }
   for (const capability of enabled) {
-    for (const method of capabilityRegistry[capability].adapterMethods) {
+    for (const method of capabilityRequirements[capability].adapterMethods) {
       if (config.users && typeof config.users[method] !== 'function')
         throw new E_ACCOUNT_KIT_INVALID_CONFIGURATION(
           `users.${method}`,
           `account_kit: users.${method} must be a function`
         )
     }
-    for (const path of capabilityRegistry[capability].requiredHooks) {
+    for (const path of capabilityRequirements[capability].requiredHooks) {
       const parts = path.split('.')
       if (
         deferCallbacks &&
@@ -199,7 +199,7 @@ export function resolveConfig(config: AccountKitConfig, deferCallbacks = true): 
     'onCredentialsChangedTransaction',
     'onSessionsRevokedTransaction',
     'onPasswordResetIssuedTransaction',
-    'onLifecycleEvent',
+    'onLifecycleNotification',
     'exportAccountData',
     'onAccountDeletingTransaction',
   ] as const) {
@@ -271,7 +271,7 @@ export function resolveConfig(config: AccountKitConfig, deferCallbacks = true): 
       'tokenSecretLength',
       'account_kit: tokenSecretLength must be an integer from 16 to 64'
     )
-  const passwordPolicy = resolvePasswordPolicy(config)
+  const passwordPolicy = resolvePasswordRules(config)
   const authentication = resolveAuthentication(config)
   if (enabled.includes('sessionManagement') && !authentication)
     throw new E_ACCOUNT_KIT_INVALID_CONFIGURATION(
@@ -320,7 +320,7 @@ export function resolveConfig(config: AccountKitConfig, deferCallbacks = true): 
     onCredentialsChangedTransaction: config.onCredentialsChangedTransaction?.bind(config),
     onSessionsRevokedTransaction: config.onSessionsRevokedTransaction?.bind(config),
     onPasswordResetIssuedTransaction: config.onPasswordResetIssuedTransaction?.bind(config),
-    onLifecycleEvent: config.onLifecycleEvent?.bind(config),
+    onLifecycleNotification: config.onLifecycleNotification?.bind(config),
     exportAccountData: config.exportAccountData?.bind(config),
     onAccountDeletingTransaction: config.onAccountDeletingTransaction?.bind(config),
     // A copy, so a later write to the application's object cannot skip the checks above.

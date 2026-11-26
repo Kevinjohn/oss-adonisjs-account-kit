@@ -3,7 +3,7 @@ import type { ApplicationService } from '@adonisjs/core/types'
 import { AccountKit } from '../src/account_kit.ts'
 import { resolveAccountKitConfig } from '../src/config_resolution.ts'
 import { E_ACCOUNT_KIT_INVALID_CONFIGURATION } from '../src/errors.ts'
-import { AdmissionCallbackRegistry } from '../src/admission/callback_registry.ts'
+import { AdmissionCallbackConfiguration } from '../src/admission/callback_configuration.ts'
 import { resolveAdmissionConfig } from '../src/admission/config.ts'
 import { AccountAdmission } from '../src/admission/service.ts'
 import type { ResolvedAdmissionConfig } from '../src/admission/types.ts'
@@ -11,7 +11,7 @@ import type { ResolvedAdmissionConfig } from '../src/admission/types.ts'
 declare module '@adonisjs/core/types' {
   interface ContainerBindings {
     'account_admission': AccountAdmission
-    'account_admission.callbacks': AdmissionCallbackRegistry
+    'account_admission.callbacks': AdmissionCallbackConfiguration
   }
 }
 
@@ -19,8 +19,11 @@ export default class AccountAdmissionProvider {
   constructor(protected app: ApplicationService) {}
 
   register(): void {
-    this.app.container.singleton(AdmissionCallbackRegistry, () => new AdmissionCallbackRegistry())
-    this.app.container.alias('account_admission.callbacks', AdmissionCallbackRegistry)
+    this.app.container.singleton(
+      AdmissionCallbackConfiguration,
+      () => new AdmissionCallbackConfiguration()
+    )
+    this.app.container.alias('account_admission.callbacks', AdmissionCallbackConfiguration)
     this.app.container.singleton(AccountAdmission, async (resolver) => {
       const kit = await resolver.make(AccountKit)
       const db = await resolver.make('lucid.db')
@@ -36,7 +39,7 @@ export default class AccountAdmissionProvider {
           'config/admission.ts',
           'Invalid "config/admission.ts" file. Make sure it exists and exports defineConfig(...)'
         )
-      const registry = await resolver.make(AdmissionCallbackRegistry)
+      const registry = await resolver.make(AdmissionCallbackConfiguration)
       const callbacks = await registry.resolve()
       return new AccountAdmission({
         kit,

@@ -1,7 +1,7 @@
 import { test } from '@japa/runner'
 import { E_ACCOUNT_KIT_DELIVERY, E_ACCOUNT_KIT_POST_COMMIT } from '../src/errors.ts'
 import { createLifecycleEffect, postCommit } from '../src/effects.ts'
-import type { LifecycleEvent } from '../src/types.ts'
+import type { LifecycleNotification } from '../src/types.ts'
 
 test.group('post-commit effects', () => {
   test('attempts every delivery and reports delivery-only failure', async ({ assert }) => {
@@ -71,10 +71,10 @@ test.group('post-commit effects', () => {
   test('lifecycle wraps the event hook as an observer effect run at follow-up time', async ({
     assert,
   }) => {
-    const seen: LifecycleEvent[] = []
-    const event: LifecycleEvent = { type: 'password.changed', userId: 1, operationId: 'op' }
+    const seen: LifecycleNotification[] = []
+    const event: LifecycleNotification = { type: 'password.changed', userId: 1, operationId: 'op' }
     const effect = createLifecycleEffect(
-      { onLifecycleEvent: async (value) => void seen.push(value) },
+      { onLifecycleNotification: async (value) => void seen.push(value) },
       event
     )
     assert.equal(effect.kind, 'observer')
@@ -88,7 +88,7 @@ test.group('post-commit effects', () => {
       await postCommit('follow-up failed', [
         createLifecycleEffect(
           {
-            onLifecycleEvent: async () => {
+            onLifecycleNotification: async () => {
               throw listener
             },
           },

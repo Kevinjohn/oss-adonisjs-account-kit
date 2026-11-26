@@ -65,7 +65,7 @@ test.group('admission bootstrap', (group) => {
           return url
         },
       },
-      onLifecycleEvent: async (event) => {
+      onLifecycleNotification: async (event) => {
         if (event.type === 'invitation.sent') {
           cancelled = await admission.operator.cancelBootstrap({ email })
         }

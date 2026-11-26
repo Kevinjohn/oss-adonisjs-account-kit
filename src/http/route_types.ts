@@ -32,7 +32,7 @@ export type ManagedEndpointName =
   | 'auth.invitation.accept'
   | 'auth.emailChange.inspect'
   | 'auth.emailChange.complete'
-  | 'account.logout'
+  | 'account.credential.revoke'
   | 'account.profile.show'
   | 'account.profile.update'
   | 'account.password.change'

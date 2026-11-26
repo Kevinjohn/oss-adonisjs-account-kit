@@ -98,7 +98,7 @@ test.group('admission runtime commands', (group) => {
     const cause = new Error('private observer failure')
     const { kernel, stdout, stderr } = kernelFor({
       ...allRequirements,
-      onAdmissionEvent: async () => {
+      onAdmissionNotification: async () => {
         throw cause
       },
     })

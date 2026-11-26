@@ -2,7 +2,7 @@
 import { DateTime } from 'luxon'
 import { requireUserMetadata } from './db.ts'
 import { clearSocialPending } from './credential_cleanup.ts'
-import { sessionTable } from './session_registry.ts'
+import { sessionTable } from './session_tracking.ts'
 import { E_INVALID_CREDENTIALS } from './errors.ts'
 import type { AccountUser, ChangePasswordInput, ResolvedConfig, Trx, UserId } from './types.ts'
 import { hashToken } from './tokens.ts'

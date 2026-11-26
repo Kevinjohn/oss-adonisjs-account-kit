@@ -102,7 +102,7 @@ test.group('invitations.accept', (group) => {
           throw failure
         })
       },
-      onLifecycleEvent: async (event) => {
+      onLifecycleNotification: async (event) => {
         events.push(event.type)
       },
     })

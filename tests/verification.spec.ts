@@ -363,7 +363,7 @@ test.group('emailVerification.complete', (group) => {
     const config = defineConfig(
       makeConfig({
         users: makeUsersAdapter(kit.db, kit.hash),
-        onLifecycleEvent: async (event) => {
+        onLifecycleNotification: async (event) => {
           events.push(event)
         },
       })

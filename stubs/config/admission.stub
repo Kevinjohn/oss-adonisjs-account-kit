@@ -26,5 +26,5 @@ export default defineConfig({
   /**
    * Receives admission events after commit. Account Kit sends no notification of its own.
    */
-  // onAdmissionEvent: async (event) => {},
+  // onAdmissionNotification: async (event) => {},
 })

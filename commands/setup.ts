@@ -54,7 +54,7 @@ export default class SetupAccountKit extends BaseCommand {
   }
 
   /** Choices from the saved file (--check), the --input file, or the prompts. */
-  private async loadChoices(root: string, state: SetupInspection): Promise<SetupChoices> {
+  async #loadChoices(root: string, state: SetupInspection): Promise<SetupChoices> {
     if (this.check) {
       if (!state.existingChoices)
         throw new InvalidArgumentsException(
@@ -70,7 +70,7 @@ export default class SetupAccountKit extends BaseCommand {
   }
 
   /** Count accounts the choices would retire, through the booted read-only inventory command. */
-  private async readRetirementInventory(choices: SetupChoices): Promise<{
+  async #readRetirementInventory(choices: SetupChoices): Promise<{
     retirementImpact: RetirementImpact['impact'] | null
     runtimeInventoryUnavailable: boolean
   }> {
@@ -133,9 +133,9 @@ export default class SetupAccountKit extends BaseCommand {
         'No saved setup choices were found; using starter defaults. Provide a reviewed choices file with --input=choices.json to preserve an earlier configuration.'
       )
     }
-    const choices = await this.loadChoices(root, state)
+    const choices = await this.#loadChoices(root, state)
     const { retirementImpact, runtimeInventoryUnavailable } = state.existingChoices
-      ? await this.readRetirementInventory(choices)
+      ? await this.#readRetirementInventory(choices)
       : { retirementImpact: null, runtimeInventoryUnavailable: false }
     const plan = await planSetup(choices, state, {
       apply: this.apply && !this.check,

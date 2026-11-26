@@ -12,7 +12,7 @@ import {
   E_ACCOUNT_KIT_SESSION_NOT_FOUND,
 } from './errors.ts'
 import { recordRevocation } from './session_revocation.ts'
-import { sessionTable } from './session_registry.ts'
+import { sessionTable } from './session_tracking.ts'
 import { readIsoTimestamp } from './timestamps.ts'
 import { hashToken } from './tokens.ts'
 import type {

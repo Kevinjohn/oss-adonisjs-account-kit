@@ -25,7 +25,7 @@ export default class SessionController {
   }
 
   async destroy({ auth, session }: HttpContext) {
-    await accountKit.authentication.logout({
+    await accountKit.authentication.revokeCredential({
       async terminate() {
         await auth.use('web').logout()
         session.clear()

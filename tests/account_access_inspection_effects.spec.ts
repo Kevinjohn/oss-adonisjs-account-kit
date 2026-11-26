@@ -50,7 +50,7 @@ test.group('account access inspection side effects and dependency failures', (gr
           enabled:
             strategy === 'session' ? [...baseEnabled, 'sessionManagement'] : [...baseEnabled],
           ...credentialHook,
-          onLifecycleEvent: async () => {
+          onLifecycleNotification: async () => {
             lifecycleHookCalls.count++
           },
         })

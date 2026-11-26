@@ -390,7 +390,7 @@ test.group('passwordReset.reset', (group) => {
           calls.push('notice')
         },
       },
-      onLifecycleEvent: async () => {
+      onLifecycleNotification: async () => {
         calls.push('lifecycle')
       },
     })
@@ -441,7 +441,7 @@ test.group('passwordReset.reset', (group) => {
           throw failure
         },
       },
-      onLifecycleEvent: async () => {
+      onLifecycleNotification: async () => {
         lifecycleCalls++
       },
     })

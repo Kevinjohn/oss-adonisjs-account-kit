@@ -243,9 +243,9 @@ test.group('session registry', (group) => {
     const { account } = service()
     const first = await login(account)
     const second = await login(account)
-    await account.authentication.logout(first.guard, undefined)
+    await account.authentication.revokeCredential(first.guard, undefined)
     assert.lengthOf(await kit.db.from('account_sessions'), 2)
-    await account.authentication.logout(first.guard, undefined, first.input(user.id))
+    await account.authentication.revokeCredential(first.guard, undefined, first.input(user.id))
     const rows = await kit.db.from('account_sessions')
     assert.deepEqual(
       rows.map((row) => row.handle_hash),

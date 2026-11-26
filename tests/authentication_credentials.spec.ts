@@ -1,3 +1,4 @@
+import { RuntimeException } from '@adonisjs/core/exceptions'
 import { test } from '@japa/runner'
 import { useTestApp } from './helpers/app.ts'
 import { accessTokenDefaults } from './helpers/access_tokens.ts'
@@ -5,7 +6,6 @@ import { insertUser, makeService, tokenFrom, unwrapId } from './helpers/fakes.ts
 import { advanceCredentialRevision } from '../src/credential_revision.ts'
 import { transaction } from '../src/db.ts'
 import {
-  E_ACCOUNT_KIT_ADAPTER_CONTRACT,
   E_INVALID_CREDENTIALS,
   E_ACCOUNT_KIT_INVALID_SESSION,
   E_ACCOUNT_KIT_POST_COMMIT,
@@ -656,7 +656,7 @@ test.group('authentication policy result contract', (group) => {
               boundary === 'current' ? E_ACCOUNT_KIT_INVALID_SESSION : E_INVALID_CREDENTIALS
             )
           } else {
-            assert.instanceOf(result.error, E_ACCOUNT_KIT_ADAPTER_CONTRACT)
+            assert.instanceOf(result.error, RuntimeException)
             assert.notInstanceOf(result.error, E_INVALID_CREDENTIALS)
             assert.notInstanceOf(result.error, E_ACCOUNT_KIT_INVALID_SESSION)
             assert.equal(
@@ -727,7 +727,7 @@ test.group('authentication policy result contract', (group) => {
       assert.instanceOf(error, AggregateError)
       const causes = (error as AggregateError).errors
       assert.lengthOf(causes, 2)
-      assert.instanceOf(causes[0], E_ACCOUNT_KIT_ADAPTER_CONTRACT)
+      assert.instanceOf(causes[0], RuntimeException)
       assert.equal(causes[0].message, 'account_kit: canAccess must resolve to a boolean')
       assert.strictEqual(causes[1], cleanupFault)
       assert.isNotNull(await kit.db.from('auth_access_tokens').where('id', issuedId!).first())

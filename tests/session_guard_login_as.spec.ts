@@ -90,7 +90,7 @@ test.group('accountKitSessionGuard with loginAs', (group) => {
       const guard = auth.use('web')
       const current = await guard.current()
       const accountKit = await app.container.make('account_kit.manager')
-      await accountKit.authentication.logout(guard.forRequest(), undefined, current)
+      await accountKit.authentication.revokeCredential(guard.forRequest(), undefined, current)
       return ctx.response.noContent()
     })
     await server.boot()

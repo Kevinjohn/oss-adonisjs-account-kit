@@ -2811,7 +2811,7 @@
     },
     "/api/v1/account/logout": {
       "post": {
-        "operationId": "account.logout",
+        "operationId": "account.credential.revoke",
         "tags": [
           "authentication"
         ],

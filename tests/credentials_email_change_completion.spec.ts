@@ -347,7 +347,7 @@ test.group('emailPasswordManagement', (group) => {
       onCredentialsChanged: async () => {
         calls.push('credentials')
       },
-      onLifecycleEvent: async (event) => {
+      onLifecycleNotification: async (event) => {
         calls.push(event.type)
       },
     })
@@ -379,7 +379,7 @@ test.group('emailPasswordManagement', (group) => {
     const account = service({
       users: seam.users,
       notify: recorder.notify,
-      onLifecycleEvent: async (event) => {
+      onLifecycleNotification: async (event) => {
         events.push(event.type)
       },
     })
@@ -419,7 +419,7 @@ test.group('emailPasswordManagement', (group) => {
     const account = service({
       users: seam.users,
       notify: recorder.notify,
-      onLifecycleEvent: async () => {
+      onLifecycleNotification: async () => {
         throw observerFailure
       },
     })

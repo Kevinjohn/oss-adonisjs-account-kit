@@ -109,7 +109,7 @@ test.group('admission bootstrap', (group) => {
     const { admission } = makeAdmission(kit, allRequirements, {
       onInvitationAccepted: withInvitationEvidence(),
       // Stands in for a concurrent cancel or second bootstrap while the invitation is issued.
-      onLifecycleEvent: async (event) => {
+      onLifecycleNotification: async (event) => {
         if (event.type === 'invitation.sent')
           await kit.db.from('account_admissions').whereNull('user_id').delete()
       },
@@ -196,7 +196,7 @@ test.group('admission bootstrap', (group) => {
   }) => {
     let paired = false
     const { admission } = makeAdmission(kit, allRequirements, {
-      onLifecycleEvent: async (event) => {
+      onLifecycleNotification: async (event) => {
         if (event.type !== 'invitation.sent') return
         const pending = await waiting().first()
         const invitation = await kit.db
@@ -223,7 +223,7 @@ test.group('admission bootstrap', (group) => {
     let committedPairVisible = false
     const { admission, account } = makeAdmission(kit, allRequirements, {
       onInvitationAccepted: withInvitationEvidence(),
-      onLifecycleEvent: async (event) => {
+      onLifecycleNotification: async (event) => {
         if (event.type !== 'invitation.sent' || !first) return
         first = false
         const pending = await waiting().first()
@@ -266,7 +266,7 @@ test.group('admission bootstrap', (group) => {
     const events: string[] = []
     const { admission, account, config } = makeAdmission(kit, allRequirements, {
       onInvitationAccepted: withInvitationEvidence(),
-      onLifecycleEvent: async (event) => {
+      onLifecycleNotification: async (event) => {
         events.push(event.type)
       },
     })
@@ -316,7 +316,7 @@ test.group('admission bootstrap', (group) => {
   }) => {
     const { admission, account } = makeAdmission(kit, allRequirements, {
       onInvitationAccepted: withInvitationEvidence(),
-      onLifecycleEvent: async (event) => {
+      onLifecycleNotification: async (event) => {
         if (event.type === 'invitation.sent') throw new Error('observer unavailable')
       },
     })

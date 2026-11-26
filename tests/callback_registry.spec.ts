@@ -2,12 +2,12 @@ import { resolveAccountKitConfig } from '../src/config_resolution.ts'
 import { resolveAdmissionConfig } from '../src/admission/config.ts'
 import { test } from '@japa/runner'
 import { AccountKit, defineConfig } from '../src/account_kit.ts'
-import { AdmissionCallbackRegistry } from '../src/admission/callback_registry.ts'
+import { AdmissionCallbackConfiguration } from '../src/admission/callback_configuration.ts'
 import { defineConfig as defineAdmissionConfig } from '../src/admission/config.ts'
 import AdmissionProvider from '../providers/account_admission_provider.ts'
 import { AccountAdmission } from '../src/admission/service.ts'
 import type { AdmissionConfig } from '../src/admission/types.ts'
-import { AccountKitCallbackRegistry } from '../src/account_kit_callback_registry.ts'
+import { AccountKitCallbackConfiguration } from '../src/account_kit_callback_configuration.ts'
 import { E_ACCOUNT_KIT_INVALID_CONFIGURATION } from '../src/errors.ts'
 import type { AccountKitCallbacks, AccountKitConfig } from '../src/types.ts'
 import { bootTestApp, type TestApp } from './helpers/app.ts'
@@ -58,11 +58,11 @@ test.group('callback registry', () => {
   test('binds one registry under its class and alias for each service', async ({ assert }) => {
     await withApp(async ({ app }) => {
       const registry = await app.container.make('account_kit.callbacks')
-      assert.instanceOf(registry, AccountKitCallbackRegistry)
-      assert.equal(await app.container.make(AccountKitCallbackRegistry), registry)
+      assert.instanceOf(registry, AccountKitCallbackConfiguration)
+      assert.equal(await app.container.make(AccountKitCallbackConfiguration), registry)
       const admission = await app.container.make('account_admission.callbacks')
-      assert.instanceOf(admission, AdmissionCallbackRegistry)
-      assert.equal(await app.container.make(AdmissionCallbackRegistry), admission)
+      assert.instanceOf(admission, AdmissionCallbackConfiguration)
+      assert.equal(await app.container.make(AdmissionCallbackConfiguration), admission)
     })
   })
 
@@ -89,26 +89,26 @@ test.group('callback registry', () => {
 
   test('registered callbacks reach the built admission service', async ({ assert }) => {
     await withApp(async (app) => {
-      const onAdmissionEvent = async () => {}
+      const onAdmissionNotification = async () => {}
       app.app.config.set(
         'account_kit',
         defineConfig(makeConfig({ users: makeUsersAdapter(app.db, app.hash) }))
       )
       app.app.config.set('admission', defineAdmissionConfig({ approval: { required: true } }))
       const registry = await app.app.container.make('account_admission.callbacks')
-      registry.register(() => ({ approvalAuthorize: allowDecisions, onAdmissionEvent }))
+      registry.register(() => ({ approvalAuthorize: allowDecisions, onAdmissionNotification }))
       await app.app.container.make(AccountAdmission)
       const config = resolveAdmissionConfig(
         app.app.config.get('admission'),
         await registry.resolve()
       )
       assert.equal(config.approval?.authorize, allowDecisions)
-      assert.equal(config.onAdmissionEvent, onAdmissionEvent)
+      assert.equal(config.onAdmissionNotification, onAdmissionNotification)
     })
   })
 
   test('refuses a second registration', async ({ assert }) => {
-    for (const Registry of [AccountKitCallbackRegistry, AdmissionCallbackRegistry]) {
+    for (const Registry of [AccountKitCallbackConfiguration, AdmissionCallbackConfiguration]) {
       const registry = new Registry()
       registry.register(() => ({}))
       const error = await rejection(async () => registry.register(() => ({})))
@@ -171,7 +171,7 @@ test.group('callback registry', () => {
   test('refuses an admission field set in both places, naming it', async ({ assert }) => {
     for (const [field, registered] of [
       ['approval.authorize', { approvalAuthorize: allowDecisions }],
-      ['onAdmissionEvent', { onAdmissionEvent: async () => {} }],
+      ['onAdmissionNotification', { onAdmissionNotification: async () => {} }],
     ] as const) {
       await withApp(async (app) => {
         app.app.config.set(
@@ -182,7 +182,7 @@ test.group('callback registry', () => {
           'admission',
           defineAdmissionConfig({
             approval: { required: true, authorize: allowDecisions },
-            onAdmissionEvent: async () => {},
+            onAdmissionNotification: async () => {},
           })
         )
         const registry = await app.app.container.make('account_admission.callbacks')
