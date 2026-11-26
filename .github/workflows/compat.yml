@@ -13,8 +13,6 @@ on:
       - 'index.ts'
       - 'configure.ts'
       - 'src/**'
-      - 'http/**'
-      - 'transaction/**'
       - 'services/**'
       - 'providers/**'
       - 'stubs/**'

@@ -1,13 +1,13 @@
 import { test } from '@japa/runner'
-import type * as Http from '../http/main.ts'
+import type * as Http from '../src/http/main.ts'
 import type { SessionUserProviderContract } from '@adonisjs/auth/types/session'
-import type * as Auth from '../auth/main.ts'
+import type * as Auth from '../src/auth/main.ts'
 import type * as AuthTypes from '../src/types_auth.ts'
 import type * as AccountKit from '../index.ts'
 import type * as Admission from '../src/admission/main.ts'
 import type * as Commands from '../src/define_commands.ts'
 import type * as Types from '../src/types.ts'
-import type * as Transaction from '../transaction/main.ts'
+import type * as Transaction from '../src/transaction/main.ts'
 
 test('exposes account mail and link types through the central types entry point', ({
   expectTypeOf,

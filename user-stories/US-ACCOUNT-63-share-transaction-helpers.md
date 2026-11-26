@@ -10,7 +10,7 @@ As a package consumer, I want to use Account Kit’s transaction helpers so that
 
 **Documentation:** [Transaction helpers](../docs/guide/application-owned-integration.md#transaction-helpers-for-packages-built-on-account-kit)
 
-**Source:** [transaction/main.ts](../transaction/main.ts), [src/transaction_manager.ts](../src/transaction_manager.ts)
+**Source:** [src/transaction/main.ts](../src/transaction/main.ts), [src/transaction_manager.ts](../src/transaction_manager.ts)
 
 **Coverage:** [tests/transaction_export.spec.ts](../tests/transaction_export.spec.ts), [tests/transaction_sqlite.spec.ts](../tests/transaction_sqlite.spec.ts)
 

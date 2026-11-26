@@ -12,5 +12,17 @@
     "stubs/**",
     "docs/maintainers/reviews/**",
     "bin/demos/overlay/**"
+  ],
+  "include": [
+    "index.ts",
+    "configure.ts",
+    "src/**/*.ts",
+    "commands/**/*.ts",
+    "providers/**/*.ts",
+    "services/**/*.ts",
+    "bin/**/*.ts",
+    "tests/**/*.ts",
+    "docs/**/*.ts",
+    "docs/**/*.mts"
   ]
 }

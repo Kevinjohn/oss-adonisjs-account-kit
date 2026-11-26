@@ -4,7 +4,7 @@ import {
   readTimestamp as readTimestampSource,
   sqlTimestamp as sqlTimestampSource,
 } from '../src/timestamps.ts'
-import { readTimestamp, sqlTimestamp, TransactionManager } from '../transaction/main.ts'
+import { readTimestamp, sqlTimestamp, TransactionManager } from '../src/transaction/main.ts'
 import { useTestApp } from './helpers/app.ts'
 import { insertUser } from './helpers/fakes.ts'
 
