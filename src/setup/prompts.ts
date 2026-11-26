@@ -6,7 +6,7 @@ import {
   guardStrategies,
   mailDeliveries,
   mailIntegrations,
-  registrationPolicies,
+  registrationAvailabilities,
   setupModes,
   unverifiedActionNames,
   userAdapters,
@@ -300,7 +300,7 @@ export async function collectSetupChoices(
         `Registration policy (open/closed/application; current: ${choices.policy.registration})`
       ),
       'policy.registration',
-      registrationPolicies,
+      registrationAvailabilities,
       choices.policy.registration
     )
   }

@@ -26,7 +26,7 @@ export const authenticationHandlers = {
   'account.credential.revoke': async ({ context, kit, options, accountInput }) => {
     await kit.authentication.revokeCredential(
       options.guard.forRequest(context),
-      await options.guard.logoutCredential?.(context),
+      await options.guard.credentialForRevocation?.(context),
       accountInput
     )
     return context.response.noContent()

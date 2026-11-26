@@ -18,13 +18,15 @@ export function assertManagedRoutesOptions<Credential>(
     !options.guard.publicCredential
   )
     throw new InvalidArgumentsException('Managed access-token routes require publicCredential')
-  // Without it, logout would answer 204 and leave the bearer token valid.
+  // Without it, revocation would answer 204 and leave the bearer token valid.
   if (
     options.guard.strategy === 'access_tokens' &&
     options.enabled.includes('authentication') &&
-    !options.guard.logoutCredential
+    !options.guard.credentialForRevocation
   )
-    throw new InvalidArgumentsException('Managed access-token logout requires logoutCredential')
+    throw new InvalidArgumentsException(
+      'Managed access-token revocation requires credentialForRevocation'
+    )
   if (
     options.enabled.includes('socialAuthentication') &&
     (!options.extensions?.social ||

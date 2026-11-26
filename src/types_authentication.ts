@@ -200,7 +200,7 @@ export type AuthenticationGuard<Credential> =
        *
        * @example
        * ```ts
-       * await tokenGuard.forRequest(context).terminate(await tokenGuard.logoutCredential(context))
+       * await tokenGuard.forRequest(context).terminate(await tokenGuard.credentialForRevocation(context))
        * ```
        */
       terminate(credential?: Credential): Promise<void>

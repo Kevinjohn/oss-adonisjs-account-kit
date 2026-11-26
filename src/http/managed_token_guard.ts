@@ -69,9 +69,9 @@ class ManagedTokenGuard<User> implements ManagedGuard<ManagedTokenCredential> {
     await markAuthenticated(auth, this.#options.name)
     return { userId: requireManagedUser(user).id, tokenId: requireCurrentTokenIdentifier(user) }
   }
-  logoutCredential: NonNullable<ManagedGuard<ManagedTokenCredential>['logoutCredential']> = async (
-    context
-  ) => {
+  credentialForRevocation: NonNullable<
+    ManagedGuard<ManagedTokenCredential>['credentialForRevocation']
+  > = async (context) => {
     const user = await authenticate((context as TokenContext<User>).auth.use(this.#options.name))
     return {
       userId: requireManagedUser(user).id,

@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Name credential revocation callbacks and registration availability helpers for their behavior.
+
 - Move the auth, HTTP and transaction subpath entries under `src/` and keep their public export keys.
 
 - Align reference application controllers, configuration, migrations and input recovery with AdonisJS conventions; check bounded display-field recovery with focused tests.

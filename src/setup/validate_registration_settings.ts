@@ -9,7 +9,7 @@ import { MAX_PASSWORD_LENGTH, MIN_PASSWORD_LENGTH } from '../password.ts'
 import { PROTECTED_FIELDS } from '../registration_fields.ts'
 
 /** Registration settings, password requirements, access decisions and invitation callbacks. */
-export function addPolicyDiagnostics(
+export function addRegistrationDiagnostics(
   diagnostics: SetupDiagnostic[],
   choices: SetupChoices,
   state: SetupInspection

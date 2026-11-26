@@ -36,14 +36,14 @@ export interface ManagedGuard<Credential> {
    */
   current(context: HttpContext): Promise<CurrentAccountInput>
   /**
-   * Return the current credential for bearer logout. Required for access tokens with `authentication`.
+   * Return the current bearer credential for revocation. Required for access tokens with `authentication`.
    *
    * @example
    * ```ts
-   * await tokenGuard.logoutCredential?.(context)
+   * await tokenGuard.credentialForRevocation?.(context)
    * ```
    */
-  logoutCredential?(context: HttpContext): Promise<Credential>
+  credentialForRevocation?(context: HttpContext): Promise<Credential>
   /**
    * Expose only the opaque bearer value after successful token issuance.
    *

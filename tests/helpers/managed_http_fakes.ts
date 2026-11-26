@@ -111,7 +111,9 @@ export function stubGuard<Credential = unknown>(
     name: strategy === 'session' ? 'web' : 'api',
     forRequest: () => ({}) as never,
     current: async () => ({ userId: 1, revision: null }),
-    ...(strategy === 'access_tokens' ? { logoutCredential: async () => undefined as never } : {}),
+    ...(strategy === 'access_tokens'
+      ? { credentialForRevocation: async () => undefined as never }
+      : {}),
     ...overrides,
   }
 }

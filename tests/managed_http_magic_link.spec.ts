@@ -401,7 +401,7 @@ test.group('managed magic-link routes', (group) => {
     )
   })
 
-  test('access-token mounts with logout require logoutCredential', ({ assert }) => {
+  test('access-token mounts with revocation require credentialForRevocation', ({ assert }) => {
     const { router } = fakeManagedHttp()
     assert.throws(
       () =>
@@ -417,7 +417,7 @@ test.group('managed magic-link routes', (group) => {
           },
           enabled: ['authentication'],
         }),
-      /logout requires logoutCredential/
+      /revocation requires credentialForRevocation/
     )
   })
 })

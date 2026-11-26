@@ -1,5 +1,10 @@
 import { InvalidArgumentsException } from '@adonisjs/core/exceptions'
-import { guardStrategies, registrationPolicies, setupModes, type SetupChoices } from './types.ts'
+import {
+  guardStrategies,
+  registrationAvailabilities,
+  setupModes,
+  type SetupChoices,
+} from './types.ts'
 import { DateTime } from 'luxon'
 import { expiresAt } from '../ttl.ts'
 import { socialProviderNames } from '../social_providers.ts'
@@ -155,7 +160,7 @@ function assertPolicyChoices(input: unknown): void {
     'accessRestrictionHook',
   ])
   assertString(policy.registration, 'policy.registration')
-  if (!(registrationPolicies as readonly string[]).includes(policy.registration as string))
+  if (!(registrationAvailabilities as readonly string[]).includes(policy.registration as string))
     throw new InvalidArgumentsException('policy.registration: choose open, closed or application')
   if (!Array.isArray(policy.registrationFields))
     throw new InvalidArgumentsException('policy.registrationFields: expected an array')

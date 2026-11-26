@@ -227,7 +227,7 @@ test.group('authentication contract', (group) => {
     )
   })
 
-  test('logout terminates each supplied guard with its supplied credential and returns void', async ({
+  test('revocation terminates each supplied guard with its supplied credential and returns void', async ({
     assert,
   }) => {
     const { account } = makeService(kit, {

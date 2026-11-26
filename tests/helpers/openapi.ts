@@ -45,7 +45,7 @@ export function registered(
       forRequest: () => ({}) as never,
       current: async () => ({ userId: 1 }),
       publicCredential: () => 'opaque',
-      logoutCredential: async () => undefined,
+      credentialForRevocation: async () => undefined,
     },
     enabled: allCapabilities,
     ...options,

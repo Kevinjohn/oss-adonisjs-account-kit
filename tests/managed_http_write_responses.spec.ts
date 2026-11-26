@@ -113,7 +113,7 @@ test.group('managed HTTP dispatch', () => {
         strategy: 'access_tokens',
         publicCredential: () => 'opaque',
         current: async () => ({ userId: 7, tokenId: 11 }),
-        logoutCredential: async () => ({ userId: 7, identifier: 11 }),
+        credentialForRevocation: async () => ({ userId: 7, identifier: 11 }),
       }),
       enabled: ['authentication', 'emailPasswordManagement', 'emailVerification', 'invitations'],
     })
