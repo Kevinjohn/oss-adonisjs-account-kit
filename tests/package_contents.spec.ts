@@ -23,11 +23,26 @@ test('packs the build and top-level documents, not docs, examples or planning do
     await writeFile(join(root, '.gitignore'), await readFile(join(repoRoot, '.gitignore')))
     const publicFiles = [
       'build/index.js',
+      'build/shared_chunk.js',
+      'build/src/auth/main.js',
+      'build/src/auth/main.d.ts',
+      'build/src/http/main.js',
+      'build/src/http/main.d.ts',
+      'build/src/transaction/main.js',
+      'build/src/transaction/main.d.ts',
+      'build/stubs/main.js',
+      'build/config/account_kit.stub',
       'build/make/migration/create_account_admissions.stub',
+      'build/make/migration/create_account_sessions.stub',
       'README-AGENTS.md',
       'CHANGELOG.md',
     ]
     const privateFiles = [
+      'build/auth/main.js',
+      'build/http/main.js',
+      'build/transaction/main.js',
+      'build/bin/check_changed.js',
+      'build/tests/package_exports.spec.js',
       'docs/guide/usage.md',
       'examples/api/README.md',
       'PLAN-private.md',
