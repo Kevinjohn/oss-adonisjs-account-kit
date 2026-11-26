@@ -43,7 +43,7 @@ flowchart TD
   C -->|Other refusal| E["Roll back and surface relevant error"]
   C -->|Eligible| F["Create account to claim unique email, then consume selected token and recheck address"]
   F -->|Proof changed| E
-  F -->|Accepted| G["Consume other live invitations; verify email and apply grants in ascending scope order"]
+  F -->|Accepted| G["Consume other live invitations; verify email and invoke host acceptance callbacks in ascending scope order"]
   G --> H["Commit; emit acceptance follow-ups and return saved account or managed 201; surface committed failure if one occurs"]
   F -->|Concurrent duplicate email| Q
 ```

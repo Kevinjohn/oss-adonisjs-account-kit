@@ -4,7 +4,7 @@ As an application developer, I want to require admission before protected applic
 
 **Status:** Current when admission is installed and app applies middleware
 **Access:** Host chooses guarded routes and keeps pre-admission status/sign-out routes reachable.
-**Entry:** Host applies `AdmissionMiddleware` or calls `admission.require` in its own middleware/controller.
+**Entry:** Host imports the default `AdmissionMiddleware` from `@kevinjohn/adonisjs-account-kit/middleware/admission` and applies it, or calls `admission.require` in its own middleware/controller.
 **Documentation:** [admission.md](../docs/guide/admission.md)
 **Source:** [`src/admission/middleware.ts`](../src/admission/middleware.ts)
 **Coverage:** [`tests/admission_gate.spec.ts`](../tests/admission_gate.spec.ts)

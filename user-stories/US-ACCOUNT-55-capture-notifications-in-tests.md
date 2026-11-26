@@ -4,7 +4,7 @@ As an application developer, I want to capture Account Kit notification callback
 
 **Status:** Current for application tests
 **Access:** The helper stores messages only in the current process; it does not deliver mail, persist an outbox or prove recipient delivery.
-**Entry:** Import `captureNotifications` from `@kevinjohn/adonisjs-account-kit/testing/notifications` and pass its `notify` callbacks to Account Kit configuration.
+**Entry:** Import `captureNotifications` or `NotificationCapture` from `@kevinjohn/adonisjs-account-kit/testing/notifications`, create a capture and pass its `notify` callbacks to Account Kit configuration.
 **Documentation:** [Testing recipe](../docs/recipes/testing.md), [notification guide](../docs/guide/notifications.md)
 **Source:** [`src/testing/notifications.ts`](../src/testing/notifications.ts), [`package.json` export](../package.json)
 **Coverage:** [`tests/testing_notifications.spec.ts`](../tests/testing_notifications.spec.ts), [`tests/package_exports.spec.ts`](../tests/package_exports.spec.ts)
@@ -34,7 +34,7 @@ Scope: the `captureNotifications` test helper only. The account operation that c
 
 ```mermaid
 flowchart TD
- A["captureNotifications()"] --> B["Create notify callbacks and shared messages array"]
+ A["captureNotifications() or new NotificationCapture()"] --> B["Create notify callbacks and shared messages array"]
  B --> C["Account operation invokes a callback with recipient and arguments"]
  C --> D["Record kind, recipient, arguments, actionUrl and parsed token when present"]
  C -->|Invalid action URL| X["Throw before adding a message"]

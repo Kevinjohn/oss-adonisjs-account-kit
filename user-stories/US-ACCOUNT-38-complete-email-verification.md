@@ -40,7 +40,7 @@ flowchart TD
   N["Managed POST checks password and confirmation; host may call directly"] --> E["emailVerification.complete checks capability, password and token, then prepares password"]
   E --> F["Transaction consumes live matching activation proof"]
   F -->|Refused| R["Roll back and surface invalid token"]
-  F -->|Accepted| G["Store password; activateClaim confirms email, applies live invitation grants, and clears password reset proofs and pending social state as configured"]
+  F -->|Accepted| G["Store password; activateClaim confirms email, invokes host callbacks for live invitations, and clears password reset proofs and pending social state as configured"]
   G --> H["invalidateChangedCredentials invalidates prior credentials; commit"]
   H --> I["Run credential observer, lifecycle and invitation follow-ups"]
   I -->|Success| K["Return verified or managed verified acknowledgement"]
