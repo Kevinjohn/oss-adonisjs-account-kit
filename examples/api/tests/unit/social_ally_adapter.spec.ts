@@ -1,5 +1,6 @@
 import { test } from '@japa/runner'
-import { allySocialProvider } from '#services/social_provider'
+import type { socialProviderCallbackValidator } from '#validators/social'
+import { allySocialProvider, SocialProviderExchangeError } from '#services/social_provider'
 
 test('Ally adapter uses request-scoped state and rejects a crossed callback path', async ({
   assert,
@@ -38,10 +39,24 @@ test('Ally adapter uses request-scoped state and rejects a crossed callback path
       }
     },
   }
+  const requestFor = (body: Record<string, unknown>) => ({
+    validateUsing: (validator: typeof socialProviderCallbackValidator) => validator.validate(body),
+  })
   const provider = allySocialProvider('google')
+  const rejectsCategory = async (callback: unknown, category: string) => {
+    await assert.rejects(async () => {
+      try {
+        await provider.resolve(callback)
+      } catch (error) {
+        if (!(error instanceof SocialProviderExchangeError)) throw error
+        assert.equal(error.category, category)
+        throw error
+      }
+    }, SocialProviderExchangeError)
+  }
   const context = {
     params: { provider: 'google' },
-    request: { input: (name: string) => (name === 'code' ? 'provider-code' : undefined) },
+    request: requestFor({ code: 'provider-code' }),
     ally: {
       use(name: string) {
         assert.equal(name, 'google')
@@ -53,14 +68,9 @@ test('Ally adapter uses request-scoped state and rejects a crossed callback path
   assert.equal(new URL(url).searchParams.get('state'), 'trusted-state')
   assert.equal(passedState, 'trusted-state')
   assert.equal(statelessCalls, 1)
-  await assert.rejects(() => provider.resolve({ ...context, params: { provider: 'github' } }))
-  await assert.rejects(() =>
-    provider.resolve({
-      ...context,
-      request: { input: (name: string) => (name === 'error' ? 'access_denied' : undefined) },
-    })
-  )
-  await assert.rejects(() => provider.resolve({ ...context, request: { input: () => undefined } }))
+  await rejectsCategory({ ...context, params: { provider: 'github' } }, 'provider_mismatch')
+  await rejectsCategory({ ...context, request: requestFor({ error: 'access_denied' }) }, 'denied')
+  await rejectsCategory({ ...context, request: requestFor({}) }, 'missing_code')
   assert.equal(userCalls, 0)
   const profile = await provider.resolve(context)
   assert.equal(userCalls, 1)
@@ -69,5 +79,5 @@ test('Ally adapter uses request-scoped state and rejects a crossed callback path
   assert.isTrue(profile.emailVerified)
   assert.notProperty(profile, 'token')
   failUser = true
-  await assert.rejects(() => provider.resolve(context), 'Social provider exchange failed')
+  await rejectsCategory(context, 'unavailable')
 })
