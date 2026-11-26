@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.9.1 - 2026-11-26
+
 ### Changed
 
 - **Breaking:** Rename `AccountKitCallbackRegistry` and `AdmissionCallbackRegistry` to
