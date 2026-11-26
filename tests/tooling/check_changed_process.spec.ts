@@ -49,6 +49,10 @@ test.group('check:changed process signals', (group) => {
       })
       await mkdir(join(root, 'bin'))
       await writeFile(join(root, 'package.json'), '{"type":"module"}')
+      await writeFile(
+        join(root, 'tsconfig.json'),
+        JSON.stringify({ extends: '@adonisjs/tsconfig/tsconfig.package.json' })
+      )
       await symlink(join(repository, 'node_modules'), join(root, 'node_modules'), 'dir')
       for (const name of ['check_changed.ts', 'check_changed_plan.ts', 'classify_changed.mjs'])
         await copyFile(join(repository, 'bin', name), join(root, 'bin', name))
@@ -88,6 +92,7 @@ setInterval(() => {}, 1000)
           cwd: root,
           env: {
             ...process.env,
+            TS_EXEC_PWD: root,
             PATH: `${join(root, 'bin')}:${process.env.PATH}`,
             READY: ready,
             OWNED: owned,
