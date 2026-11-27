@@ -118,17 +118,19 @@ is resolved.
 
 ```ts
 import type { ApplicationService } from '@adonisjs/core/types'
+import { AccountKitCallbackConfiguration } from '@kevinjohn/adonisjs-account-kit'
+import { AdmissionCallbackConfiguration } from '@kevinjohn/adonisjs-account-kit/admission'
 
 export default class PackageCallbacksProvider {
   constructor(protected app: ApplicationService) {}
 
   async boot() {
-    const accountKit = await this.app.container.make('account_kit.callbacks')
+    const accountKit = await this.app.container.make(AccountKitCallbackConfiguration)
     accountKit.register(async () => {
       const { users } = await import('#services/account_kit/users')
       return { users, onInvitationAccepted: async (user, invitation, trx) => {} }
     })
-    const admission = await this.app.container.make('account_admission.callbacks')
+    const admission = await this.app.container.make(AdmissionCallbackConfiguration)
     admission.register(() => {
       const rules = async () => {
         const { default: AdmissionRules } = await import('#services/account_kit/admission_rules')
@@ -158,7 +160,7 @@ resolving the package service never settles and no error is raised: the containe
 detection. A callback runs after the package service is built, so resolving the application service
 there is safe. The cost is that a failure to build the application service appears when a callback
 first runs, not when the package service is resolved. A plain module with no constructor
-dependencies, as in the `account_kit.callbacks` half of the example, can be imported in the factory
+dependencies, as in the `AccountKitCallbackConfiguration` half of the example, can be imported in the factory
 body.
 
 Account Kit accepts `users`, `authorize`, `mapRegistrationFields` (`registration.mapFields`),

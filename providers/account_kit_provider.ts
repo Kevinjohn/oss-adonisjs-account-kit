@@ -8,7 +8,6 @@ import type { ManagedRoutes } from '../src/http/route_registration.ts'
 declare module '@adonisjs/core/types' {
   interface ContainerBindings {
     'account_kit.manager': AccountKit
-    'account_kit.callbacks': AccountKitCallbackConfiguration
     'account_kit.managed_routes': ManagedRoutes
   }
 }
@@ -22,7 +21,6 @@ export default class AccountKitProvider {
       AccountKitCallbackConfiguration,
       () => new AccountKitCallbackConfiguration()
     )
-    this.app.container.alias('account_kit.callbacks', AccountKitCallbackConfiguration)
     this.app.container.singleton('account_kit.manager', async (resolver) => {
       const db = await resolver.make('lucid.db')
       const limiter = await resolver.make('limiter.manager')

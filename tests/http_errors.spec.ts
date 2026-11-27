@@ -260,14 +260,14 @@ test.group('account HTTP error mapping', () => {
   test('keeps field for a duplicate registration email', ({ assert }) => {
     const duplicate = new E_ACCOUNT_KIT_REGISTRATION_EMAIL_ALREADY_REGISTERED()
     assert.instanceOf(duplicate, E_ACCOUNT_KIT_EMAIL_ALREADY_REGISTERED)
-    assert.equal(duplicate.code, 'E_ACCOUNT_KIT_EMAIL_ALREADY_REGISTERED')
+    assert.equal(duplicate.code, 'E_ACCOUNT_KIT_REGISTRATION_EMAIL_ALREADY_REGISTERED')
     assert.equal(duplicate.status, 422)
     assert.equal(duplicate.field, 'email')
     const response = accountErrorResponse(duplicate)!
     assert.equal(response.status, 422)
     assert.deepEqual(response.body.errors, [
       {
-        code: 'E_ACCOUNT_KIT_EMAIL_ALREADY_REGISTERED',
+        code: 'E_ACCOUNT_KIT_REGISTRATION_EMAIL_ALREADY_REGISTERED',
         message: 'The account request conflicts with an existing account.',
         field: 'email',
       },

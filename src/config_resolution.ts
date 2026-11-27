@@ -59,7 +59,7 @@ export class AccountKitConfigResolution {
 }
 
 /**
- * The `account_kit` config merged with the callbacks registered through `account_kit.callbacks`,
+ * The `account_kit` config merged with the callbacks registered through `AccountKitCallbackConfiguration`,
  * with every `defineConfig` check run on the result. Undefined when the config file is missing.
  * Built once per application and config.
  */

@@ -3,8 +3,8 @@ import { CallbackConfiguration } from '../callback_configuration.ts'
 import type { AdmissionCallbacks } from './types.ts'
 
 /**
- * Supplies `config/admission.ts` callbacks from an application provider. Resolve it as
- * `account_admission.callbacks` in the provider's `boot()` and call `register` once.
+ * Supplies `config/admission.ts` callbacks from an application provider. Resolve it by class
+ * in the provider's `boot()` and call `register` once.
  *
  * @example
  * ```ts

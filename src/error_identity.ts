@@ -44,6 +44,8 @@ const publicMessages: Record<string, string> = {
   E_ACCOUNT_KIT_UNVERIFIED_EMAIL: 'Email verification is required.',
   E_ACCOUNT_KIT_IDENTITY_NOT_CONFIRMED: 'Current identity proof could not be confirmed.',
   E_ACCOUNT_KIT_EMAIL_ALREADY_REGISTERED: 'The account request conflicts with an existing account.',
+  E_ACCOUNT_KIT_REGISTRATION_EMAIL_ALREADY_REGISTERED:
+    'The account request conflicts with an existing account.',
   E_ACCOUNT_KIT_THROTTLED: 'Too many requests.',
   [OPERATION_FAILED]: 'Account operation failed.',
 }

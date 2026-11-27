@@ -4,7 +4,7 @@ As an application integrator, I want to register callbacks from an application p
 
 **Status:** Current with the provider for the service being configured
 **Access:** Application boot code, before the target registry first resolves (service startup or Account Kit diagnostics). The admission registry requires the optional admission provider.
-**Entry:** In the application provider's `boot()`, resolve `account_kit.callbacks` or `account_admission.callbacks` and call `register(factory)`.
+**Entry:** In the application provider's `boot()`, resolve `AccountKitCallbackConfiguration` or `AdmissionCallbackConfiguration` by class and call `register(factory)`.
 **Documentation:** [Registering callbacks from a provider](../README.md#registering-callbacks-from-a-provider)
 **Source:** [Account Kit registry](../src/account_kit_callback_configuration.ts), [admission registry](../src/admission/callback_configuration.ts)
 **Coverage:** [Registry and service resolution tests](../tests/callback_registry.spec.ts)

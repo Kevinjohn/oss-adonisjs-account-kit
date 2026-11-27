@@ -178,24 +178,13 @@ if (process.env.TEST_BUILT_EXPORTS === '1')
       assert.equal(gate.kit, first)
       const services = {
         managedRoutes: await import('@kevinjohn/adonisjs-account-kit/services/managed_routes'),
-        callbacks: await import('@kevinjohn/adonisjs-account-kit/services/callbacks'),
         admission: await import('@kevinjohn/adonisjs-account-kit/services/admission'),
-        admissionCallbacks:
-          await import('@kevinjohn/adonisjs-account-kit/services/admission_callbacks'),
       }
       assert.equal(
         services.managedRoutes.default,
         await built.app.container.make('account_kit.managed_routes')
       )
-      assert.equal(
-        services.callbacks.default,
-        await built.app.container.make('account_kit.callbacks')
-      )
       assert.equal(services.admission.default, gate)
-      assert.equal(
-        services.admissionCallbacks.default,
-        await built.app.container.make('account_admission.callbacks')
-      )
 
       const ace = new Kernel(built.app)
       ace.addLoader(commands as never)

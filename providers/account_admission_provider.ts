@@ -10,8 +10,7 @@ import type { ResolvedAdmissionConfig } from '../src/admission/types.ts'
 
 declare module '@adonisjs/core/types' {
   interface ContainerBindings {
-    'account_admission': AccountAdmission
-    'account_admission.callbacks': AdmissionCallbackConfiguration
+    account_admission: AccountAdmission
   }
 }
 
@@ -23,7 +22,6 @@ export default class AccountAdmissionProvider {
       AdmissionCallbackConfiguration,
       () => new AdmissionCallbackConfiguration()
     )
-    this.app.container.alias('account_admission.callbacks', AdmissionCallbackConfiguration)
     this.app.container.singleton(AccountAdmission, async (resolver) => {
       const kit = await resolver.make(AccountKit)
       const db = await resolver.make('lucid.db')
