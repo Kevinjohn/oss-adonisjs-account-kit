@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Add the `./services/managed_routes`, `./services/callbacks`, `./services/admission` and `./services/admission_callbacks` exports, each the container instance of its binding; the built exports spec loads all four.
+- The configuration error for setting both credential hooks names `onCredentialsChanged` and `onCredentialsChangedTransaction`.
+- The README middleware example shows the delegating access middleware that setup generates; a spec pins it to the generated source.
 - Store demo overlay templates as `.ts.stub` files and strip the `.stub` suffix when `bin/demos/create_app.ts` copies them into a disposable demo app, removing the overlay lint/TypeScript ignore exemptions and retiring the `IMP-5` convention departure.
 - **Breaking:** Replace `registerManagedRoutes(router, options)` and `managedRouteRegistration(router)` with the `account_kit.managed_routes` service the provider binds (typed as `ManagedRoutes`, exported as a type only so the binding is the one instance). Upgrade: in `start/account_kit_routes.ts`, write `const managedRoutes = await app.container.make('account_kit.managed_routes')` and call `managedRoutes.register(router, options)`; read a registration with `managedRoutes.registration(router)`. Setup generates the new form and treats either as an existing direct mount.
 - `protectManagedSessionConfig` resolves to a new config object with the checked store factory instead of changing the application's resolved session config.
@@ -445,7 +448,7 @@ preserves `E_ACCOUNT_KIT_INVALID_INPUT` and the operator's recovery diagnostic.
   denying access; the managed routes answer `E_ACCOUNT_KIT_OPERATION_FAILED`.
 - Breaking: managed routes on an access-token guard with `authentication` enabled throw
   `InvalidArgumentsException` at registration unless the guard sets `logoutCredential`. Before,
-  the revocation endpoint answered 204 and left the bearer token valid.
+  logout answered 204 and left the bearer token valid.
 - Breaking: listing admissions requires an admitted actor. A revoked or undecided approver gets
   `AuthorizationError`, and `authorize.list` receives `(actor, {})`.
 - Breaking: linking a social provider requires a confirmed email. `begin({ intent: 'link' })` and
@@ -716,7 +719,7 @@ that ran a candidate build.
 - Configured `registration.mapFields` now receives `undefined` when profile input is omitted, so required application fields can reject registration; mapped output must be a plain object.
 - `passwordPolicy` (config key) applies Plus-style rules to newly established passwords with a 256-character service ceiling.
 - The API example signup establishes a limited bearer token or browser session and denies protected access until verification.
-- The maintained token API reference now documents bearer issuance, current-token revocation, expiry, abilities, and application-owned route protection.
+- The maintained token API reference now documents bearer issuance, current-token logout, expiry, abilities, and application-owned route protection.
 - Reference proof links now inspect on GET and complete on POST with no-store and no-referrer responses.
 - The API reference now groups authentication and proof routes under `/api/v1/auth` and protected account routes under `/api/v1/account`; the previous `/account-kit` example paths have no aliases.
 - The reference profile PATCH updates configured fields and pending email through the public profile operation, including inactive-address correction and credential revocation.
@@ -731,7 +734,7 @@ that ran a candidate build.
 - Optional Google and GitHub social identity services add safe linking, provider email verification, recent proof, relationship notices, and one-time PKCE handoff.
 - `socialAuthentication.unlink` is a credential change with the `social_unlink` operation: it advances the credential revision in the unlink transaction, ending sessions and tokens established through the removed provider (and the caller's own), and runs `onCredentialsChangedTransaction` and `onCredentialsChanged`.
 - Provider-only recent proof requires separately verified authentication-time evidence; the maintained Google and GitHub Ally adapters do not supply it, so social-only accounts use password reset followed by password re-entry for sensitive changes.
-- `AccountKit.authentication` adds named session or opaque-token login, failed-attempt limits, safe current-account access, and current-credential revocation.
+- `AccountKit.authentication` adds named session or opaque-token login, failed-attempt limits, safe current-account access, and current-credential logout.
 - `authentication.changeRestriction` records package-managed access-policy changes and revokes credentials through the selected guard policy.
 - `users.credentials_changed_at` (column) invalidates existing browser sessions and login attempts using superseded account evidence.
 - The API example provides session CSRF bootstrap, browser logout, and selected-guard access middleware for protected routes.
