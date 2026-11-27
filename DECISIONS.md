@@ -2,4 +2,6 @@
 
 ## Departures
 
-1. VOC-1. `authentication.sessions.*`, the `sessions.revoked` event and `SessionsRevokedContext` name every place a user is signed in "sessions", including access-token rows under the access-token strategy. The names stay as they are.
+1. VOC-1. `authentication.sessions.*`, the `sessions.revoked` and `sessions.revoked_all` events, `SessionsRevokedContext`, `E_ACCOUNT_KIT_SESSION_NOT_FOUND`, `E_ACCOUNT_KIT_INVALID_SESSION`, the `'sessionManagement'` capability, `onSessionsRevokedTransaction`, and `PasswordLoginInput.sessionLabel` name every place a user is signed in "sessions", including access-token rows under the access-token strategy. The names stay as they are.
+2. PKG-31. `E_ACCOUNT_KIT_REGISTRATION_EMAIL_ALREADY_REGISTERED` (`RegistrationEmailAlreadyRegisteredException`) intentionally subclasses `EmailAlreadyRegisteredException` and retains `static code = 'E_ACCOUNT_KIT_EMAIL_ALREADY_REGISTERED'` while overriding `static status = 422` and `field = 'email'`, so registration form responses carry the same duplicate-email wire code as other flows with a field-level validation status.
+3. PKG-31, PKG-47. `AccountKitSessionGuard` extends `@adonisjs/auth/session`'s `SessionGuard` and throws `@adonisjs/auth`'s `errors.E_UNAUTHORIZED_ACCESS` from `authenticate()` when a session fails Account Kit checks, because `SessionGuard.check()` and AdonisJS auth middleware catch `E_UNAUTHORIZED_ACCESS` as part of the `@adonisjs/auth` guard contract.

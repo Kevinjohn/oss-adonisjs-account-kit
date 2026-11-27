@@ -212,7 +212,7 @@ export function resolveConfig(config: AccountKitConfig, deferCallbacks = true): 
   if (config.onCredentialsChanged && config.onCredentialsChangedTransaction)
     throw new E_ACCOUNT_KIT_INVALID_CONFIGURATION(
       'onCredentialsChanged',
-      'account_kit: credential revocation hooks are mutually exclusive'
+      'account_kit: onCredentialsChanged and onCredentialsChangedTransaction are mutually exclusive'
     )
   const limiterSecret =
     typeof config.limiterSecret === 'string'

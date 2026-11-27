@@ -36,7 +36,7 @@ import type {
 
 export { consumeSocialSensitiveProof }
 
-export function createSocialIdentityService(deps: Dependencies) {
+export function createSocialIdentity(deps: Dependencies) {
   return {
     /**
      * Starts a provider flow and returns the one-use state and the provider URL to redirect to.

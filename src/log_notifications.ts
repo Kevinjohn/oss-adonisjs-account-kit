@@ -9,8 +9,8 @@ import type { NotificationCallbacks } from './types.ts'
  *
  * @example
  * ```ts
- * import logger from '@adonisjs/core/services/logger'
  * import { createLogNotifications } from '@kevinjohn/adonisjs-account-kit'
+ * import logger from '@adonisjs/core/services/logger'
  *
  * const notify = createLogNotifications({ logger: () => logger, brandName: 'Example Studio', environment: 'development' })
  * ```

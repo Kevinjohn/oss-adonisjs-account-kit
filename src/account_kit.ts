@@ -7,9 +7,9 @@ import {
   requestPasswordReset,
   completePasswordReset,
 } from './password_reset.ts'
-import { createAuthenticationService } from './authentication.ts'
+import { createAuthentication } from './authentication.ts'
 import { completeMagicLink, inspectMagicLink, requestMagicLink } from './magic_link.ts'
-import { createSessionManagementService } from './session_management.ts'
+import { createSignInRegistry } from './session_management.ts'
 import { RevocationOutcomes } from './session_revocation.ts'
 import { CorrectionRevisions } from './profile_correction_revision.ts'
 import { register } from './registration.ts'
@@ -22,8 +22,8 @@ import {
   updateProfile,
 } from './credentials.ts'
 import { createThrottler } from './throttle.ts'
-import { createManagedHttpService } from './managed_http_service.ts'
-import { createSocialIdentityService } from './social_identity.ts'
+import { createManagedHttp } from './managed_http.ts'
+import { createSocialIdentity } from './social_identity.ts'
 import { issueStandaloneOperatorInvitation, issueOperatorResetLink } from './operator.ts'
 import { ExportFaults, exportAccountData } from './account_export.ts'
 import type { ServiceDependencies } from './service_dependencies.ts'
@@ -137,20 +137,20 @@ export class AccountKit {
    * @internal
    */
   get managedHttp() {
-    return createManagedHttpService(this.#deps)
+    return createManagedHttp(this.#deps)
   }
 
   /**
    * Login, the current account, restrictions, and signed-in devices. Needs the `authentication`
    * config.
    */
-  get authentication(): ReturnType<typeof createAuthenticationService> & {
+  get authentication(): ReturnType<typeof createAuthentication> & {
     /** Where the user is signed in; requires `sessionManagement`. */
-    sessions: ReturnType<typeof createSessionManagementService>
+    sessions: ReturnType<typeof createSignInRegistry>
   } {
     return {
-      ...createAuthenticationService(this.#deps),
-      sessions: createSessionManagementService(this.#deps),
+      ...createAuthentication(this.#deps),
+      sessions: createSignInRegistry(this.#deps),
     }
   }
 
@@ -172,10 +172,10 @@ export class AccountKit {
   }
 
   /** Google and GitHub sign-in, linking and recent proof, for `socialAuthentication`. */
-  get socialAuthentication(): ReturnType<typeof createSocialIdentityService> {
+  get socialAuthentication(): ReturnType<typeof createSocialIdentity> {
     if (!this.#deps.config.enabled.includes('socialAuthentication'))
       throw new E_ACCOUNT_KIT_CAPABILITY_DISABLED('Social authentication is disabled')
-    return createSocialIdentityService(this.#deps)
+    return createSocialIdentity(this.#deps)
   }
 
   /** Passwordless sign-in by an email link bound to the requesting client. */

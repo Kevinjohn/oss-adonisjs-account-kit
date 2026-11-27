@@ -61,4 +61,4 @@ flowchart TD
  M -->|Direct caller| O["Host receives account and decision"]
 ```
 
-**Code references:** [implementation](../src/admission/middleware.ts), [`tests/admission_gate.spec.ts`](../tests/admission_gate.spec.ts), [require](../src/admission/service.ts), [current credential trace](US-ACCOUNT-56-read-current-admission-status.md#code-flow), [session guard adapter](../src/http/managed_session_guard.ts), [access-token guard adapter](../src/http/managed_token_guard.ts), [guard configuration check](../src/managed_http_service.ts)
+**Code references:** [implementation](../src/admission/middleware.ts), [`tests/admission_gate.spec.ts`](../tests/admission_gate.spec.ts), [require](../src/admission/service.ts), [current credential trace](US-ACCOUNT-56-read-current-admission-status.md#code-flow), [session guard adapter](../src/http/managed_session_guard.ts), [access-token guard adapter](../src/http/managed_token_guard.ts), [guard configuration check](../src/managed_http.ts)

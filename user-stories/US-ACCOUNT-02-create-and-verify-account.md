@@ -41,4 +41,4 @@ flowchart TD
   G -->|Success| OK["Return 201 with represented account; access-token guard also supplies bearer token"]
 ```
 
-**Code references:** [implementation](../src/registration.ts), [exception and code](../src/errors.ts), [`managed signup handler`](../src/http/handlers_registration.ts), [login handoff](US-ACCOUNT-03-sign-in.md#code-flow), [`assertPublicRegistration`](../src/managed_http_service.ts), [`tests/registration.spec.ts`](../tests/registration.spec.ts), [`tests/registration_claim.spec.ts`](../tests/registration_claim.spec.ts)
+**Code references:** [implementation](../src/registration.ts), [exception and code](../src/errors.ts), [`managed signup handler`](../src/http/handlers_registration.ts), [login handoff](US-ACCOUNT-03-sign-in.md#code-flow), [`assertPublicRegistration`](../src/managed_http.ts), [`tests/registration.spec.ts`](../tests/registration.spec.ts), [`tests/registration_claim.spec.ts`](../tests/registration_claim.spec.ts)

@@ -36,15 +36,19 @@ test.group('account kit errors', () => {
     assert.notInstanceOf(error, E_ACCOUNT_KIT_AUTHORIZATION)
     assert.isUndefined(error.cause)
   })
-  test('configuration exceptions take a cause and no code or status', ({ assert }) => {
+  test('configuration exceptions take a cause and no code or status', ({
+    assert,
+    expectTypeOf,
+  }) => {
     const cause = new Error('bad configuration value')
     const error = new E_ACCOUNT_KIT_INVALID_CONFIGURATION('users', 'Invalid adapter', { cause })
 
     assert.equal(error.code, 'E_ACCOUNT_KIT_INVALID_CONFIGURATION')
     assert.equal(error.status, 500)
     assert.equal(error.cause, cause)
-    // @ts-expect-error The signature accepts no status or code.
-    assert.isFunction(() => new E_ACCOUNT_KIT_INVALID_CONFIGURATION('users', 'x', { status: 200 }))
+    expectTypeOf<
+      ConstructorParameters<typeof E_ACCOUNT_KIT_INVALID_CONFIGURATION>[2]
+    >().toEqualTypeOf<{ cause?: unknown } | undefined>()
   })
 
   test('setup exceptions keep their code and status when a caller passes extra options', ({

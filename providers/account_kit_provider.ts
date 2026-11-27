@@ -3,12 +3,13 @@ import type { ApplicationService } from '@adonisjs/core/types'
 import { AccountKit } from '../src/account_kit.ts'
 import { AccountKitCallbackConfiguration } from '../src/account_kit_callback_configuration.ts'
 import { AccountKitConfigResolution, resolveAccountKitConfig } from '../src/config_resolution.ts'
-import type {} from '../src/http/route_registration.ts'
+import type { ManagedRoutes } from '../src/http/route_registration.ts'
 
 declare module '@adonisjs/core/types' {
   interface ContainerBindings {
     'account_kit.manager': AccountKit
     'account_kit.callbacks': AccountKitCallbackConfiguration
+    'account_kit.managed_routes': ManagedRoutes
   }
 }
 

@@ -36,7 +36,14 @@ export type SqlUsersAdapter = UsersAdapter & {
   setPasswordHash: NonNullable<UsersAdapter['setPasswordHash']>
   updateRegistrationData: NonNullable<UsersAdapter['updateRegistrationData']>
   delete: NonNullable<UsersAdapter['delete']>
-  /** Report the physical table, id column and email constraint. */
+  /**
+   * Report the physical table, id column and email constraint.
+   *
+   * @example
+   * ```ts
+   * const metadata = await adapter.resolveMetadata()
+   * ```
+   */
   resolveMetadata(): Promise<UsersAdapterMetadata>
 }
 

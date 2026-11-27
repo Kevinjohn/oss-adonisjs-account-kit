@@ -1,10 +1,42 @@
+import { fileURLToPath } from 'node:url'
+import { IgnitorFactory } from '@adonisjs/core/factories'
 import { test } from '@japa/runner'
-import { MailManager } from '@adonisjs/mail'
+import { defineConfig as defineMailConfig } from '@adonisjs/mail'
 import { JSONTransport } from '@adonisjs/mail/transports/json'
 import { createMailNotifications, type AccountMailService } from '../src/notifications.ts'
 import { E_ACCOUNT_KIT_DELIVERY } from '../src/errors.ts'
 import { useTestApp } from './helpers/app.ts'
 import { insertUser, makeNotify, makeService } from './helpers/fakes.ts'
+
+async function bootMailApp(transport: () => JSONTransport) {
+  const root = fileURLToPath(new URL('..', import.meta.url))
+  const ignitor = new IgnitorFactory()
+    .withCoreProviders()
+    .withCoreConfig()
+    .merge({
+      rcFileContents: { providers: [() => import('@adonisjs/mail/mail_provider')] },
+      config: {
+        mail: defineMailConfig({
+          default: 'json',
+          mailers: { json: transport },
+        }),
+      },
+    })
+    .create(new URL(`file://${root}/`))
+  const app = ignitor.createApp('console')
+  await app.init()
+  await app.boot()
+  const manager = await app.container.make('mail.manager')
+  const emitter = await app.container.make('emitter')
+  return {
+    manager,
+    emitter,
+    async close() {
+      await manager.closeAll()
+      await ignitor.terminate()
+    },
+  }
+}
 
 const user = {
   id: 1,
@@ -133,11 +165,8 @@ test.group('maintained mail operation', (group) => {
         return super.send(message)
       }
     }
-    const manager = new MailManager({ emit: async () => {} } as never, {
-      default: 'json',
-      mailers: { json: () => new CapturingJSONTransport() },
-    })
-    const mail: AccountMailService = manager
+    const mailApp = await bootMailApp(() => new CapturingJSONTransport())
+    const mail: AccountMailService = mailApp.manager
     const notify = createMailNotifications({
       mail,
       from: 'Accounts <accounts@example.test>',
@@ -166,7 +195,7 @@ test.group('maintained mail operation', (group) => {
       assert.include(messages[1].text as string, 'GitHub sign-in was linked')
       assert.include(messages[2].html as string, 'GitHub sign-in was removed')
     } finally {
-      await manager.closeAll()
+      await mailApp.close()
     }
   })
 
@@ -207,11 +236,8 @@ test.group('maintained mail operation', (group) => {
       }
     }
     const notify = createMailNotifications({ from: 'accounts@example.test', brandName: 'Example' })
-    const manager = new MailManager({ emit: async () => {} } as never, {
-      default: 'json',
-      mailers: { json: () => new CapturingJSONTransport() },
-    })
-    kit.app.container.singleton('mail.manager' as never, () => manager as never)
+    const mailApp = await bootMailApp(() => new CapturingJSONTransport())
+    kit.app.container.singleton('mail.manager' as never, () => mailApp.manager as never)
     try {
       await notify.passwordChanged(user, {
         operation: 'password_change',
@@ -222,7 +248,7 @@ test.group('maintained mail operation', (group) => {
         await new Promise((resolve) => setTimeout(resolve, 10))
       assert.deepEqual(messages[0]?.to, ['person@example.test'])
     } finally {
-      await manager.closeAll()
+      await mailApp.close()
     }
   })
 
@@ -237,16 +263,15 @@ test.group('maintained mail operation', (group) => {
         throw new Error('simulated transport failure')
       }
     }
-    const manager = new MailManager(
-      {
-        emit: async (event: string, payload: unknown) => {
-          events.push(event)
-          if (event === 'queued:mail:error') failures.push(payload)
-        },
-      } as never,
-      { default: 'json', mailers: { json: () => new FailingJSONTransport() } }
-    )
-    const mail: AccountMailService = manager
+    const mailApp = await bootMailApp(() => new FailingJSONTransport())
+    mailApp.emitter.on('mail:queued' as never, () => {
+      events.push('mail:queued')
+    })
+    mailApp.emitter.on('queued:mail:error' as never, (payload: unknown) => {
+      events.push('queued:mail:error')
+      failures.push(payload)
+    })
+    const mail: AccountMailService = mailApp.manager
     const notify = createMailNotifications({
       mail,
       from: 'accounts@example.test',
@@ -266,7 +291,7 @@ test.group('maintained mail operation', (group) => {
       assert.notInclude(JSON.stringify(failures[0]), 'https://')
       assert.lengthOf(await kit.db.from('password_reset_tokens'), 1)
     } finally {
-      await manager.closeAll()
+      await mailApp.close()
     }
   })
 

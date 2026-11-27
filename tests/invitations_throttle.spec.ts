@@ -1,6 +1,4 @@
 import { test } from '@japa/runner'
-import { configProvider } from '@adonisjs/core'
-import { LimiterManager, stores } from '@adonisjs/limiter'
 import { AccountKit } from '../src/account_kit.ts'
 import { resolveConfig as defineConfig } from '../src/config.ts'
 import { accountErrorResponse } from '../src/error_response.ts'
@@ -190,7 +188,7 @@ test.group('invitation budgets', (group) => {
     test('database limiter completes resend with a shared single-connection SQLite pool', async ({
       assert,
     }) => {
-      const single = await bootTestApp({ sqlitePoolMax: 1 })
+      const single = await bootTestApp({ sqlitePoolMax: 1, limiterStore: 'database' })
       try {
         await resetSchema(single)
         await single.db
@@ -201,17 +199,12 @@ test.group('invitation budgets', (group) => {
             table.integer('points', 9).notNullable().defaultTo(0)
             table.bigint('expire').unsigned()
           })
-        const store = await configProvider.resolve<ReturnType<typeof stores.memory>>(
-          single.app,
-          stores.database({ tableName: 'rate_limits' })
-        )
-        const limiter = new LimiterManager({ default: 'database', stores: { database: store! } })
         const users = makeUsersAdapter(single.db, single.hash)
         const config = defineConfig(makeConfig({ users }))
         const account = new AccountKit({
           config,
           db: single.db,
-          limiter: limiter as never,
+          limiter: single.limiter,
         })
         const actor = await insertUser(single, { email: 'actor@example.test' })
         const invitation = await account.invitations.send({

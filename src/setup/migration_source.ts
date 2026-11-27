@@ -2,11 +2,13 @@ import { RuntimeException } from '@adonisjs/core/exceptions'
 import { access } from 'node:fs/promises'
 import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
-import { Application } from '@adonisjs/core/app'
+import { IgnitorFactory } from '@adonisjs/core/factories'
 import type { buildMigrationTemplateData } from './migration_definitions.ts'
 import { stubsRoot } from '../../stubs/main.ts'
 
-type StubsManager = Awaited<ReturnType<Application<any>['stubs']['create']>>
+type StubsManager = Awaited<
+  ReturnType<ReturnType<ReturnType<IgnitorFactory['create']>['createApp']>['stubs']['create']>
+>
 
 /**
  * Setup does not boot the application, so it renders through the stubs manager of a bare
@@ -14,7 +16,8 @@ type StubsManager = Awaited<ReturnType<Application<any>['stubs']['create']>>
  * `codemods.makeUsingStub` uses, without writing a file or reading application stubs.
  */
 async function loadPackageStubs(): Promise<StubsManager> {
-  const app = new Application(pathToFileURL(`${stubsRoot}/`), { environment: 'console' })
+  const ignitor = new IgnitorFactory().create(pathToFileURL(`${stubsRoot}/`))
+  const app = ignitor.createApp('console')
   app.rcContents({})
   await app.init()
   return app.stubs.create()

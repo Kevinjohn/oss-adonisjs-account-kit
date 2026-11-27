@@ -168,6 +168,25 @@ both the config file and the registry, a second `register` call, or a call after
 first resolved throws `E_ACCOUNT_KIT_INVALID_CONFIGURATION`. A config file that passes every callback keeps
 working with nothing registered.
 
+### Middleware
+
+Account Kit exports two opt-in route middleware classes that read `ctx.auth` through the configured
+managed guard, so mount them as named route middleware in `start/kernel.ts` after your session and
+auth middleware:
+
+- `ManagedAccountMiddleware` (`@kevinjohn/adonisjs-account-kit/middleware/managed_account`): checks
+  the current Account Kit sign-in and account state on protected application routes.
+- `AdmissionMiddleware` (`@kevinjohn/adonisjs-account-kit/middleware/admission`): gates routes behind
+  `AccountAdmission` approval rules.
+
+```ts
+export const middleware = router.named({
+  auth: () => import('#middleware/auth_middleware'),
+  managedAccount: () => import('@kevinjohn/adonisjs-account-kit/middleware/managed_account'),
+  admission: () => import('@kevinjohn/adonisjs-account-kit/middleware/admission'),
+})
+```
+
 ### Quick example
 
 A forgot-password action. The [getting started tutorial](docs/guide/getting-started.md) adds

@@ -62,6 +62,7 @@ export function mapPublicErrorIdentity(
   error: AccountKitResponseError,
   options: { proof?: ProofKind } = {}
 ): PublicIdentity {
+  // Conceals internal configuration, storage, and follow-up failure details from HTTP clients.
   if (error.status >= 500) {
     const failed = buildPublicErrorIdentity(500, OPERATION_FAILED)
     return error instanceof E_ACCOUNT_KIT_POST_COMMIT ? { ...failed, committed: true } : failed
