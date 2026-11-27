@@ -123,23 +123,26 @@ async function runAndCommit<T>(
   }
 }
 
-const committedResults = new WeakMap<InstanceType<typeof E_ACCOUNT_KIT_POST_COMMIT>, unknown>()
+/**
+ * The committed failure a transaction throws. Internal operation data is retained privately in
+ * this package-internal subclass, never placed on the public committed error. It shares the public
+ * class's name so `name` and `constructor.name` read `PostCommitException` as before.
+ */
+class PostCommitException<T> extends E_ACCOUNT_KIT_POST_COMMIT {
+  readonly #result: T
 
-/** Internal operation data is retained privately, never placed on a public committed error. */
-export function getCommittedResult<T>(error: unknown): { value: T } | null {
-  if (!(error instanceof E_ACCOUNT_KIT_POST_COMMIT) || !committedResults.has(error)) return null
-  return { value: committedResults.get(error) as T }
+  constructor(cause: unknown, result: T) {
+    super('Account change committed but a follow-up failed', { cause })
+    this.#result = result
+  }
+
+  static resultOf<T>(error: unknown): { value: T } | null {
+    return error instanceof PostCommitException ? { value: error.#result as T } : null
+  }
 }
 
-function createCommittedFailure<T>(
-  cause: unknown,
-  result: T
-): InstanceType<typeof E_ACCOUNT_KIT_POST_COMMIT> {
-  const error = new E_ACCOUNT_KIT_POST_COMMIT('Account change committed but a follow-up failed', {
-    cause,
-  })
-  committedResults.set(error, result)
-  return error
+export function getCommittedResult<T>(error: unknown): { value: T } | null {
+  return PostCommitException.resultOf<T>(error)
 }
 
 function combineFailures(primary: unknown, cleanup: unknown[], failed = true): unknown {
@@ -198,7 +201,7 @@ function trackCommit<T>() {
     },
     /** A failure after the commit becomes a `E_ACCOUNT_KIT_POST_COMMIT`; any other is returned unchanged. */
     mapTransactionFailure: (error: unknown): unknown =>
-      committed ? createCommittedFailure(error, result as T) : error,
+      committed ? new PostCommitException(error, result as T) : error,
   }
 }
 
