@@ -28,12 +28,13 @@ const minute = 60_000
 
 /** The root README can run its readers alone; anything else is full. */
 export type Classification = 'root-readme-only' | 'full'
-/** Specs that read the root README (through tracked Markdown globs). */
+/** Specs that read the root README. */
 export const readmeSpecs = [
   'tests/docs_links.spec.ts',
   'tests/docs_snippets.spec.ts',
   'tests/docs_source_examples.spec.ts',
   'tests/docs_spec_references.spec.ts',
+  'tests/readme_examples.spec.ts',
 ]
 export type CheckStep =
   | { id: string; command: string[]; tests?: 'japa'; timeoutMs: number; skip?: never }
