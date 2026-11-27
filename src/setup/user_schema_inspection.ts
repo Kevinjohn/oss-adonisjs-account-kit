@@ -28,17 +28,23 @@ export async function inspectUserSchema(
   schemaSource: SetupSource | null
 }> {
   const schemaPath = 'database/schema.ts'
-  try {
-    if (
-      !hasConventionalSetupImport(
-        manifestText,
-        '#database/schema',
-        '#database/*',
-        './database/*.js',
-        './database/schema.js'
-      )
+  if (
+    !hasConventionalSetupImport(
+      manifestText,
+      '#database/schema',
+      '#database/*',
+      './database/*.js',
+      './database/schema.js'
     )
-      throw new RuntimeException('Setup cannot resolve #database/schema to the inspected schema')
+  ) {
+    addSetupDiagnostic(
+      diagnostics,
+      'user.connection',
+      'Setup cannot resolve #database/schema to the inspected schema'
+    )
+    return { schemaClass: null, schemaSource: null }
+  }
+  try {
     const path = await requireSafeSetupPath(root, schemaPath)
     const schemaStat = await lstat(path)
     if (!schemaStat.isFile())
@@ -123,13 +129,8 @@ export async function inspectUserSchema(
       return { schemaClass: candidate, schemaSource: parsed }
     }
   } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
-      // planUserModel diagnoses the missing schema through unresolved inheritance.
-    } else if (
-      (error as Error).message === 'Setup cannot resolve #database/schema to the inspected schema'
-    ) {
-      addSetupDiagnostic(diagnostics, 'user.connection', (error as Error).message)
-    } else throw error
+    // planUserModel diagnoses a missing schema through unresolved inheritance.
+    if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error
   }
   return { schemaClass: null, schemaSource: null }
 }

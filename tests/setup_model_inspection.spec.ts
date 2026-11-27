@@ -447,7 +447,10 @@ test.group('setup model and schema safety', (group) => {
     })
     assert.isTrue(
       remapped.diagnostics.some(
-        ({ field, severity }) => field === 'user.connection' && severity === 'error'
+        ({ field, severity, message }) =>
+          field === 'user.connection' &&
+          severity === 'error' &&
+          message === 'Setup cannot resolve #database/schema to the inspected schema'
       )
     )
     await assert.rejects(() => applySetup(root, remapped), /blocking diagnostics/)

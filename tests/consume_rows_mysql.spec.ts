@@ -1,5 +1,6 @@
 import { test } from '@japa/runner'
 import { consumeRows } from '../src/consume_rows.ts'
+import { E_ACCOUNT_KIT_CONSUMED_ROWS_CHANGED } from '../src/errors.ts'
 import type { Trx } from '../src/types.ts'
 
 /**
@@ -97,9 +98,10 @@ test.group('consuming single-use rows on MySQL', () => {
       ],
       1
     )
-    await assert.rejects(
-      () => consumeRows(trx, 'invitations', { hash: 'x' }, '2026-01-01'),
-      /invitations rows changed while they were consumed/
+    const error = await consumeRows(trx, 'invitations', { hash: 'x' }, '2026-01-01').catch(
+      (caught: unknown) => caught
     )
+    assert.instanceOf(error, E_ACCOUNT_KIT_CONSUMED_ROWS_CHANGED)
+    assert.match((error as Error).message, /invitations rows changed while they were consumed/)
   })
 })

@@ -66,6 +66,7 @@ export function mapPublicErrorIdentity(
     const failed = buildPublicErrorIdentity(500, OPERATION_FAILED)
     return error instanceof E_ACCOUNT_KIT_POST_COMMIT ? { ...failed, committed: true } : failed
   }
+  // Conceals whether the session was missing, revoked or outdated by a credential change.
   if (error instanceof E_ACCOUNT_KIT_INVALID_SESSION)
     return buildPublicErrorIdentity(401, 'E_INVALID_CREDENTIALS')
   if (

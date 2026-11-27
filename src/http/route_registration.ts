@@ -9,13 +9,15 @@ export type {
   ReplaceableRequestEndpoint,
 } from './openapi_types.ts'
 
-const registrations = new WeakMap<Router, ManagedRouteRegistration>()
+const registrationKey = Symbol('account_kit.managed_route_registration')
+
+type RegisteredRouter = Router & { [registrationKey]?: ManagedRouteRegistration }
 
 export function recordManagedRegistration(
   router: Router,
   registration: ManagedRouteRegistration
 ): void {
-  registrations.set(router, registration)
+  Object.defineProperty(router, registrationKey, { value: registration, configurable: true })
 }
 
 /**
@@ -30,5 +32,5 @@ export function recordManagedRegistration(
  * ```
  */
 export function managedRouteRegistration(router: Router): ManagedRouteRegistration | undefined {
-  return registrations.get(router)
+  return (router as RegisteredRouter)[registrationKey]
 }
