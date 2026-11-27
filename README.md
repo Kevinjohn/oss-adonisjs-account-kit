@@ -222,6 +222,8 @@ The [error reference](docs/reference/errors.md) lists the constructors and shows
 
 ## Tested against
 
+Supports AdonisJS 7.
+
 This table describes configured CI coverage, not the result of a pending workflow run.
 
 | Check                          | Checks workflow (pull requests) | Compatibility workflow (scheduled, manual, matching pull requests)                 |
