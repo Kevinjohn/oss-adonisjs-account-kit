@@ -53,7 +53,7 @@ export async function executeManagedRequest<Credential>({
         : await kit.authentication.current(accountInput)
       : undefined
   } catch (error) {
-    // A stale session can still sign out: end it here instead of refusing the logout.
+    // A stale session can still log out: end it here instead of refusing the logout.
     if (
       route.name !== 'account.credential.revoke' ||
       options.guard.strategy !== 'session' ||

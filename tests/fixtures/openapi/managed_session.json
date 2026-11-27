@@ -2815,7 +2815,7 @@
         "tags": [
           "authentication"
         ],
-        "summary": "Sign out the current session or access token",
+        "summary": "Revoke the current session or access token",
         "security": [
           {
             "sessionCookie": [],
