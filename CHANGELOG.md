@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Add the `./services/managed_routes` and `./services/admission` exports, each the container instance of its binding; the built exports spec loads both.
+- **Breaking:** Remove the `'account_kit.callbacks'` and `'account_admission.callbacks'` container string aliases; resolve `AccountKitCallbackConfiguration` and `AdmissionCallbackConfiguration` by class.
+- **Breaking:** Give `E_ACCOUNT_KIT_REGISTRATION_EMAIL_ALREADY_REGISTERED` its own `code` (`'E_ACCOUNT_KIT_REGISTRATION_EMAIL_ALREADY_REGISTERED'`) instead of reusing `'E_ACCOUNT_KIT_EMAIL_ALREADY_REGISTERED'`.
+- The configuration error for setting both credential hooks names `onCredentialsChanged` and `onCredentialsChangedTransaction`.
+- The README middleware example shows the delegating access middleware that setup generates; a spec pins it to the generated source.
 - Store demo overlay templates as `.ts.stub` files and strip the `.stub` suffix when `bin/demos/create_app.ts` copies them into a disposable demo app, removing the overlay lint/TypeScript ignore exemptions and retiring the `IMP-5` convention departure.
 - **Breaking:** Replace `registerManagedRoutes(router, options)` and `managedRouteRegistration(router)` with the `account_kit.managed_routes` service the provider binds (typed as `ManagedRoutes`, exported as a type only so the binding is the one instance). Upgrade: in `start/account_kit_routes.ts`, write `const managedRoutes = await app.container.make('account_kit.managed_routes')` and call `managedRoutes.register(router, options)`; read a registration with `managedRoutes.registration(router)`. Setup generates the new form and treats either as an existing direct mount.
 - `protectManagedSessionConfig` resolves to a new config object with the checked store factory instead of changing the application's resolved session config.

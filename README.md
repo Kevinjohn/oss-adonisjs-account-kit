@@ -118,17 +118,19 @@ is resolved.
 
 ```ts
 import type { ApplicationService } from '@adonisjs/core/types'
+import { AccountKitCallbackConfiguration } from '@kevinjohn/adonisjs-account-kit'
+import { AdmissionCallbackConfiguration } from '@kevinjohn/adonisjs-account-kit/admission'
 
 export default class PackageCallbacksProvider {
   constructor(protected app: ApplicationService) {}
 
   async boot() {
-    const accountKit = await this.app.container.make('account_kit.callbacks')
+    const accountKit = await this.app.container.make(AccountKitCallbackConfiguration)
     accountKit.register(async () => {
       const { users } = await import('#services/account_kit/users')
       return { users, onInvitationAccepted: async (user, invitation, trx) => {} }
     })
-    const admission = await this.app.container.make('account_admission.callbacks')
+    const admission = await this.app.container.make(AdmissionCallbackConfiguration)
     admission.register(() => {
       const rules = async () => {
         const { default: AdmissionRules } = await import('#services/account_kit/admission_rules')
@@ -158,7 +160,7 @@ resolving the package service never settles and no error is raised: the containe
 detection. A callback runs after the package service is built, so resolving the application service
 there is safe. The cost is that a failure to build the application service appears when a callback
 first runs, not when the package service is resolved. A plain module with no constructor
-dependencies, as in the `account_kit.callbacks` half of the example, can be imported in the factory
+dependencies, as in the `AccountKitCallbackConfiguration` half of the example, can be imported in the factory
 body.
 
 Account Kit accepts `users`, `authorize`, `mapRegistrationFields` (`registration.mapFields`),
@@ -167,6 +169,41 @@ admission accepts `approvalAuthorize` (`approval.authorize`) and `onAdmissionEve
 both the config file and the registry, a second `register` call, or a call after the service was
 first resolved throws `E_ACCOUNT_KIT_INVALID_CONFIGURATION`. A config file that passes every callback keeps
 working with nothing registered.
+
+### Middleware
+
+Account Kit exports two route middleware classes for application-owned routes. Each takes options
+(the Account Kit or admission service, the managed guard and the activation check), so build one
+instance in an application middleware file and delegate to it; setup generates this file as
+`app/middleware/account_kit_access_middleware.ts`:
+
+- `ManagedAccountMiddleware` (`@kevinjohn/adonisjs-account-kit/middleware/managed_account`) checks
+  the selected guard, the credential revision and, with `active`, account activation.
+- `AdmissionMiddleware` (`@kevinjohn/adonisjs-account-kit/middleware/admission`) also requires an
+  admitted account; see [admission](docs/guide/admission.md#gating-routes).
+
+```ts
+import type { HttpContext } from '@adonisjs/core/http'
+import app from '@adonisjs/core/services/app'
+import { AccountKit } from '@kevinjohn/adonisjs-account-kit'
+import ManagedAccountMiddleware from '@kevinjohn/adonisjs-account-kit/middleware/managed_account'
+import { accountKitGuard } from '#services/account_kit_guard'
+
+const checkAccess = new ManagedAccountMiddleware({
+  kit: () => app.container.make(AccountKit),
+  guard: accountKitGuard,
+  active: true,
+})
+
+export default class AccountKitAccessMiddleware {
+  handle(ctx: HttpContext, next: () => Promise<unknown>): Promise<unknown> {
+    return checkAccess.handle(ctx, next)
+  }
+}
+```
+
+Register the file as named middleware in `start/kernel.ts`, for example
+`accountKitAccess: () => import('#middleware/account_kit_access_middleware')`.
 
 ### Quick example
 

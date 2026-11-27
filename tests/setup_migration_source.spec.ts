@@ -13,6 +13,18 @@ test.group('setup migration templates', () => {
     assert.include(content, 'members')
   })
 
+  test('leaves the running application service in place', async ({ assert }) => {
+    const appService = await import('@adonisjs/core/services/app')
+    const running = appService.default
+
+    await migrationContent(
+      await requireMigrationTemplatePath('create_password_reset_tokens'),
+      buildMigrationTemplateData('users')
+    )
+
+    assert.strictEqual(appService.default, running)
+  })
+
   test('names the missing template instead of leaking a file system error', async ({ assert }) => {
     await assert.rejects(
       () => requireMigrationTemplatePath('does_not_exist'),

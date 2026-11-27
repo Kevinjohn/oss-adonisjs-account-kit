@@ -55,12 +55,12 @@ async function rejection(
 }
 
 test.group('callback registry', () => {
-  test('binds one registry under its class and alias for each service', async ({ assert }) => {
+  test('binds one registry singleton by class for each service', async ({ assert }) => {
     await withApp(async ({ app }) => {
-      const registry = await app.container.make('account_kit.callbacks')
+      const registry = await app.container.make(AccountKitCallbackConfiguration)
       assert.instanceOf(registry, AccountKitCallbackConfiguration)
       assert.equal(await app.container.make(AccountKitCallbackConfiguration), registry)
-      const admission = await app.container.make('account_admission.callbacks')
+      const admission = await app.container.make(AdmissionCallbackConfiguration)
       assert.instanceOf(admission, AdmissionCallbackConfiguration)
       assert.equal(await app.container.make(AdmissionCallbackConfiguration), admission)
     })
@@ -70,7 +70,7 @@ test.group('callback registry', () => {
     await withApp(async (app) => {
       const registered = callbacks(app)
       app.app.config.set('account_kit', defineConfig(plainConfig()))
-      const registry = await app.app.container.make('account_kit.callbacks')
+      const registry = await app.app.container.make(AccountKitCallbackConfiguration)
       registry.register(async () => registered)
       await app.app.container.make(AccountKit)
       const config = (await resolveAccountKitConfig(app.app))!
@@ -91,7 +91,7 @@ test.group('callback registry', () => {
     await withApp(async (app) => {
       const registered = callbacks(app)
       app.app.config.set('account_kit', defineConfig(plainConfig()))
-      const registry = await app.app.container.make('account_kit.callbacks')
+      const registry = await app.app.container.make(AccountKitCallbackConfiguration)
       registry.register(async () => registered)
       const first = await resolveAccountKitConfig(app.app)
       assert.equal(await resolveAccountKitConfig(app.app), first)
@@ -106,7 +106,7 @@ test.group('callback registry', () => {
         defineConfig(makeConfig({ users: makeUsersAdapter(app.db, app.hash) }))
       )
       app.app.config.set('admission', defineAdmissionConfig({ approval: { required: true } }))
-      const registry = await app.app.container.make('account_admission.callbacks')
+      const registry = await app.app.container.make(AdmissionCallbackConfiguration)
       registry.register(() => ({ approvalAuthorize: allowDecisions, onAdmissionNotification }))
       await app.app.container.make(AccountAdmission)
       const config = resolveAdmissionConfig(
@@ -136,11 +136,11 @@ test.group('callback registry', () => {
       )
       app.app.config.set('admission', defineAdmissionConfig({ invitation: { required: true } }))
       await app.app.container.make(AccountAdmission)
-      for (const [alias, service] of [
-        ['account_kit.callbacks', 'account_kit'],
-        ['account_admission.callbacks', 'account_admission'],
+      for (const [Registry, service] of [
+        [AccountKitCallbackConfiguration, 'account_kit'],
+        [AdmissionCallbackConfiguration, 'account_admission'],
       ] as const) {
-        const registry = await app.app.container.make(alias)
+        const registry = await app.app.container.make(Registry)
         const error = await rejection(async () => registry.register(() => ({})))
         assert.equal(error.field, 'callbacks')
         assert.equal(
@@ -167,7 +167,7 @@ test.group('callback registry', () => {
             ? { registration: { availability: 'open' as const, mapFields: () => ({}) } }
             : { [field]: registered[field] }
         app.app.config.set('account_kit', defineConfig(plainConfig(config)))
-        const registry = await app.app.container.make('account_kit.callbacks')
+        const registry = await app.app.container.make(AccountKitCallbackConfiguration)
         registry.register(() => registered)
         const error = await rejection(() => app.app.container.make(AccountKit))
         assert.equal(error.field, field)
@@ -196,7 +196,7 @@ test.group('callback registry', () => {
             onAdmissionNotification: async () => {},
           })
         )
-        const registry = await app.app.container.make('account_admission.callbacks')
+        const registry = await app.app.container.make(AdmissionCallbackConfiguration)
         registry.register(() => registered)
         const error = await rejection(() => app.app.container.make(AccountAdmission))
         assert.equal(error.field, `admission.${field}`)
@@ -219,7 +219,7 @@ test.group('callback registry', () => {
     })
     await withApp(async (app) => {
       app.app.config.set('account_kit', defineConfig(plainConfig()))
-      const registry = await app.app.container.make('account_kit.callbacks')
+      const registry = await app.app.container.make(AccountKitCallbackConfiguration)
       registry.register(() => ({ users: makeUsersAdapter(app.db, app.hash) }))
       const error = await rejection(() => app.app.container.make(AccountKit))
       assert.equal(error.field, 'authorize.invite')
@@ -240,7 +240,7 @@ test.group('callback registry', () => {
   test('refuses registered callbacks that are not an object', async ({ assert }) => {
     await withApp(async (app) => {
       app.app.config.set('account_kit', defineConfig(plainConfig()))
-      const registry = await app.app.container.make('account_kit.callbacks')
+      const registry = await app.app.container.make(AccountKitCallbackConfiguration)
       registry.register(() => 'callbacks' as never)
       const error = await rejection(() => app.app.container.make(AccountKit))
       assert.equal(error.field, 'callbacks')
@@ -251,7 +251,7 @@ test.group('callback registry', () => {
         defineConfig(makeConfig({ users: makeUsersAdapter(app.db, app.hash) }))
       )
       app.app.config.set('admission', defineAdmissionConfig({ invitation: { required: true } }))
-      const registry = await app.app.container.make('account_admission.callbacks')
+      const registry = await app.app.container.make(AdmissionCallbackConfiguration)
       registry.register(() => 'callbacks' as never)
       const error = await rejection(() => app.app.container.make(AccountAdmission))
       assert.equal(error.field, 'callbacks')

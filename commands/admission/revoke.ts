@@ -1,6 +1,6 @@
 import { BaseCommand, args } from '@adonisjs/core/ace'
 import { completeOperatorCommand, writeResult } from '../operator_output.ts'
-import { operatorAdmission } from '../../src/admission/operator_service.ts'
+import { operatorAdmission } from '../../src/admission/operator_admission.ts'
 import type { AdmissionRecord } from '../../src/admission/types.ts'
 
 /** Operator revocation: the account keeps signing in but no longer passes the admission gate. */

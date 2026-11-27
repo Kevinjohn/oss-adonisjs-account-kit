@@ -12,7 +12,7 @@ type Dependencies = Pick<
   'config' | 'throttler' | 'exportFaults' | 'revocationOutcomes' | 'correctionRevisions'
 >
 
-export function createManagedHttpService(deps: Dependencies) {
+export function createManagedHttp(deps: Dependencies) {
   const computeMagicLinkExpiry = (): number =>
     expiresAt(DateTime.utc(), deps.config.expiresIn.magicLink).toMillis()
   const isPasswordAllowed = (value: unknown): value is string =>

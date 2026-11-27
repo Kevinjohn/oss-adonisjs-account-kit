@@ -128,7 +128,7 @@ async function reserveAttempt(
   }
 }
 
-export function createAuthenticationService(deps: ServiceDependencies) {
+export function createAuthentication(deps: ServiceDependencies) {
   return {
     /**
      * Read-only impact of the login methods that remain after a proposed change.

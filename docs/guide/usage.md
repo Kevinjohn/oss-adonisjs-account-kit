@@ -24,7 +24,7 @@ For example, `expiresIn: { passwordReset: 3600 }` has the same lifetime as `'1h'
 
 `users`, `authorize`, `registration.mapFields`, `onInvitationAccepted`,
 `onCredentialsChangedTransaction` and `onAccountDeletingTransaction` may come from the
-`account_kit.callbacks` registry instead of the config file; see
+`AccountKitCallbackConfiguration` registry instead of the config file; see
 [registering callbacks from a provider](../../README.md#registering-callbacks-from-a-provider).
 Keep application password rules, throttle budgets, and notification delivery policy explicit.
 

@@ -12,12 +12,6 @@ export type {
   ReplaceableRequestEndpoint,
 } from './openapi_types.ts'
 
-declare module '@adonisjs/core/types' {
-  interface ContainerBindings {
-    'account_kit.managed_routes': ManagedRoutes
-  }
-}
-
 /**
  * Mounts the managed routes and records what each router received. The provider binds one
  * instance as `account_kit.managed_routes`; resolve it from the container.

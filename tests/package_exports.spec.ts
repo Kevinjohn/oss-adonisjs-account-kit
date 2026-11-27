@@ -176,6 +176,15 @@ if (process.env.TEST_BUILT_EXPORTS === '1')
       built.app.config.set('admission', admission.defineConfig({ invitation: { required: true } }))
       const gate = await built.app.container.make(admission.AccountAdmission)
       assert.equal(gate.kit, first)
+      const services = {
+        managedRoutes: await import('@kevinjohn/adonisjs-account-kit/services/managed_routes'),
+        admission: await import('@kevinjohn/adonisjs-account-kit/services/admission'),
+      }
+      assert.equal(
+        services.managedRoutes.default,
+        await built.app.container.make('account_kit.managed_routes')
+      )
+      assert.equal(services.admission.default, gate)
 
       const ace = new Kernel(built.app)
       ace.addLoader(commands as never)

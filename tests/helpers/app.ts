@@ -27,6 +27,7 @@ export interface TestApp {
 export interface BootOptions {
   sqliteBusyTimeout?: number
   sqlitePoolMax?: number
+  limiterStore?: 'memory' | 'database'
   accountKitProvider?: 'source' | 'build'
   admissionProvider?: boolean
   postgresSchema?: string
@@ -75,7 +76,13 @@ export async function bootTestApp(options: BootOptions = {}): Promise<TestApp> {
       },
       config: {
         database: defineDatabaseConfig({ connection: 'test', connections: { test: connection } }),
-        limiter: defineLimiterConfig({ default: 'memory', stores: { memory: stores.memory({}) } }),
+        limiter:
+          options.limiterStore === 'database'
+            ? defineLimiterConfig({
+                default: 'database',
+                stores: { database: stores.database({ tableName: 'rate_limits' }) },
+              })
+            : defineLimiterConfig({ default: 'memory', stores: { memory: stores.memory({}) } }),
         // Tests hash many passwords; nothing checks hash strength.
         hash: defineHashConfig({
           default: 'scrypt',

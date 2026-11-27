@@ -1,5 +1,6 @@
 import { test } from '@japa/runner'
 import AccountKitDoctor from '../commands/doctor.ts'
+import { AccountKitCallbackConfiguration } from '../src/account_kit_callback_configuration.ts'
 import { createActionUrls } from '../src/action_urls.ts'
 import { defineConfig, resolveConfig } from '../src/config.ts'
 import { runDoctor, type DoctorInput } from '../src/doctor.ts'
@@ -409,7 +410,7 @@ test.group('account-kit:doctor', (group) => {
     }
   })
 
-  test('the Ace command reads users registered through account_kit.callbacks', async ({
+  test('the Ace command reads users registered through AccountKitCallbackConfiguration', async ({
     assert,
   }) => {
     const app = await bootTestApp({ accountKitProvider: 'source' })
@@ -418,7 +419,7 @@ test.group('account-kit:doctor', (group) => {
       const users = makeUsersAdapter(app.db, app.hash)
       const config = makeConfig({ users: undefined })
       app.app.config.set('account_kit', defineConfig({ ...config, authorize: undefined }))
-      const registry = await app.app.container.make('account_kit.callbacks')
+      const registry = await app.app.container.make(AccountKitCallbackConfiguration)
       registry.register(() => ({
         authorize: config.authorize,
         users: {

@@ -226,8 +226,7 @@ export const E_ACCOUNT_KIT_EMAIL_ALREADY_REGISTERED = EmailAlreadyRegisteredExce
  * as a field error.
  */
 class RegistrationEmailAlreadyRegisteredException extends EmailAlreadyRegisteredException {
-  // Both duplicate-address cases share the public code; signup carries its own status and field.
-  static code = 'E_ACCOUNT_KIT_EMAIL_ALREADY_REGISTERED'
+  static code = 'E_ACCOUNT_KIT_REGISTRATION_EMAIL_ALREADY_REGISTERED'
   static status = 422
   /** The request field to attach the error to. */
   readonly field = 'email'

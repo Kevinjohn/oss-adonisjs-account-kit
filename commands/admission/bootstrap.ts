@@ -5,7 +5,7 @@ import {
   E_ACCOUNT_KIT_INVALID_INPUT,
 } from '../../src/errors.ts'
 import { invitationRoleLength } from '../../src/invitation_input.ts'
-import { operatorAdmission } from '../../src/admission/operator_service.ts'
+import { operatorAdmission } from '../../src/admission/operator_admission.ts'
 
 /** First administrator in one step: an operator invitation that lands its account approved. */
 export default class BootstrapAdmission extends BaseCommand {

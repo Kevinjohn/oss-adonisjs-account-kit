@@ -106,7 +106,7 @@ async function deleteSignIns(
   return ids
 }
 
-export function createSessionManagementService(
+export function createSignInRegistry(
   deps: Pick<ServiceDependencies, 'config' | 'db' | 'revocationOutcomes'>
 ) {
   /**

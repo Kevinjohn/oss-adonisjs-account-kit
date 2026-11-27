@@ -1,8 +1,7 @@
 import { fileURLToPath } from 'node:url'
 import { IgnitorFactory } from '@adonisjs/core/factories'
 import { defineConfig as defineDatabaseConfig } from '@adonisjs/lucid'
-import { LimiterManager } from '@adonisjs/limiter'
-import LimiterDatabaseStore from '@adonisjs/limiter/stores/database'
+import { defineConfig as defineLimiterConfig, stores } from '@adonisjs/limiter'
 import { E_ACCOUNT_KIT_THROTTLED } from '../../src/errors.ts'
 import { consume } from '../../src/throttle.ts'
 
@@ -14,7 +13,12 @@ const ignitor = new IgnitorFactory()
   .withCoreProviders()
   .withCoreConfig()
   .merge({
-    rcFileContents: { providers: [() => import('@adonisjs/lucid/database_provider')] },
+    rcFileContents: {
+      providers: [
+        () => import('@adonisjs/lucid/database_provider'),
+        () => import('@adonisjs/limiter/limiter_provider'),
+      ],
+    },
     config: {
       database: defineDatabaseConfig({
         connection: 'test',
@@ -27,6 +31,12 @@ const ignitor = new IgnitorFactory()
           },
         },
       }),
+      limiter: defineLimiterConfig({
+        default: 'database',
+        stores: {
+          database: stores.database({ tableName: 'rate_limits' }),
+        },
+      }),
     },
   })
   .create(new URL(`file://${root}/`))
@@ -35,17 +45,7 @@ const app = ignitor.createApp('console')
 try {
   await app.init()
   await app.boot()
-  const db = await app.container.make('lucid.db')
-  const limiter = new LimiterManager({
-    default: 'database',
-    stores: {
-      database: (options) =>
-        new LimiterDatabaseStore(db.connection(), {
-          ...options,
-          tableName: 'rate_limits',
-        }),
-    },
-  })
+  const limiter = await app.container.make('limiter.manager')
   const results: Array<{ throttled: boolean; status?: number }> = []
   for (const [operation, key] of [
     ['recovery:email', 'person@example.test'],
