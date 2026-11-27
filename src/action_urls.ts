@@ -5,8 +5,6 @@ import type { ActionUrlOptions } from './types_notifications.ts'
 
 export type { ActionUrlOptions } from './types_notifications.ts'
 
-export const actionUrlBackendOrigins = new WeakMap<object, { value: string; setting?: string }>()
-
 export function requireTrustedOrigin(
   value: string,
   environment: ActionUrlOptions['environment']
@@ -54,9 +52,16 @@ export function createActionUrls(options: ActionUrlOptions): UrlCallbacks {
   return new ActionUrls(options)
 }
 
-class ActionUrls implements UrlCallbacks {
+export class ActionUrls implements UrlCallbacks {
   #options: ActionUrlOptions
   #base: URL
+
+  /** The backend origin `urls` was built with, and the setting it came from, for `doctor`. */
+  static backendOriginOf(urls: unknown): { value: string; setting?: string } | undefined {
+    if (!(urls instanceof ActionUrls)) return undefined
+    const { backendOrigin, backendOriginSetting } = urls.#options
+    return { value: backendOrigin, setting: backendOriginSetting }
+  }
 
   constructor(options: ActionUrlOptions) {
     this.#options = options
@@ -77,7 +82,6 @@ class ActionUrls implements UrlCallbacks {
     for (const [name, destination] of Object.entries(options.destinations)) {
       if (destination !== undefined) this.#link(name as keyof UrlCallbacks, 'check')
     }
-    actionUrlBackendOrigins.set(this, { value: backendOrigin, setting: backendOriginSetting })
   }
 
   #link(name: keyof UrlCallbacks, token: string): string {

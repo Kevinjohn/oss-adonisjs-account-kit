@@ -1,5 +1,5 @@
 import type { Database } from '@adonisjs/lucid/database'
-import { actionUrlBackendOrigins, requireTrustedOrigin } from './action_urls.ts'
+import { ActionUrls, requireTrustedOrigin } from './action_urls.ts'
 import { requireUserMetadata } from './db.ts'
 import { packageTables } from './package_tables.ts'
 import { userOwnedRows } from './user_rows.ts'
@@ -201,7 +201,7 @@ export async function runDoctor(input: DoctorInput): Promise<DoctorCheck[]> {
           fix: 'Run `node ace add @adonisjs/limiter`',
         }
   )
-  const backendOrigin = input.config && actionUrlBackendOrigins.get(input.config.urls)
+  const backendOrigin = input.config && ActionUrls.backendOriginOf(input.config.urls)
   checks.push(
     backendOrigin
       ? checkBackendOrigin(
