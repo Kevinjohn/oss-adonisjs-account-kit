@@ -1,4 +1,5 @@
-export { ManagedRoutes } from './route_registration.ts'
+// A type only: the provider's `account_kit.managed_routes` binding is the one instance.
+export type { ManagedRoutes } from './route_registration.ts'
 export { createManagedGuard } from './guard.ts'
 export { protectManagedSessionConfig } from './session_store_protection.ts'
 export type {

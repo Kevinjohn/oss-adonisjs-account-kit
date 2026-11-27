@@ -73,7 +73,7 @@ Integration modes:
 | Managed JSON routes | An API or SPA wants ready-made endpoints under a prefix             | [Managed HTTP](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/main/docs/guide/managed-http.md)                                   |
 
 Both call the same service. Managed routes are registered with the `account_kit.managed_routes` container service
-(`ManagedRoutes` from `@kevinjohn/adonisjs-account-kit/http`), and `account-kit:openapi` writes their OpenAPI 3.1 document.
+(typed as `ManagedRoutes` from `@kevinjohn/adonisjs-account-kit/http`), and `account-kit:openapi` writes their OpenAPI 3.1 document.
 
 Users adapters:
 

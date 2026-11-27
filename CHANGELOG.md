@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- **Breaking:** Replace `registerManagedRoutes(router, options)` and `managedRouteRegistration(router)` with the `ManagedRoutes` service the provider binds as `account_kit.managed_routes`. Upgrade: in `start/account_kit_routes.ts`, write `const managedRoutes = await app.container.make('account_kit.managed_routes')` and call `managedRoutes.register(router, options)`; read a registration with `managedRoutes.registration(router)`. Setup generates the new form and treats either as an existing direct mount.
+- **Breaking:** Replace `registerManagedRoutes(router, options)` and `managedRouteRegistration(router)` with the `account_kit.managed_routes` service the provider binds (typed as `ManagedRoutes`, exported as a type only so the binding is the one instance). Upgrade: in `start/account_kit_routes.ts`, write `const managedRoutes = await app.container.make('account_kit.managed_routes')` and call `managedRoutes.register(router, options)`; read a registration with `managedRoutes.registration(router)`. Setup generates the new form and treats either as an existing direct mount.
 - `protectManagedSessionConfig` resolves to a new config object with the checked store factory instead of changing the application's resolved session config.
 - `E_ACCOUNT_KIT_DELIVERY` and `E_ACCOUNT_KIT_POST_COMMIT` declare an optional, read-only `passwordChangeRevision`; read it with `passwordChangeRevision(error)` as before.
 - Report single-use rows that change while they are consumed as `E_ACCOUNT_KIT_CONSUMED_ROWS_CHANGED` (500) instead of a core `RuntimeException`.
