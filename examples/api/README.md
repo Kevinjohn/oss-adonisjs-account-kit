@@ -188,7 +188,7 @@ route group's `auth()` runs first, then profile uses `accountAccess()` while pas
 ### Admission (optional add-on)
 
 Copy only when the application gates its own data on admission:
-first follow [admission setup](../../docs/guide/admission.md) and install its provider, command loader,
+first follow [admission setup](../../docs/guide/admission.md) and install its provider,
 config, and migration (for example, `node ace account-kit:admission:install` followed by the
 documented migration step). Register `@kevinjohn/adonisjs-account-kit/admission/provider` in `adonisrc.ts`.
 Copy/adapt `examples/api/config/admission.ts`; merge `admissionAuthorize` into the approval

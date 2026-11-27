@@ -1,6 +1,6 @@
 import { BaseCommand, args, flags } from '@adonisjs/core/ace'
 import { completeOperatorCommand, writeResult } from '../operator_output.ts'
-import { AccountAdmission } from '../../src/admission/service.ts'
+import { operatorAdmission } from '../../src/admission/operator_service.ts'
 import type { AdmissionRecord } from '../../src/admission/types.ts'
 
 /** Operator invitation evidence for an account that exists already. The role grants nothing. */
@@ -20,7 +20,8 @@ export default class GrantInvitationEvidence extends BaseCommand {
 
   /** @throws {AggregateError} If transaction work and cleanup fail before a commit is confirmed. */
   async run(): Promise<void> {
-    const admission = await this.app.container.make(AccountAdmission)
+    const admission = await operatorAdmission(this)
+    if (!admission) return
     this.result = await admission.operator.grantInvitation({
       email: this.email,
       ...(this.role === undefined ? {} : { role: this.role }),

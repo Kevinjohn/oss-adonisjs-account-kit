@@ -74,7 +74,7 @@ test.group('admission install command', () => {
       assert.include(config, 'defineConfig(')
       const rc = await readFile(join(root, 'adonisrc.ts'), 'utf8')
       assert.include(rc, '@kevinjohn/adonisjs-account-kit/admission/provider')
-      assert.include(rc, '@kevinjohn/adonisjs-account-kit/admission/commands')
+      assert.notInclude(rc, '@kevinjohn/adonisjs-account-kit/admission/commands')
     } finally {
       await rm(root, { recursive: true, force: true })
     }
@@ -96,11 +96,6 @@ test.group('admission install command', () => {
       const rc = await readFile(join(root, 'adonisrc.ts'), 'utf8')
       assert.equal(
         rc.match(new RegExp(String.raw`@kevinjohn/adonisjs-account-kit\/admission\/provider`, 'g'))
-          ?.length,
-        1
-      )
-      assert.equal(
-        rc.match(new RegExp(String.raw`@kevinjohn/adonisjs-account-kit\/admission\/commands`, 'g'))
           ?.length,
         1
       )
@@ -295,31 +290,6 @@ export default class extends BaseSchema {
     } finally {
       console.error = logError
       process.exitCode = previousExitCode
-      await rm(root, { recursive: true, force: true })
-    }
-  }).timeout(commandTimeout)
-
-  test('does not duplicate an admission command loader written with double quotes', async ({
-    assert,
-  }) => {
-    const { root, run } = await fixture()
-    try {
-      const rcPath = join(root, 'adonisrc.ts')
-      await writeFile(
-        rcPath,
-        [
-          "import { defineConfig } from '@adonisjs/core/app'",
-          'export default defineConfig({ providers: [], commands: [() => import("@kevinjohn/adonisjs-account-kit/admission/commands")] })',
-          '',
-        ].join('\n')
-      )
-
-      await run()
-      await run()
-
-      const rc = await readFile(rcPath, 'utf8')
-      assert.equal(rc.match(/@kevinjohn\/adonisjs-account-kit\/admission\/commands/g)?.length, 1)
-    } finally {
       await rm(root, { recursive: true, force: true })
     }
   }).timeout(commandTimeout)

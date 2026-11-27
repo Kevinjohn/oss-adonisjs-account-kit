@@ -3,7 +3,7 @@ import * as coreCommands from '../commands/main.ts'
 import ApproveAdmission from '../commands/admission/approve.ts'
 import RevokeAdmission from '../commands/admission/revoke.ts'
 import GrantInvitationEvidence from '../commands/admission/grant_invitation.ts'
-import * as admissionCommands from '../src/admission/commands/main.ts'
+import BootstrapAdmission from '../commands/admission/bootstrap.ts'
 import type { AdmissionConfig } from '../src/admission/types.ts'
 import {
   E_ACCOUNT_KIT_ADMISSION_DECISION,
@@ -119,17 +119,49 @@ test.group('admission runtime commands', (group) => {
     assert.equal(row.approval_status, 'approved')
   })
 
-  test('the loaders list the install and runtime commands', async ({ assert }) => {
+  test('the package command list includes the install and runtime commands', async ({ assert }) => {
     // eslint-disable-next-line @unicorn/no-await-expression-member -- Assert the result at the call site.
     const core = (await coreCommands.getMetaData()).map((command) => command.commandName)
-    assert.include(core, 'account-kit:admission:install')
-    // eslint-disable-next-line @unicorn/no-await-expression-member -- Assert the result at the call site.
-    const runtime = (await admissionCommands.getMetaData()).map((command) => command.commandName)
-    assert.sameMembers(runtime, [
+    assert.includeMembers(core, [
+      'account-kit:admission:install',
       'account-kit:admission:approve',
       'account-kit:admission:revoke',
       'account-kit:admission:grant-invitation',
       'account-kit:admission:bootstrap',
     ])
   })
+})
+
+test.group('admission runtime commands without the admission provider', (group) => {
+  const kit = useAdmissionApp(group)
+
+  test('{name} writes one error line and exits 1')
+    .with([
+      { name: 'account-kit:admission:approve', argv: ['boss@example.test'] },
+      { name: 'account-kit:admission:revoke', argv: ['boss@example.test'] },
+      {
+        name: 'account-kit:admission:grant-invitation',
+        argv: ['boss@example.test', '--role=owner'],
+      },
+      { name: 'account-kit:admission:bootstrap', argv: ['boss@example.test', '--role=owner'] },
+    ])
+    .run(async ({ assert }, { name, argv }) => {
+      assert.isFalse(kit.app.container.hasBinding(AccountAdmission))
+      const { kernel, logs } = aceKernel(kit, [
+        ApproveAdmission,
+        RevokeAdmission,
+        GrantInvitationEvidence,
+        BootstrapAdmission,
+      ])
+      const command = await kernel.exec(name, argv)
+      assert.equal(command.exitCode, 1)
+      assert.deepEqual(
+        logs().map((entry) => entry.stream),
+        ['stderr']
+      )
+      assert.include(
+        logs()[0].message,
+        'Admission is not installed. Run node ace account-kit:admission:install'
+      )
+    })
 })

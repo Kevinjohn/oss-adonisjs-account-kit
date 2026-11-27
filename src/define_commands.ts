@@ -14,7 +14,11 @@ export type {
 } from './types_commands.ts'
 
 const accountKitCommandNames: readonly AccountKitCommandName[] = [
+  'account-kit:admission:approve',
+  'account-kit:admission:bootstrap',
+  'account-kit:admission:grant-invitation',
   'account-kit:admission:install',
+  'account-kit:admission:revoke',
   'account-kit:doctor',
   'account-kit:invite',
   'account-kit:openapi',

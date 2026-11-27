@@ -62,12 +62,10 @@ export async function runFresh(candidate: string, runName: string) {
   const withoutProvider = originalRc.replace(rcEntry('account_kit_provider'), '')
   if (withoutProvider === originalRc)
     throw new Error('Fresh fixture did not contain a removable provider entry')
-  // Admission has its own install command: drop the fixture's registrations and config so it adds them.
-  const withoutAdmission = withoutProvider
-    .replace(rcEntry('admission/provider'), '')
-    .replace(rcEntry('admission/commands'), '')
+  // Admission has its own install command: drop the fixture's provider and config so it adds them.
+  const withoutAdmission = withoutProvider.replace(rcEntry('admission/provider'), '')
   const admissionEntries = (rc: string) => entryCount(rc, 'admission/')
-  if (admissionEntries(withoutProvider) !== 2 || admissionEntries(withoutAdmission) !== 0)
+  if (admissionEntries(withoutProvider) !== 1 || admissionEntries(withoutAdmission) !== 0)
     throw new Error('Fresh fixture did not contain removable admission entries')
   await writeFile(adonisrcPath, withoutAdmission)
   const admissionConfigPath = join(appRoot, 'config/admission.ts')
@@ -96,10 +94,10 @@ export async function runFresh(candidate: string, runName: string) {
     env
   )
   const admittedRc = await readFile(adonisrcPath, 'utf8')
-  for (const entry of ['admission/provider', 'admission/commands']) {
-    if (entryCount(admittedRc, entry) !== 1)
-      throw new Error(`Admission install did not register exactly one ${entry} entry`)
-  }
+  if (entryCount(admittedRc, 'admission/provider') !== 1)
+    throw new Error('Admission install did not register exactly one admission/provider entry')
+  if (entryCount(admittedRc, 'admission/') !== 1)
+    throw new Error('Admission install registered an entry other than admission/provider')
   await copyFile(admissionConfigCopy, admissionConfigPath)
   run('pnpm', ['exec', 'node', 'ace', 'codegen'], appRoot, env)
   await adaptGeneratedUserSchema(appRoot)

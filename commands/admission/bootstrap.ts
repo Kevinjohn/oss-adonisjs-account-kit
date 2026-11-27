@@ -5,7 +5,7 @@ import {
   E_ACCOUNT_KIT_INVALID_INPUT,
 } from '../../src/errors.ts'
 import { invitationRoleLength } from '../../src/invitation_input.ts'
-import { AccountAdmission } from '../../src/admission/service.ts'
+import { operatorAdmission } from '../../src/admission/operator_service.ts'
 
 /** First administrator in one step: an operator invitation that lands its account approved. */
 export default class BootstrapAdmission extends BaseCommand {
@@ -29,7 +29,8 @@ export default class BootstrapAdmission extends BaseCommand {
 
   /** @throws {AggregateError} If transaction work and cleanup fail before a commit is confirmed. */
   async run(): Promise<void> {
-    const admission = await this.app.container.make(AccountAdmission)
+    const admission = await operatorAdmission(this)
+    if (!admission) return
     if (this.cancel) {
       const cancelled = await admission.operator.cancelBootstrap({ email: this.email })
       writeResult(this, { result: cancelled ? 'cancelled' : 'none', email: this.email })

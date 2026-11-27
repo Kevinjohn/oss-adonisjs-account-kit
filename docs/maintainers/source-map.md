@@ -23,7 +23,6 @@ their Markdown sources under `docs/reference/api/`.
 | `./commands`                 | `commands/main.ts`                        | [Operational guide](../guide/operations.md) and setup guide; no separate TypeDoc entry                                                                                                    |
 | `./admission`                | `src/admission/main.ts`                   | [Admission guide](../guide/admission.md); no separate TypeDoc entry                                                                                                                       |
 | `./admission/provider`       | `providers/account_admission_provider.ts` | Admission guide for provider registration; no separate TypeDoc entry                                                                                                                      |
-| `./admission/commands`       | `src/admission/commands/main.ts`          | Admission guide for command setup and operations; no separate TypeDoc entry                                                                                                               |
 
 A missing direct TypeDoc entry does not by itself establish a missing public symbol. Check root
 reexports and the named guide before changing the reference configuration. The SQL, Drizzle,
