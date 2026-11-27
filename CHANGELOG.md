@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Store demo overlay templates as `.ts.stub` files and strip the `.stub` suffix when `bin/demos/create_app.ts` copies them into a disposable demo app, removing the overlay lint/TypeScript ignore exemptions and retiring the `IMP-5` convention departure.
 - **Breaking:** Replace `registerManagedRoutes(router, options)` and `managedRouteRegistration(router)` with the `account_kit.managed_routes` service the provider binds (typed as `ManagedRoutes`, exported as a type only so the binding is the one instance). Upgrade: in `start/account_kit_routes.ts`, write `const managedRoutes = await app.container.make('account_kit.managed_routes')` and call `managedRoutes.register(router, options)`; read a registration with `managedRoutes.registration(router)`. Setup generates the new form and treats either as an existing direct mount.
 - `protectManagedSessionConfig` resolves to a new config object with the checked store factory instead of changing the application's resolved session config.
 - `E_ACCOUNT_KIT_DELIVERY` and `E_ACCOUNT_KIT_POST_COMMIT` declare an optional, read-only `passwordChangeRevision`; read it with `passwordChangeRevision(error)` as before.

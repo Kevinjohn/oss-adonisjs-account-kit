@@ -10,8 +10,7 @@
     "tmp/**",
     "examples/**",
     "stubs/**",
-    "docs/maintainers/reviews/**",
-    "bin/demos/overlay/**"
+    "docs/maintainers/reviews/**"
   ],
   "include": [
     "index.ts",
