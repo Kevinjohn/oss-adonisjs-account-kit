@@ -47,6 +47,7 @@ export const managedSocialAccountHandlers = {
       lastUsedMethod,
     })
   },
+  /** @throws {AggregateError} If transaction work and cleanup fail before a commit is confirmed. */
   'account.socialProof.password': async ({ context, social, guard }) => {
     const input = await context.request.validateUsing(socialPasswordProofValidator)
     if (!isSensitivePurpose(input.purpose))
@@ -58,10 +59,12 @@ export const managedSocialAccountHandlers = {
     })
     return context.response.ok({ proof })
   },
+  /** @throws {AggregateError} If transaction work and cleanup fail before a commit is confirmed. */
   'account.socialIdentities.list': async ({ context, social, guard }) => {
     const identities = await social.list({ current: await guard.current(context) })
     return context.response.ok({ identities: identities.map(projectSocialIdentity) })
   },
+  /** @throws {AggregateError} If transaction work and cleanup fail before a commit is confirmed. */
   'account.socialIdentities.unlink': async ({ context, social, guard }) => {
     const input = await context.request.validateUsing(socialUnlinkValidator)
     await social.unlink({

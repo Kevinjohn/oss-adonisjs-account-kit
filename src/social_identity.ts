@@ -45,6 +45,8 @@ export function createSocialIdentityService(deps: Dependencies) {
      * ```ts
      * await kit.socialAuthentication.begin({ provider: 'github', intent: 'login', clientChallenge })
      * ```
+     *
+     * @throws {AggregateError} If transaction work and cleanup fail before a commit is confirmed.
      */
     async begin(input: SocialBeginInput): Promise<{ state: string; url: string }> {
       const adapter = requireSocialProvider(deps, input.provider)
@@ -89,6 +91,8 @@ export function createSocialIdentityService(deps: Dependencies) {
      * ```ts
      * await kit.socialAuthentication.beginConfirmation({ provider: 'github', verificationToken, clientChallenge })
      * ```
+     *
+     * @throws {AggregateError} If transaction work and cleanup fail before a commit is confirmed.
      */
     async beginConfirmation(input: {
       provider: SocialProviderName
@@ -140,6 +144,8 @@ export function createSocialIdentityService(deps: Dependencies) {
      * ```ts
      * await kit.socialAuthentication.callback({ provider: 'github', state, callback: context })
      * ```
+     *
+     * @throws {AggregateError} If transaction work and cleanup fail before a commit is confirmed.
      */
     async callback(input: SocialCallbackInput): Promise<SocialCallbackResult> {
       return completeSocialCallback(deps, input)
@@ -171,6 +177,8 @@ export function createSocialIdentityService(deps: Dependencies) {
      * ```ts
      * await kit.socialAuthentication.completeRegistration({ continuation, email: 'sam@example.test' })
      * ```
+     *
+     * @throws {AggregateError} If transaction work and cleanup fail before a commit is confirmed.
      */
     async completeRegistration(input: {
       continuation: string
@@ -191,6 +199,8 @@ export function createSocialIdentityService(deps: Dependencies) {
      * ```ts
      * await kit.socialAuthentication.provePassword({ current, password, purpose: 'social_unlink' })
      * ```
+     *
+     * @throws {AggregateError} If transaction work and cleanup fail before a commit is confirmed.
      */
     async provePassword(input: {
       current: CurrentAccountInput
@@ -207,6 +217,8 @@ export function createSocialIdentityService(deps: Dependencies) {
      * ```ts
      * await kit.socialAuthentication.list({ current })
      * ```
+     *
+     * @throws {AggregateError} If transaction work and cleanup fail before a commit is confirmed.
      */
     async list(input: { current: CurrentAccountInput }): Promise<SocialIdentity[]> {
       return listSocialIdentities(deps, input)
@@ -219,6 +231,8 @@ export function createSocialIdentityService(deps: Dependencies) {
      * ```ts
      * await kit.socialAuthentication.get({ current, identityId })
      * ```
+     *
+     * @throws {AggregateError} If transaction work and cleanup fail before a commit is confirmed.
      */
     async get(input: {
       current: CurrentAccountInput
@@ -238,6 +252,8 @@ export function createSocialIdentityService(deps: Dependencies) {
      * ```ts
      * await kit.socialAuthentication.unlink({ current, identityId, proof })
      * ```
+     *
+     * @throws {AggregateError} If transaction work and cleanup fail before a commit is confirmed.
      */
     async unlink(input: {
       current: CurrentAccountInput

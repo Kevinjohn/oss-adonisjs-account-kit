@@ -102,6 +102,7 @@ export default class SetupAccountKit extends BaseCommand {
   @flags.array({ description: 'Explicit setup environment override (NAME=value, repeatable)' })
   declare env?: string[]
 
+  /** @throws {AggregateError} If setup publication or lock handling and cleanup fail before any file is written, or multiple cleanup steps fail before any file is written. */
   async run(): Promise<void> {
     const root = this.app.makePath('')
     const env = environmentOverrides(this.env)

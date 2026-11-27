@@ -49,7 +49,7 @@ async function lockSQLiteTransaction(trx: Trx): Promise<void> {
   }
 }
 
-/** @throws {AggregateError} If transaction work and cleanup both fail, or multiple cleanup steps fail. */
+/** @throws {AggregateError} If transaction work and cleanup fail before a commit is confirmed. */
 async function commitTransaction(
   trx: Trx,
   onCommitted: () => void,
@@ -62,6 +62,7 @@ async function commitTransaction(
 
   // Knex can resolve its COMMIT query even when the database rejects it. Lucid must not
   // emit commit or run after-commit hooks until Knex's completion promise settles.
+  /** @throws {AggregateError} If commit and rollback cleanup both fail. */
   knexTrx.commit = (async () => {
     try {
       await originalCommit.call(knexTrx)
@@ -97,7 +98,7 @@ async function commitTransaction(
   }
 }
 
-/** @throws {AggregateError} If transaction work and cleanup both fail, or multiple cleanup steps fail. */
+/** @throws {AggregateError} If transaction work and cleanup fail before a commit is confirmed. */
 async function runAndCommit<T>(
   trx: Trx,
   callback: (trx: Trx) => Promise<T>,
@@ -224,7 +225,7 @@ async function beginSQLiteTransaction(
 /**
  * One SQLite attempt on a dedicated connection, with busy_timeout off and cleanup afterwards.
  *
- * @throws {AggregateError} If transaction work and cleanup both fail, or multiple cleanup steps fail.
+ * @throws {AggregateError} If transaction work and cleanup fail before a commit is confirmed.
  */
 async function runSqliteTransactionAttempt<T>(
   connection: Connection,
@@ -282,7 +283,7 @@ async function runSqliteTransactionAttempt<T>(
 /**
  * Retry SQLite attempts on SQLITE_BUSY until the deadline; never retry after a commit.
  *
- * @throws {AggregateError} If transaction work and cleanup both fail, or multiple cleanup steps fail.
+ * @throws {AggregateError} If transaction work and cleanup fail before a commit is confirmed.
  */
 async function runSqliteTransaction<T>(
   connection: Connection,
@@ -309,7 +310,7 @@ const insideTransaction = new AsyncLocalStorage<true>()
 /**
  * Run a database-only callback; callers perform notifications after this resolves.
  *
- * @throws {AggregateError} If transaction work and cleanup both fail, or multiple cleanup steps fail.
+ * @throws {AggregateError} If transaction work and cleanup fail before a commit is confirmed.
  */
 export async function transaction<T>(db: Database, callback: (trx: Trx) => Promise<T>): Promise<T> {
   const connection = db.connection()
@@ -323,6 +324,7 @@ export async function transaction<T>(db: Database, callback: (trx: Trx) => Promi
   return insideTransaction.run(true, () => openTransaction(db, connection, callback))
 }
 
+/** @throws {AggregateError} If transaction work and cleanup fail before a commit is confirmed. */
 async function openTransaction<T>(
   db: Database,
   connection: Connection,

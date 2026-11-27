@@ -16,6 +16,8 @@ if (process.env.TEST_BUILT_EXPORTS === '1')
   }) => {
     const root = await import('@kevinjohn/adonisjs-account-kit')
     const types = await import('@kevinjohn/adonisjs-account-kit/types')
+    const authTypesPath = '@kevinjohn/adonisjs-account-kit/types/auth'
+    const authTypes = await import(authTypesPath)
     const errors = await import('@kevinjohn/adonisjs-account-kit/errors')
     const provider = await import('@kevinjohn/adonisjs-account-kit/account_kit_provider')
     const adapter = await import('@kevinjohn/adonisjs-account-kit/adapters/lucid')
@@ -40,6 +42,7 @@ if (process.env.TEST_BUILT_EXPORTS === '1')
     assert.isFunction(root.createAllySocialProvider)
     assert.equal(ally.createAllySocialProvider, root.createAllySocialProvider)
     assert.lengthOf(Object.keys(types), 0)
+    assert.lengthOf(Object.keys(authTypes), 0)
     for (const [name, Constructor] of Object.entries(errors)) {
       if (!name.startsWith('E_')) continue
       assert.equal(root.errors[name as keyof typeof root.errors], Constructor, name)
@@ -225,3 +228,38 @@ if (process.env.TEST_BUILT_EXPORTS === '1')
     }
     assert.deepEqual(leaked, [])
   })
+
+if (process.env.TEST_BUILT_EXPORTS === '1')
+  test('compiles the optional auth type through its built public export', async ({ assert }) => {
+    const { default: ts } = await import('typescript')
+    const entry = fileURLToPath(new URL('../auth_types_consumer.ts', import.meta.url))
+    const source = `import { accountKitSessionGuard } from '@kevinjohn/adonisjs-account-kit/auth'
+import type { AccountKitSessionGuard } from '@kevinjohn/adonisjs-account-kit/types/auth'
+import type { SessionUserProviderContract } from '@adonisjs/auth/types/session'
+declare const guard: AccountKitSessionGuard<SessionUserProviderContract<unknown>>
+const authenticated: Promise<unknown> = guard.authenticate()
+void authenticated
+void accountKitSessionGuard
+`
+    const options = {
+      module: ts.ModuleKind.NodeNext,
+      moduleResolution: ts.ModuleResolutionKind.NodeNext,
+      target: ts.ScriptTarget.ESNext,
+      strict: true,
+      noEmit: true,
+      skipLibCheck: true,
+    }
+    const host = ts.createCompilerHost(options)
+    const getSourceFile = host.getSourceFile.bind(host)
+    host.getSourceFile = (file, languageVersion, onError, shouldCreateNewSourceFile) =>
+      file === entry
+        ? ts.createSourceFile(file, source, languageVersion, true)
+        : getSourceFile(file, languageVersion, onError, shouldCreateNewSourceFile)
+    const program = ts.createProgram([entry], options, host)
+    assert.deepEqual(
+      ts
+        .getPreEmitDiagnostics(program)
+        .map((diagnostic) => ts.flattenDiagnosticMessageText(diagnostic.messageText, '\n')),
+      []
+    )
+  }).timeout(30_000)

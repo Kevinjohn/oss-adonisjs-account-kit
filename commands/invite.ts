@@ -31,6 +31,7 @@ export default class InviteAccount extends BaseCommand {
   result: OperatorInviteResult | null = null
   failure: string | null = null
 
+  /** @throws {AggregateError} If transaction work and cleanup fail before a commit is confirmed. */
   async run(): Promise<void> {
     const kit = await this.app.container.make(AccountKit)
     const result = await kit.operator.invite({

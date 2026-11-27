@@ -35,6 +35,8 @@ export default class ManagedAccountMiddleware<Credential> {
    * ```ts
    * return middleware.handle(ctx, next)
    * ```
+   *
+   * @throws {AggregateError} If transaction work and cleanup fail before a commit is confirmed.
    */
   async handle(context: HttpContext, next: () => Promise<unknown>): Promise<unknown> {
     const kit = await this.#options.kit()

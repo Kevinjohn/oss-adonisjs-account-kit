@@ -13,6 +13,7 @@ import {
 } from './response_helpers.ts'
 import { signupValidator } from './validators.ts'
 
+/** @throws {AggregateError} If registration transaction work and cleanup fail before a commit is confirmed. */
 async function signUp<Credential>({
   route,
   context,

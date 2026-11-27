@@ -12,6 +12,7 @@ import { expiresAt } from './ttl.ts'
 import type { AccountUser, PasswordResetRequestInput, UserId } from './types.ts'
 import type { ServiceDependencies } from './service_dependencies.ts'
 
+/** @throws {AggregateError} If transaction work and cleanup fail before a commit is confirmed. */
 export async function requestPasswordReset(
   deps: ServiceDependencies,
   input: PasswordResetRequestInput
@@ -65,6 +66,8 @@ export async function requestPasswordReset(
  * Store `token` as the user's single live reset token. Locks the user, re-reads it, and issues
  * nothing (null) when the stored email no longer matches. Shared by the public request path and
  * the operator command.
+ *
+ * @throws {AggregateError} If transaction work and cleanup fail before a commit is confirmed.
  */
 export function issueResetToken(
   deps: Pick<ServiceDependencies, 'config' | 'db'>,

@@ -35,6 +35,7 @@ async function guardDependency<T>(run: () => Promise<T>): Promise<T> {
   }
 }
 
+/** @throws {AggregateError} If transaction work and cleanup fail before a commit is confirmed. */
 export async function inspectAccountAccess(
   deps: Pick<ServiceDependencies, 'config' | 'db'>,
   input: AccountAccessInput

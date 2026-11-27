@@ -43,6 +43,7 @@ interface EmailChangeRow {
   purpose: string
 }
 
+/** @throws {AggregateError} If transaction work and cleanup fail before a commit is confirmed. */
 export async function completeEmailChange(
   deps: Pick<ServiceDependencies, 'config' | 'db'>,
   input: CompleteEmailChangeInput

@@ -20,7 +20,11 @@ interface ManagedRequestExecution<Credential> {
   handlers: Record<ManagedEndpointName, ManagedHandler>
 }
 
-/** Run the shared managed request checks before dispatching exactly one registered handler. */
+/**
+ * Run the shared managed request checks before dispatching exactly one registered handler.
+ *
+ * @throws {AggregateError} If work and its transaction or credential cleanup both fail, or multiple cleanup steps fail.
+ */
 export async function executeManagedRequest<Credential>({
   route,
   context,

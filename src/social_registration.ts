@@ -19,6 +19,7 @@ import {
 } from './social_shared.ts'
 import type { SocialCallbackResult, SocialProviderName, Trx } from './types.ts'
 
+/** @throws {AggregateError} If transaction work and cleanup fail before a commit is confirmed. */
 export async function completeRegistration(
   deps: Dependencies,
   input: {

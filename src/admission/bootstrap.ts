@@ -23,6 +23,8 @@ function requireEmail(value: unknown): string {
 /**
  * Atomically replace the invitation and its waiting approval, then expose the committed link.
  * A later bootstrap replaces the pair; cancellation removes only the waiting approval.
+ *
+ * @throws {AggregateError} If transaction work and cleanup fail before a commit is confirmed.
  */
 export async function bootstrapOperatorInvitation(
   deps: AdmissionContext,

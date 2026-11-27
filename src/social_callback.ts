@@ -116,7 +116,11 @@ export function isIdentityConflict(error: unknown): boolean {
   return isUniqueViolation(error, 'social_identities', ['provider', 'provider_user_id'])
 }
 
-/** Consumes the state once, resolves the provider profile and returns the outcome. */
+/**
+ * Consumes the state once, resolves the provider profile and returns the outcome.
+ *
+ * @throws {AggregateError} If transaction work and cleanup fail before a commit is confirmed.
+ */
 export async function completeSocialCallback(
   deps: Dependencies,
   input: SocialCallbackInput

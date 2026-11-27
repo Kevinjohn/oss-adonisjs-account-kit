@@ -26,7 +26,11 @@ function requireMagicLinkSession(context: HttpContext) {
 }
 
 export const magicLinkHandlers = {
-  /** Session guards keep the verifier server-side, so the link works in any tab of that browser. */
+  /**
+   * Session guards keep the verifier server-side, so the link works in any tab of that browser.
+   *
+   * @throws {AggregateError} If transaction work and cleanup fail before a commit is confirmed.
+   */
   'auth.magicLink.request': async ({ route, context, kit, options }) => {
     const { request, response } = context
     const input = await request.validateUsing(magicLinkRequestValidator)
@@ -63,6 +67,7 @@ export const magicLinkHandlers = {
     (await kit.magicLink.inspect({ token: context.params.token }))
       ? context.response.ok({ valid: true })
       : sendInvalidProofResponse(context, 'magicLink', options.extensions?.message),
+  /** @throws {AggregateError} If work and its transaction or credential cleanup both fail, or multiple cleanup steps fail. */
   'auth.magicLink.complete': async ({ context, kit, options, representIssued }) => {
     const { request, response, params } = context
     const input = await request.validateUsing(magicLinkCompleteValidator)

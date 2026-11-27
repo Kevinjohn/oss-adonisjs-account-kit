@@ -60,6 +60,7 @@ export async function issueProof(
   return proof
 }
 
+/** @throws {AggregateError} If transaction work and cleanup fail before a commit is confirmed. */
 export async function proveSocialPassword(
   deps: Dependencies,
   input: {
