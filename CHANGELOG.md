@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- **Breaking:** Remove the `./admission/commands` export. The admission approve, revoke, grant-invitation and bootstrap commands are now in `./commands`, are always listed and can be left out with `defineCommands({ exclude })`. Until the admission provider is registered, each writes one error line and exits 1. `account-kit:admission:install` registers only the provider.
+- **Breaking:** Remove the `./admission/commands` export. The admission approve, revoke, grant-invitation and bootstrap commands are now in `./commands`, are always listed and can be left out with `defineCommands({ exclude })`. Until the admission provider is registered, each writes one error line and exits 1. `account-kit:admission:install` registers only the provider. Upgrade: delete `() => import('@kevinjohn/adonisjs-account-kit/admission/commands')` from the `commands` array in `adonisrc.ts`; while it is there, `node ace` stops with `Package subpath './admission/commands' is not defined by "exports"` and exits 1.
 - The OpenAPI summary of `account.credential.revoke` reads "Revoke the current session or access token".
 - Package `build` with `!build/bin`, `!build/tests` and `!build/.prepare-complete` excluded, so new build output ships without a manifest change.
 - Rename the managed guard callback `logoutCredential` to `credentialForRevocation`; the old key is no longer accepted. Name registration availability and account settings helpers for their behavior.
