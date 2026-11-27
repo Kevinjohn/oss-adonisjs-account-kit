@@ -8,21 +8,16 @@ import { stubsRoot } from '../../stubs/main.ts'
 
 type StubsManager = Awaited<ReturnType<Application<any>['stubs']['create']>>
 
-let stubsManager: Promise<StubsManager> | undefined
-
 /**
  * Setup does not boot the application, so it renders through the stubs manager of a bare
  * application rooted at the package's stubs: the template engine and state that configure's
  * `codemods.makeUsingStub` uses, without writing a file or reading application stubs.
  */
-function loadPackageStubs(): Promise<StubsManager> {
-  stubsManager ??= (async () => {
-    const app = new Application(pathToFileURL(`${stubsRoot}/`), { environment: 'console' })
-    app.rcContents({})
-    await app.init()
-    return app.stubs.create()
-  })()
-  return stubsManager
+async function loadPackageStubs(): Promise<StubsManager> {
+  const app = new Application(pathToFileURL(`${stubsRoot}/`), { environment: 'console' })
+  app.rcContents({})
+  await app.init()
+  return app.stubs.create()
 }
 
 /** Locates one template and returns its stub path. It reads no setup choice. */

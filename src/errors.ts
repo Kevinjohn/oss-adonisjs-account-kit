@@ -265,6 +265,8 @@ export const E_ACCOUNT_KIT_INVITATION_PENDING = InvitationPendingException
 class DeliveryException extends AccountKitException {
   static code = 'E_ACCOUNT_KIT_DELIVERY'
   static status = 500
+  /** Set by `changePassword`; read it with `passwordChangeRevision(error)`. */
+  declare readonly passwordChangeRevision?: string | null
 }
 
 /** @reexport */
@@ -279,6 +281,8 @@ export const E_ACCOUNT_KIT_DELIVERY = DeliveryException
 class PostCommitException extends AccountKitException {
   static code = 'E_ACCOUNT_KIT_POST_COMMIT'
   static status = 500
+  /** Set by `changePassword`; read it with `passwordChangeRevision(error)`. */
+  declare readonly passwordChangeRevision?: string | null
   /** Always true: the transaction committed; an inspection snapshot may still be discarded. */
   readonly committed = true
 }

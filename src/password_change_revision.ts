@@ -1,15 +1,10 @@
 // The revision a committed password change wrote, kept for a follow-up failure it then threw.
 import { isCommittedFailure } from './errors.ts'
-import type { E_ACCOUNT_KIT } from './errors.ts'
-
-const revisionKey = Symbol('account_kit.password_change_revision')
-
-type RevisionCarrier = InstanceType<typeof E_ACCOUNT_KIT> & { [revisionKey]?: string | null }
 
 /** Remember the committed revision on a delivery or post-commit error a password change throws. */
 export function rememberPasswordChangeRevision(error: unknown, revision: string | null): void {
   if (isCommittedFailure(error))
-    Object.defineProperty(error, revisionKey, { value: revision, configurable: true })
+    Object.defineProperty(error, 'passwordChangeRevision', { value: revision, configurable: true })
 }
 
 /**
@@ -27,5 +22,5 @@ export function rememberPasswordChangeRevision(error: unknown, revision: string 
  * ```
  */
 export function passwordChangeRevision(error: unknown): string | null | undefined {
-  return isCommittedFailure(error) ? (error as RevisionCarrier)[revisionKey] : undefined
+  return isCommittedFailure(error) ? error.passwordChangeRevision : undefined
 }
