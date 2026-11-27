@@ -56,7 +56,7 @@ export function createManagedGuard<User>(options: ManagedSessionGuardOptions<Use
  */
 export function createManagedGuard<User>(options: ManagedTokenGuardOptions<User>): Omit<
   ManagedGuard<ManagedTokenCredential>,
-  'strategy' | 'forRequest' | 'logoutCredential'
+  'strategy' | 'forRequest' | 'credentialForRevocation'
 > & {
   strategy: 'access_tokens'
   /**
@@ -71,14 +71,14 @@ export function createManagedGuard<User>(options: ManagedTokenGuardOptions<User>
     context: HttpContext
   ): Extract<AuthenticationGuard<ManagedTokenCredential>, { strategy: 'access_tokens' }>
   /**
-   * The token that authenticated the request, for `terminate` on logout.
+   * The token that authenticated the request, for revocation by `terminate`.
    *
    * @example
    * ```ts
-   * const credential = await tokenGuard.logoutCredential(context)
+   * const credential = await tokenGuard.credentialForRevocation(context)
    * ```
    */
-  logoutCredential(context: HttpContext): Promise<ManagedTokenCredential>
+  credentialForRevocation(context: HttpContext): Promise<ManagedTokenCredential>
   /**
    * The plaintext token to return to the client, released once.
    *

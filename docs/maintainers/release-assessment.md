@@ -147,7 +147,7 @@ The packed consumer harness is a reference integration, not managed onboarding: 
 
 ##### Bearer client
 
-- **Observable test and installed flow:** `tests/managed_guard.spec.ts` — `token login returns only newly issued opaque token and logout deletes only current token`; `examples/api/tests/functional/token_reference.spec.ts` — `bearer logout revokes only the current token and repeat is unauthenticated` and `a limited inactive token cannot reach a verified account route`. The reference app checks its application-owned route after revocation; verify the generated token endpoints separately with the packed managed-setup procedure.
+- **Observable test and installed flow:** `tests/managed_guard.spec.ts` — `token login returns only newly issued opaque token and revocation deletes only current token`; `examples/api/tests/functional/token_reference.spec.ts` — `bearer logout revokes only the current token and repeat is unauthenticated` and `a limited inactive token cannot reach a verified account route`. The reference app checks its application-owned route after revocation; verify the generated token endpoints separately with the packed managed-setup procedure.
 
 ##### Scanner follows email link
 

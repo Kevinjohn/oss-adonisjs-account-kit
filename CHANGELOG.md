@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Rename the managed guard callback `logoutCredential` to `credentialForRevocation`; the old key is no longer accepted. Name registration availability and account settings helpers for their behavior.
 - Export optional auth types through `/types/auth`, document transaction cleanup errors and exercise admission provider boot in focused tests.
 
 - Name migration placeholder helpers `migrationTemplateData` and place migration templates under `stubs/make/migration/`.

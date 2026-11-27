@@ -18,7 +18,7 @@ export const featureNames = [
 export type SetupFeature = (typeof featureNames)[number]
 export const setupModes = ['services', 'managed'] as const
 export const guardStrategies = ['session', 'access_tokens'] as const
-export const registrationPolicies = ['open', 'closed', 'application'] as const
+export const registrationAvailabilities = ['open', 'closed', 'application'] as const
 export const userIdTypes = ['integer', 'string', 'uuid'] as const
 export const userAdapters = ['lucid', 'custom'] as const
 export const mailIntegrations = ['adonisjs-mail', 'custom'] as const
@@ -71,7 +71,7 @@ export interface SetupChoices {
     durableWorkerVerified: boolean
   }
   policy: {
-    registration: (typeof registrationPolicies)[number]
+    registration: (typeof registrationAvailabilities)[number]
     registrationFields: Array<{
       name: string
       type: 'string' | 'number' | 'boolean'

@@ -253,7 +253,7 @@ test.group('managed existing-guard adapters', () => {
     assert.deepEqual(actions.slice(-3), ['logout', 'clear', 'regenerate'])
   })
 
-  test('token login returns only newly issued opaque token and logout deletes only current token', async ({
+  test('token login returns only newly issued opaque token and revocation deletes only current token', async ({
     assert,
   }) => {
     const deleted: unknown[] = []
@@ -276,7 +276,7 @@ test.group('managed existing-guard adapters', () => {
     const credential = await adapter.forRequest(ctx).establish('user-1', ['*'], '1d')
     assert.deepEqual(credential, { userId: 'user-1', identifier: 'token-2', value: 'secret-token' })
     assert.deepEqual(await adapter.current(ctx), { userId: 'user-1', tokenId: 'token-1' })
-    await adapter.forRequest(ctx).terminate(await adapter.logoutCredential(ctx))
+    await adapter.forRequest(ctx).terminate(await adapter.credentialForRevocation(ctx))
     assert.deepEqual(deleted, ['token-1'])
   })
 

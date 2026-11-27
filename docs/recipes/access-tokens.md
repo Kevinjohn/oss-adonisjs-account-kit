@@ -98,7 +98,7 @@ export default class AccessTokensController {
 
   async destroy({ auth }: HttpContext) {
     const user = auth.use('api').getUserOrFail()
-    await accountKit.authentication.logout({
+    await accountKit.authentication.revokeCredential({
       async terminate() {
         if (user.currentAccessToken)
           await User.accessTokens.delete(user, user.currentAccessToken.identifier)
