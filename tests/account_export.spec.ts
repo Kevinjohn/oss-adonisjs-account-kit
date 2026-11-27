@@ -1,5 +1,4 @@
 import { test } from '@japa/runner'
-import { exportFault } from '../src/account_export.ts'
 import {
   E_ACCOUNT_KIT_CAPABILITY_DISABLED,
   E_ACCOUNT_KIT_IDENTITY_NOT_CONFIRMED,
@@ -328,14 +327,15 @@ test.group('account data export', (group) => {
     })
     assert.deepEqual(document.application, { ok: true })
     assert.equal(document.account.id, user.id)
-    const fault = exportFault(document)
+    const fault = account.managedHttp.exportFault(document)
     assert.instanceOf(fault, E_ACCOUNT_KIT_POST_COMMIT)
     assert.equal(fault!.cause, failure)
-    const clean = await service().account.accountData.export({
+    const cleanKit = service().account
+    const clean = await cleanKit.accountData.export({
       actorId: user.id,
       currentPassword: 'password123',
     })
-    assert.isUndefined(exportFault(clean))
+    assert.isUndefined(cleanKit.managedHttp.exportFault(clean))
   })
 
   test('a password-less account proves itself with a single-use account_export proof', async ({

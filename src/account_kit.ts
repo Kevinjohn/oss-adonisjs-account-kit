@@ -19,11 +19,12 @@ import {
   requestEmailChange,
   updateProfile,
 } from './credentials.ts'
-import { createThrottler, type Throttler } from './throttle.ts'
+import { createThrottler } from './throttle.ts'
 import { createManagedHttpService } from './managed_http_service.ts'
 import { createSocialIdentityService } from './social_identity.ts'
 import { issueStandaloneOperatorInvitation, issueOperatorResetLink } from './operator.ts'
-import { exportAccountData } from './account_export.ts'
+import { ExportFaults, exportAccountData } from './account_export.ts'
+import type { ServiceDependencies } from './service_dependencies.ts'
 import { deleteAccount } from './account_deletion.ts'
 import {
   acceptInvitation,
@@ -89,12 +90,7 @@ export { defineConfig } from './config.ts'
  * ```
  */
 export class AccountKit {
-  readonly #deps: {
-    config: ResolvedConfig
-    db: Database
-    limiter: LimiterService
-    throttler: Throttler
-  }
+  readonly #deps: ServiceDependencies
 
   constructor(deps: { config: ResolvedConfig; db: Database; limiter: LimiterService }) {
     this.#deps = {
@@ -106,6 +102,7 @@ export class AccountKit {
         secret: deps.config.limiterSecret,
         namespace: deps.config.limiterNamespace,
       }),
+      exportFaults: new ExportFaults(),
     }
   }
 
