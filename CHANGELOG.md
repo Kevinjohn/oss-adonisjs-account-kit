@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- The OpenAPI summary of `account.credential.revoke` reads "Revoke the current session or access token".
 - Package `build` with `!build/bin`, `!build/tests` and `!build/.prepare-complete` excluded, so new build output ships without a manifest change.
 - Rename the managed guard callback `logoutCredential` to `credentialForRevocation`; the old key is no longer accepted. Name registration availability and account settings helpers for their behavior.
 - Export optional auth types through `/types/auth`, document transaction cleanup errors and exercise admission provider boot in focused tests.
