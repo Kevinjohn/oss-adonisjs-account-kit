@@ -141,7 +141,12 @@ test.group('managed HTTP dispatch', () => {
     }
     const user = { ...account, emailVerifiedAt: null, passwordHash: 'never expose' }
     const kit = {
-      managedHttp: { assertGuard: () => {}, consume: async () => {}, passwordAllowed: () => true },
+      managedHttp: {
+        assertGuard: () => {},
+        consume: async () => {},
+        passwordAllowed: () => true,
+        takeCorrectionRevision: () => undefined,
+      },
       authentication: {
         current: async () => account,
         requireActive: async () => account,
@@ -207,7 +212,12 @@ test.group('managed HTTP dispatch', () => {
       active: true,
     }
     const kit = {
-      managedHttp: { assertGuard: () => {}, consume: async () => {}, passwordAllowed: () => true },
+      managedHttp: {
+        assertGuard: () => {},
+        consume: async () => {},
+        passwordAllowed: () => true,
+        takeCorrectionRevision: () => undefined,
+      },
       authentication: { current: async () => account },
       invitations: { accept: async () => user },
       emailPasswordManagement: {

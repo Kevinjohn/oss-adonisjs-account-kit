@@ -133,7 +133,12 @@ test.group('managed HTTP dispatch', () => {
     }
     const calls: Array<{ operation: string; input: unknown }> = []
     const kit = {
-      managedHttp: { assertGuard: () => {}, consume: async () => {}, passwordAllowed: () => true },
+      managedHttp: {
+        assertGuard: () => {},
+        consume: async () => {},
+        passwordAllowed: () => true,
+        takeCorrectionRevision: () => undefined,
+      },
       authentication: {
         current: async () => account,
         requireActive: async () => account,

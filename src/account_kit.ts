@@ -11,6 +11,7 @@ import { createAuthenticationService } from './authentication.ts'
 import { completeMagicLink, inspectMagicLink, requestMagicLink } from './magic_link.ts'
 import { createSessionManagementService } from './session_management.ts'
 import { RevocationOutcomes } from './session_revocation.ts'
+import { CorrectionRevisions } from './profile_correction_revision.ts'
 import { register } from './registration.ts'
 import { completeVerification, inspectVerification, sendVerification } from './verification.ts'
 import {
@@ -105,6 +106,7 @@ export class AccountKit {
       }),
       exportFaults: new ExportFaults(),
       revocationOutcomes: new RevocationOutcomes(),
+      correctionRevisions: new CorrectionRevisions(),
     }
   }
 

@@ -9,7 +9,7 @@ import type { AccountExport } from './types.ts'
 
 type Dependencies = Pick<
   ServiceDependencies,
-  'config' | 'throttler' | 'exportFaults' | 'revocationOutcomes'
+  'config' | 'throttler' | 'exportFaults' | 'revocationOutcomes' | 'correctionRevisions'
 >
 
 export function createManagedHttpService(deps: Dependencies) {
@@ -23,6 +23,8 @@ export function createManagedHttpService(deps: Dependencies) {
     exportFault: (document: AccountExport) => deps.exportFaults.get(document),
     /** The outcome of a revocation that committed before `error` was thrown, if any. */
     revocationOutcome: (error: unknown) => deps.revocationOutcomes.get(error),
+    /** The revision a profile correction committed for `outcome`, read once; `undefined` otherwise. */
+    takeCorrectionRevision: (outcome: unknown) => deps.correctionRevisions.take(outcome),
     /** Local retention deadline for acknowledged managed magic-link requests. */
     magicLinkExpiresAt: computeMagicLinkExpiry,
     /** Whether `value` is a string that meets the configured password policy. */
