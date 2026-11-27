@@ -170,22 +170,38 @@ working with nothing registered.
 
 ### Middleware
 
-Account Kit exports two opt-in route middleware classes that read `ctx.auth` through the configured
-managed guard, so mount them as named route middleware in `start/kernel.ts` after your session and
-auth middleware:
+Account Kit exports two route middleware classes for application-owned routes. Each takes options
+(the Account Kit or admission service, the managed guard and the activation check), so build one
+instance in an application middleware file and delegate to it; setup generates this file as
+`app/middleware/account_kit_access_middleware.ts`:
 
-- `ManagedAccountMiddleware` (`@kevinjohn/adonisjs-account-kit/middleware/managed_account`): checks
-  the current Account Kit sign-in and account state on protected application routes.
-- `AdmissionMiddleware` (`@kevinjohn/adonisjs-account-kit/middleware/admission`): gates routes behind
-  `AccountAdmission` approval rules.
+- `ManagedAccountMiddleware` (`@kevinjohn/adonisjs-account-kit/middleware/managed_account`) checks
+  the selected guard, the credential revision and, with `active`, account activation.
+- `AdmissionMiddleware` (`@kevinjohn/adonisjs-account-kit/middleware/admission`) also requires an
+  admitted account; see [admission](docs/guide/admission.md#gating-routes).
 
 ```ts
-export const middleware = router.named({
-  auth: () => import('#middleware/auth_middleware'),
-  managedAccount: () => import('@kevinjohn/adonisjs-account-kit/middleware/managed_account'),
-  admission: () => import('@kevinjohn/adonisjs-account-kit/middleware/admission'),
+import type { HttpContext } from '@adonisjs/core/http'
+import app from '@adonisjs/core/services/app'
+import { AccountKit } from '@kevinjohn/adonisjs-account-kit'
+import ManagedAccountMiddleware from '@kevinjohn/adonisjs-account-kit/middleware/managed_account'
+import { accountKitGuard } from '#services/account_kit_guard'
+
+const checkAccess = new ManagedAccountMiddleware({
+  kit: () => app.container.make(AccountKit),
+  guard: accountKitGuard,
+  active: true,
 })
+
+export default class AccountKitAccessMiddleware {
+  handle(ctx: HttpContext, next: () => Promise<unknown>): Promise<unknown> {
+    return checkAccess.handle(ctx, next)
+  }
+}
 ```
+
+Register the file as named middleware in `start/kernel.ts`, for example
+`accountKitAccess: () => import('#middleware/account_kit_access_middleware')`.
 
 ### Quick example
 
