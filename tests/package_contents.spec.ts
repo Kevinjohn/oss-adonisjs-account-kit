@@ -39,7 +39,6 @@ test('packs the build and top-level documents, not docs, examples or planning do
     ]
     const privateFiles = [
       'build/bin/check_changed.js',
-      'build/examples/hypermedia/app/validators/old_input.d.ts',
       'build/.prepare-complete',
       'build/tests/package_exports.spec.js',
       'docs/guide/usage.md',

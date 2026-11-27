@@ -17,7 +17,6 @@
     "build",
     "!build/bin",
     "!build/tests",
-    "!build/examples",
     "!build/.prepare-complete",
     "README-AGENTS.md",
     "SECURITY.md",

@@ -1,5 +1,5 @@
 import { test } from '@japa/runner'
-import { oldInputValidator } from '../examples/hypermedia/app/validators/old_input.ts'
+import { oldInputValidator } from '#validators/old_input'
 
 test.group('example old input validation', () => {
   test('retains display fields and excludes credentials and unexpected fields', async ({
