@@ -1,5 +1,5 @@
 import { test } from '@japa/runner'
-import { registerManagedRoutes } from '../src/http/managed.ts'
+import { ManagedRoutes } from '../src/http/route_registration.ts'
 import { E_ACCOUNT_KIT_INVALID_ACCESS_DECISION } from '../src/errors.ts'
 import { useTestApp } from './helpers/app.ts'
 import { insertUser, makeNotify, makeService } from './helpers/fakes.ts'
@@ -28,7 +28,7 @@ test.group('managed HTTP verification policy with live account state', (group) =
       },
     })
     const { router, routes, context } = fakeManagedHttp()
-    registerManagedRoutes(router, {
+    new ManagedRoutes().register(router, {
       prefix: '/api/v1',
       kit: async () => account,
       guard: stubGuard({
@@ -61,7 +61,7 @@ test.group('managed HTTP verification policy with live account state', (group) =
       },
     })
     const { router, routes, context } = fakeManagedHttp()
-    registerManagedRoutes(router, {
+    new ManagedRoutes().register(router, {
       prefix: '/api/v1',
       kit: async () => account,
       guard: stubGuard({ current: async () => ({ userId: user.id, revision: null }) }),
@@ -105,7 +105,7 @@ test.group('managed HTTP verification policy with live account state', (group) =
       },
     })
     const { router, routes, context } = fakeManagedHttp()
-    registerManagedRoutes(router, {
+    new ManagedRoutes().register(router, {
       prefix: '/api/v1',
       kit: async () => account,
       guard: stubGuard({
@@ -148,7 +148,7 @@ test.group('managed HTTP verification policy with live account state', (group) =
     let stored: string | null = null
     const refreshed: Array<string | null> = []
     const { router, routes, context } = fakeManagedHttp()
-    registerManagedRoutes(router, {
+    new ManagedRoutes().register(router, {
       prefix: '/api/v1',
       kit: async () => account,
       guard: stubGuard({
@@ -185,7 +185,7 @@ test.group('managed HTTP verification policy with live account state', (group) =
     let stored: string | null = null
     const refreshed: Array<string | null> = []
     const { router, routes, context } = fakeManagedHttp()
-    registerManagedRoutes(router, {
+    new ManagedRoutes().register(router, {
       prefix: '/api/v1',
       kit: async () => account,
       guard: stubGuard({
@@ -237,7 +237,7 @@ test.group('managed HTTP verification policy with live account state', (group) =
       kit = account
       let stored: string | null = null
       const { router, routes, context } = fakeManagedHttp()
-      registerManagedRoutes(router, {
+      new ManagedRoutes().register(router, {
         prefix: '/api/v1',
         kit: async () => account,
         guard: stubGuard({
@@ -276,7 +276,7 @@ test.group('managed HTTP verification policy with live account state', (group) =
       authentication: { strategy: 'session', guard: 'web' },
     })
     const { router, routes, context } = fakeManagedHttp()
-    registerManagedRoutes(router, {
+    new ManagedRoutes().register(router, {
       prefix: '/api/v1',
       kit: async () => account,
       guard: stubGuard({

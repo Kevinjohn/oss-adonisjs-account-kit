@@ -95,7 +95,7 @@ export interface ManagedExtensions {
   ): Promise<Record<string, unknown>> | Record<string, unknown>
 }
 
-/** Options for `registerManagedRoutes`. */
+/** Options for `ManagedRoutes.register`. */
 export interface ManagedRoutesOptions<Credential> {
   /** A static absolute prefix such as `/api`. */
   prefix: string
@@ -136,7 +136,7 @@ export interface ManagedRequest<Credential> {
 
 export type ManagedHandler = <Credential>(request: ManagedRequest<Credential>) => Promise<unknown>
 
-/** Social sign-in options for `registerManagedRoutes`, passed as `extensions.social`. */
+/** Social sign-in options for `ManagedRoutes.register`, passed as `extensions.social`. */
 export interface ManagedSocialExtension {
   /** Public provider inventory, without client credentials or account data. */
   providers: readonly SocialProviderName[]

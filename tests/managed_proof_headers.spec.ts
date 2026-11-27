@@ -1,6 +1,6 @@
 import ManagedProofHeadersMiddleware from '../src/http/managed_proof_headers_middleware.ts'
 import { test } from '@japa/runner'
-import { registerManagedRoutes } from '../src/http/managed.ts'
+import { ManagedRoutes } from '../src/http/route_registration.ts'
 import { HttpContextFactory, RouterFactory } from '@adonisjs/core/factories/http'
 
 test.group('early managed proof headers', () => {
@@ -11,7 +11,8 @@ test.group('early managed proof headers', () => {
     const middleware = router.named({
       proof: () => import('../src/http/managed_proof_headers_middleware.ts'),
     })
-    registerManagedRoutes(router, {
+    const managedRoutes = new ManagedRoutes()
+    managedRoutes.register(router, {
       prefix: '/account',
       guard: {
         strategy: 'session',
@@ -37,6 +38,7 @@ test.group('early managed proof headers', () => {
     ] as const) {
       const context = new HttpContextFactory().merge({ method, url }).create()
       context.containerResolver.bindValue('router', router)
+      context.containerResolver.bindValue('account_kit.managed_routes', managedRoutes)
       await assert.rejects(
         () =>
           middleware.proof().handle(context.containerResolver, context, async () => {

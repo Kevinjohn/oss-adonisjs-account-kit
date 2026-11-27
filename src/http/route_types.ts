@@ -1,4 +1,4 @@
-/** A group of managed routes you can mount with `registerManagedRoutes`. */
+/** A group of managed routes you can mount with `ManagedRoutes.register`. */
 export type ManagedCapability =
   | 'authentication'
   | 'registration'

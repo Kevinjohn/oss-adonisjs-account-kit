@@ -1,5 +1,6 @@
 import { test } from '@japa/runner'
 import { AccountKit, defineConfig } from '../src/account_kit.ts'
+import { ManagedRoutes } from '../src/http/route_registration.ts'
 import { bootTestApp, useTestApp } from './helpers/app.ts'
 import { makeConfig, makeUsersAdapter } from './helpers/fakes.ts'
 test.group('account kit provider', (group) => {
@@ -25,6 +26,12 @@ test.group('account kit provider', (group) => {
   test('resolves the account_kit alias to the class-bound singleton', async ({ assert }) => {
     const aliased = await kit.app.container.make('account_kit.manager')
     assert.equal(aliased, await kit.app.container.make(AccountKit))
+  })
+
+  test('binds one managed routes service that records each router', async ({ assert }) => {
+    const managedRoutes = await kit.app.container.make('account_kit.managed_routes')
+    assert.instanceOf(managedRoutes, ManagedRoutes)
+    assert.equal(await kit.app.container.make('account_kit.managed_routes'), managedRoutes)
   })
 
   // A fresh app: the shared one has already cached the singleton.

@@ -7,10 +7,12 @@ and contract tests.
 ## Configuration
 
 Nothing extra is needed for the default routes. When the application replaces a validator or the
-account representation, pass the matching schemas to `registerManagedRoutes`:
+account representation, pass the matching schemas to `managedRoutes.register`:
 
 ```ts
-registerManagedRoutes(router, {
+const managedRoutes = await app.container.make('account_kit.managed_routes')
+
+managedRoutes.register(router, {
   prefix: '/api/v1',
   kit: () => app.container.make(AccountKit),
   guard: selectedExistingGuard,
@@ -62,32 +64,31 @@ node ace account-kit:openapi --output=openapi.json
 | `--api-version` | `version` in the application's `package.json`                   |
 
 The command boots the app, commits the router (which also runs the managed route collision
-checks), and reads what `registerManagedRoutes` recorded. It takes the session cookie name from
+checks), and reads what `managedRoutes.register` recorded. It takes the session cookie name from
 `session.cookieName`. It exits with code 1 when no managed routes are registered.
 
 From code, after the routes are registered:
 
 ```ts
+import app from '@adonisjs/core/services/app'
 import router from '@adonisjs/core/services/router'
-import {
-  generateManagedOpenApi,
-  managedRouteRegistration,
-} from '@kevinjohn/adonisjs-account-kit/http'
+import { generateManagedOpenApi } from '@kevinjohn/adonisjs-account-kit/http'
 
+const managedRoutes = await app.container.make('account_kit.managed_routes')
 const document = generateManagedOpenApi({
-  registration: managedRouteRegistration(router)!,
+  registration: managedRoutes.registration(router)!,
   info: { title: 'Accounts API', version: '1.0.0' },
   sessionCookieName: 'adonis-session',
 })
 ```
 
-`accountSchema` and `requestBodies` passed here override those given to `registerManagedRoutes`.
+`accountSchema` and `requestBodies` passed here override those given to `managedRoutes.register`.
 
 ## How it works
 
 ### Only mounted routes are documented
 
-The document lists the routes `registerManagedRoutes` mounted: the same prefix, capabilities,
+The document lists the routes `managedRoutes.register` mounted: the same prefix, capabilities,
 `except` list and guard strategy. Session documents include `auth.csrf`; access-token documents
 include `auth.oauth.complete` and `auth.oauth.token`. Each `operationId` is the endpoint name (for
 example `auth.passwordReset.complete`) and each operation is tagged with its capability.

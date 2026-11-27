@@ -1,7 +1,7 @@
 import { test } from '@japa/runner'
 import type { Router } from '@adonisjs/core/http'
 import { type AccountKit } from '../src/account_kit.ts'
-import { registerManagedRoutes } from '../src/http/managed.ts'
+import { ManagedRoutes } from '../src/http/route_registration.ts'
 import { bootTestApp } from './helpers/app.ts'
 import { fakeManagedHttp } from './helpers/managed_http_fakes.ts'
 
@@ -22,7 +22,8 @@ test.group('managed HTTP dispatch', () => {
       enabled: ['authentication'] as const,
       except: ['auth.login'] as const,
     }
-    const registered = registerManagedRoutes(router, options)
+    const managedRoutes = new ManagedRoutes()
+    const registered = managedRoutes.register(router, options)
     assert.isTrue(Array.isArray(registered))
     const names = registered.map(({ name }) => name)
     assert.strictEqual(Object.getPrototypeOf(names), Array.prototype)
@@ -33,7 +34,7 @@ test.group('managed HTTP dispatch', () => {
     assert.isFalse(routes.has('POST /api/v1/auth/login'))
     // `routes` is keyed by method and path, so a repeat would overwrite it; count definitions.
     const count = pending.length
-    assert.throws(() => registerManagedRoutes(router, options), /already registered/)
+    assert.throws(() => managedRoutes.register(router, options), /already registered/)
     assert.equal(pending.length, count)
   })
 
@@ -42,7 +43,7 @@ test.group('managed HTTP dispatch', () => {
   }) => {
     const { router, pending } = fakeManagedHttp()
     pending.push({ methods: ['POST'], pattern: '/api/v1/auth/login', name: 'application.login' })
-    registerManagedRoutes(router, {
+    new ManagedRoutes().register(router, {
       prefix: '/api/v1',
       kit: async () => ({}) as AccountKit,
       guard: {
@@ -58,7 +59,7 @@ test.group('managed HTTP dispatch', () => {
 
   test('late application routes are checked and repeated commit stays stable', ({ assert }) => {
     const { router, pending } = fakeManagedHttp()
-    registerManagedRoutes(router, {
+    new ManagedRoutes().register(router, {
       prefix: '/api/v1',
       kit: async () => ({}) as AccountKit,
       guard: {
@@ -88,7 +89,7 @@ test.group('managed HTTP dispatch', () => {
       called = true
       return sentinel as never
     } as Router['commit']
-    registerManagedRoutes(router, {
+    new ManagedRoutes().register(router, {
       prefix: '/api/v1',
       kit: async () => ({}) as AccountKit,
       guard: {
@@ -121,7 +122,7 @@ test.group('managed HTTP dispatch', () => {
         const router = await app.app.container.make('router')
         const route = router.route(`/api/v1${pattern}`, ['POST'], () => null)
         if (matcher) route.where('id', matcher)
-        registerManagedRoutes(router, {
+        new ManagedRoutes().register(router, {
           prefix: '/api/v1',
           kit: async () => ({}) as AccountKit,
           guard: {
@@ -150,7 +151,7 @@ test.group('managed HTTP dispatch', () => {
         .get('/api/:version/auth/csrf', () => null)
         .where('version', /(?=\d+$)/y)
         .as('app.numeric')
-      registerManagedRoutes(router, {
+      new ManagedRoutes().register(router, {
         prefix: '/api/v1',
         kit: async () => ({}) as AccountKit,
         guard: {

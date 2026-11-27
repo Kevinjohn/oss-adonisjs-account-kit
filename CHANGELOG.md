@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- **Breaking:** Replace `registerManagedRoutes(router, options)` and `managedRouteRegistration(router)` with the `ManagedRoutes` service the provider binds as `account_kit.managed_routes`. Upgrade: in `start/account_kit_routes.ts`, write `const managedRoutes = await app.container.make('account_kit.managed_routes')` and call `managedRoutes.register(router, options)`; read a registration with `managedRoutes.registration(router)`. Setup generates the new form and treats either as an existing direct mount.
+- `protectManagedSessionConfig` resolves to a new config object with the checked store factory instead of changing the application's resolved session config.
 - `E_ACCOUNT_KIT_DELIVERY` and `E_ACCOUNT_KIT_POST_COMMIT` declare an optional, read-only `passwordChangeRevision`; read it with `passwordChangeRevision(error)` as before.
 - Report single-use rows that change while they are consumed as `E_ACCOUNT_KIT_CONSUMED_ROWS_CHANGED` (500) instead of a core `RuntimeException`.
 - **Breaking:** Remove the `./admission/commands` export. The admission approve, revoke, grant-invitation and bootstrap commands are now in `./commands`, are always listed and can be left out with `defineCommands({ exclude })`. Until the admission provider is registered, each writes one error line and exits 1. `account-kit:admission:install` registers only the provider. Upgrade: delete `() => import('@kevinjohn/adonisjs-account-kit/admission/commands')` from the `commands` array in `adonisrc.ts`; while it is there, `node ace` stops with `Package subpath './admission/commands' is not defined by "exports"` and exits 1.

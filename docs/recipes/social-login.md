@@ -49,7 +49,7 @@ authentication: { strategy: 'session', guard: 'web' },
 
 ## 4. Add the routes
 
-The simplest route is the managed one: add `socialAuthentication` to `registerManagedRoutes` and
+The simplest route is the managed one: add `socialAuthentication` to `managedRoutes.register` and
 the redirect, callback, handoff and identity-management endpoints are mounted for you. See
 [managed social authentication](../guide/managed-social.md) and the
 [endpoint list](../reference/endpoints.md#socialauthentication).

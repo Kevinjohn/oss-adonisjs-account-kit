@@ -194,7 +194,7 @@ Grace periods, scheduled deletion and deletion by an operator are not included.
 
 ## Managed routes
 
-With `registerManagedRoutes`, add `dataExport` and `accountDeletion` to `enabled`:
+With `managedRoutes.register`, add `dataExport` and `accountDeletion` to `enabled`:
 
 | Method   | Path              | Body                                 | Success                    |
 | -------- | ----------------- | ------------------------------------ | -------------------------- |

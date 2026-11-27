@@ -17,7 +17,7 @@ export interface ManagedOpenApiOptions {
 }
 
 /**
- * What `registerManagedRoutes` mounted on a router. Read it with `managedRouteRegistration` to
+ * What `ManagedRoutes.register` mounted on a router. Read it with `ManagedRoutes.registration` to
  * build the OpenAPI document.
  */
 export interface ManagedRouteRegistration {
@@ -36,7 +36,7 @@ export interface ManagedRouteRegistration {
 }
 
 export interface ManagedOpenApiInput extends ManagedOpenApiOptions {
-  /** From `managedRouteRegistration(router)` after the routes are registered. */
+  /** From `managedRoutes.registration(router)` after the routes are registered. */
   registration: ManagedRouteRegistration
   info: { title: string; version: string; description?: string }
   /** Session cookie name for session guards. Defaults to `adonis-session`. */

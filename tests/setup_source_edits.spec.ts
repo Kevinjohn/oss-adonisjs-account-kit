@@ -204,7 +204,10 @@ test.group('setup source edits', (group) => {
       plan.changes.find(({ path }) => path === 'adonisrc.ts')!.content,
       '// providers: [ ignored ]\nexport default { providers: [\n'
     )
-    await writeFile(join(root, 'start/routes.ts'), 'registerManagedRoutes(router, {})\n')
+    await writeFile(
+      join(root, 'start/routes.ts'),
+      "const managedRoutes = await app.container.make('account_kit.managed_routes')\nmanagedRoutes.register(router, {})\n"
+    )
     const duplicate = await planSetup(choices, await inspectSetup(root))
     assert.include(
       duplicate.diagnostics.map(({ field }) => field),
@@ -394,7 +397,7 @@ test.group('setup source edits', (group) => {
         "import './account_kit_routes.js'"
       )
       state.files['start/routes.ts'] =
-        "import { registerManagedRoutes as mount } from '@kevinjohn/adonisjs-account-kit/http'\nmount(router, {})\n"
+        "import { ManagedRoutes as Mount } from '@kevinjohn/adonisjs-account-kit/http'\nnew Mount().register(router, {})\n"
       const alias = await planSetup(choices, state)
       assert.isTrue(
         alias.diagnostics.some(
@@ -403,7 +406,7 @@ test.group('setup source edits', (group) => {
       )
       assert.isFalse(alias.changes.some(({ path }) => path === 'start/routes.ts'))
       state.files['start/routes.ts'] =
-        "import { registerManagedRoutes } from '@kevinjohn/adonisjs-account-kit/http'\nconst mount = registerManagedRoutes\nmount(router, {})\n"
+        "const managedRoutes = await app.container.make('account_kit.managed_routes')\nmanagedRoutes.register(router, {})\n"
       const escaped = await planSetup(choices, state)
       assert.isTrue(
         escaped.diagnostics.some(
@@ -412,7 +415,7 @@ test.group('setup source edits', (group) => {
       )
       assert.isFalse(escaped.changes.some(({ path }) => path === 'start/routes.ts'))
       state.files['start/routes.ts'] =
-        "import type { registerManagedRoutes } from '@kevinjohn/adonisjs-account-kit/http'\nconst example = 'registerManagedRoutes'\n"
+        "import type { ManagedRoutes } from '@kevinjohn/adonisjs-account-kit/http'\nconst example = 'ManagedRoutes'\n"
       const typeOnlyName = await planSetup(choices, state)
       assert.isFalse(
         typeOnlyName.diagnostics.some(
@@ -420,10 +423,10 @@ test.group('setup source edits', (group) => {
         )
       )
       for (const routes of [
-        "import * as account from '@kevinjohn/adonisjs-account-kit/http'\nconst mount = account.registerManagedRoutes\nmount(router, {})\n",
-        "import { registerManagedRoutes as first, registerManagedRoutes as second } from '@kevinjohn/adonisjs-account-kit/http'\nsecond(router, {})\n",
-        "import { registerManagedRoutes as mount } from '@kevinjohn/adonisjs-account-kit/http'\nimport { createManagedGuard } from '@kevinjohn/adonisjs-account-kit/http'\nmount(router, {})\n",
-        "import { registerManagedRoutes as mount } from '@kevinjohn/adonisjs-account-kit/http'\nconst other = await import('@kevinjohn/adonisjs-account-kit/http')\nmount(router, {})\n",
+        "import * as account from '@kevinjohn/adonisjs-account-kit/http'\nnew account.ManagedRoutes().register(router, {})\n",
+        'const routes = await app.container.make(`account_kit.managed_routes`)\nroutes.register(router, {})\n',
+        "import { ManagedRoutes } from '@kevinjohn/adonisjs-account-kit/http'\nimport { createManagedGuard } from '@kevinjohn/adonisjs-account-kit/http'\nnew ManagedRoutes().register(router, {})\n",
+        "const other = await import('@kevinjohn/adonisjs-account-kit/http')\nnew other.ManagedRoutes().register(router, {})\n",
       ]) {
         state.files['start/routes.ts'] = routes
         const hidden = await planSetup(choices, state)

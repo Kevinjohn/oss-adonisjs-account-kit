@@ -78,7 +78,7 @@ sign-in table.
 
 ## Managed routes
 
-With `registerManagedRoutes`, add `sessionManagement` to `enabled`:
+With `managedRoutes.register`, add `sessionManagement` to `enabled`:
 
 | Method   | Path                              | Success                |
 | -------- | --------------------------------- | ---------------------- |

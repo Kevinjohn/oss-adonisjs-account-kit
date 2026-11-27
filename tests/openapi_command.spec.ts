@@ -7,7 +7,6 @@ import { defineConfig as defineSessionConfig } from '@adonisjs/session'
 import ManagedOpenApi from '../commands/openapi.ts'
 import * as commandLoader from '../commands/main.ts'
 import type { AccountKit } from '../src/account_kit.ts'
-import { registerManagedRoutes } from '../src/http/managed.ts'
 import { aceKernel } from './helpers/ace_kernel.ts'
 import { useTestApp, type TestApp } from './helpers/app.ts'
 import { fakeManagedHttp } from './helpers/managed_http_fakes.ts'
@@ -19,9 +18,10 @@ function kernelFor(kit: TestApp, router: Router) {
   return aceKernel(kit, [ManagedOpenApi])
 }
 
-function mounted(options: { representAccount?: boolean } = {}) {
+async function mounted(kit: TestApp, options: { representAccount?: boolean } = {}) {
   const { router } = fakeManagedHttp()
-  registerManagedRoutes(router, {
+  const managedRoutes = await kit.app.container.make('account_kit.managed_routes')
+  managedRoutes.register(router, {
     prefix: '/api/v1',
     kit: async () => ({}) as AccountKit,
     guard: {
@@ -37,11 +37,11 @@ function mounted(options: { representAccount?: boolean } = {}) {
 }
 
 test.group('account-kit:openapi', (group) => {
-  const kit = useTestApp(group)
+  const kit = useTestApp(group, { accountKitProvider: 'source' })
   group.each.teardown(() => kit.app.container.restore(Router))
 
   test('prints a valid document for the registered routes to stdout', async ({ assert }) => {
-    const router = mounted()
+    const router = await mounted(kit)
     let commits = 0
     const commit = router.commit.bind(router)
     router.commit = () => {
@@ -70,7 +70,7 @@ test.group('account-kit:openapi', (group) => {
   })
 
   test('defaults the title and version to the host package.json', async ({ assert }) => {
-    const { kernel, logs } = kernelFor(kit, mounted())
+    const { kernel, logs } = kernelFor(kit, await mounted(kit))
     await kernel.exec('account-kit:openapi', [])
     const host = JSON.parse(
       await readFile(kit.app.makePath('package.json'), 'utf8').catch(() => '{}')
@@ -86,7 +86,7 @@ test.group('account-kit:openapi', (group) => {
     const directory = await mkdtemp(join(tmpdir(), 'account-kit-openapi-'))
     cleanup(() => rm(directory, { recursive: true, force: true }))
     const target = join(directory, 'openapi.json')
-    const { kernel, logs } = kernelFor(kit, mounted())
+    const { kernel, logs } = kernelFor(kit, await mounted(kit))
     const command = await kernel.exec('account-kit:openapi', [`--output=${target}`])
     assert.equal(command.exitCode ?? 0, 0)
     const document = JSON.parse(await readFile(target, 'utf8'))
@@ -101,7 +101,7 @@ test.group('account-kit:openapi', (group) => {
     assert.equal(empty.logs()[0].stream, 'stderr')
     assert.include(empty.logs()[0].message, 'No Account Kit managed routes are registered')
 
-    const represented = kernelFor(kit, mounted({ representAccount: true }))
+    const represented = kernelFor(kit, await mounted(kit, { representAccount: true }))
     const failed = await represented.kernel.exec('account-kit:openapi', [])
     assert.equal(failed.exitCode, 1)
     assert.include(represented.logs()[0].message, 'openapi.accountSchema')
@@ -110,7 +110,8 @@ test.group('account-kit:openapi', (group) => {
   test('reads routes registered on the application router', async ({ assert }) => {
     const router = await kit.app.container.make('router')
     router.get('/health', () => 'ok')
-    registerManagedRoutes(router, {
+    const managedRoutes = await kit.app.container.make('account_kit.managed_routes')
+    managedRoutes.register(router, {
       prefix: '/accounts',
       kit: async () => ({}) as AccountKit,
       guard: {

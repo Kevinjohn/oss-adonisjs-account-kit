@@ -1,6 +1,6 @@
 import { test } from '@japa/runner'
 import { AccountKit } from '../src/account_kit.ts'
-import { registerManagedRoutes } from '../src/http/managed.ts'
+import { ManagedRoutes } from '../src/http/route_registration.ts'
 import { fakeManagedHttp, stubGuard } from './helpers/managed_http_fakes.ts'
 
 test.group('managed HTTP dispatch', () => {
@@ -27,7 +27,7 @@ test.group('managed HTTP dispatch', () => {
         },
       },
     } as unknown as AccountKit
-    registerManagedRoutes(router, {
+    new ManagedRoutes().register(router, {
       prefix: '/api/v1',
       kit: async () => kit,
       guard: stubGuard({
@@ -93,7 +93,7 @@ test.group('managed HTTP dispatch', () => {
         accept: async () => user,
       },
     } as unknown as AccountKit
-    registerManagedRoutes(router, {
+    new ManagedRoutes().register(router, {
       prefix: '/api/v1',
       kit: async () => kit,
       guard: stubGuard({
@@ -154,7 +154,7 @@ test.group('managed HTTP dispatch', () => {
         },
       },
     } as unknown as AccountKit
-    registerManagedRoutes(router, {
+    new ManagedRoutes().register(router, {
       prefix: '/api/v1',
       kit: async () => kit,
       guard: stubGuard({

@@ -1,5 +1,5 @@
 import { test } from '@japa/runner'
-import { registerManagedRoutes } from '../src/http/managed.ts'
+import { ManagedRoutes } from '../src/http/route_registration.ts'
 import { deriveClientChallenge } from '../src/magic_link.ts'
 import { hashToken } from '../src/tokens.ts'
 import type { AccountKitConfig, UserId } from '../src/types.ts'
@@ -38,7 +38,7 @@ test.group('managed magic-link routes', (group) => {
       publicCredential: (credential: string) => `public:${credential}`,
     })
     const { router, routes, context } = fakeManagedHttp()
-    registerManagedRoutes(router, {
+    new ManagedRoutes().register(router, {
       prefix: '/api/v1',
       kit: async () => service.account,
       guard,
@@ -386,7 +386,7 @@ test.group('managed magic-link routes', (group) => {
     const { router } = fakeManagedHttp()
     assert.throws(
       () =>
-        registerManagedRoutes(router, {
+        new ManagedRoutes().register(router, {
           prefix: '/api/v1',
           kit: async () => ({}) as never,
           guard: {
@@ -405,7 +405,7 @@ test.group('managed magic-link routes', (group) => {
     const { router } = fakeManagedHttp()
     assert.throws(
       () =>
-        registerManagedRoutes(router, {
+        new ManagedRoutes().register(router, {
           prefix: '/api/v1',
           kit: async () => ({}) as never,
           guard: {

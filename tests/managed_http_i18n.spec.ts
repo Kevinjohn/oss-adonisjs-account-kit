@@ -8,7 +8,7 @@ import {
   E_ACCOUNT_KIT_THROTTLED,
 } from '../src/errors.ts'
 import { accountErrorResponse } from '../src/error_response.ts'
-import { registerManagedRoutes } from '../src/http/managed.ts'
+import { ManagedRoutes } from '../src/http/route_registration.ts'
 import { mapManagedErrorResponse } from '../src/http/responses.ts'
 import { fakeManagedHttp } from './helpers/managed_http_fakes.ts'
 
@@ -32,7 +32,7 @@ function mount(
   enabled: ('passwordReset' | 'registration' | 'magicLinkLogin')[] = ['passwordReset']
 ) {
   const { router, routes, context } = fakeManagedHttp()
-  registerManagedRoutes(router, {
+  new ManagedRoutes().register(router, {
     prefix: '/api/v1',
     kit: async () => kit as AccountKit,
     guard: {

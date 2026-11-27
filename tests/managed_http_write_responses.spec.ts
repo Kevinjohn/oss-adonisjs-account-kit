@@ -1,7 +1,7 @@
 import { test } from '@japa/runner'
 import { type AccountKit } from '../src/account_kit.ts'
 import { E_ACCOUNT_KIT_DELIVERY, E_ACCOUNT_KIT_INVALID_SESSION } from '../src/errors.ts'
-import { registerManagedRoutes } from '../src/http/managed.ts'
+import { ManagedRoutes } from '../src/http/route_registration.ts'
 import type { ManagedQuery, ManagedRequestBody } from '../src/http/main.ts'
 import type { ManagedSuccessBody } from '../src/http/contracts.ts'
 import { fakeManagedHttp, stubGuard } from './helpers/managed_http_fakes.ts'
@@ -19,7 +19,7 @@ test.group('managed HTTP dispatch', () => {
         },
       },
     } as unknown as AccountKit
-    registerManagedRoutes(router, {
+    new ManagedRoutes().register(router, {
       prefix: '/api/v1',
       kit: async () => kit,
       guard: stubGuard({
@@ -59,7 +59,7 @@ test.group('managed HTTP dispatch', () => {
         },
       },
     } as unknown as AccountKit
-    registerManagedRoutes(router, {
+    new ManagedRoutes().register(router, {
       prefix: '/api/v1',
       kit: async () => kit,
       guard: stubGuard({
@@ -107,7 +107,7 @@ test.group('managed HTTP dispatch', () => {
         },
       },
     } as unknown as AccountKit
-    registerManagedRoutes(router, {
+    new ManagedRoutes().register(router, {
       prefix: '/api/v1',
       kit: async () => kit,
       enabled: ['authentication'],
@@ -164,7 +164,7 @@ test.group('managed HTTP dispatch', () => {
         revoke: async () => {},
       },
     } as unknown as AccountKit
-    registerManagedRoutes(router, {
+    new ManagedRoutes().register(router, {
       prefix: '/api/v1',
       kit: async () => kit,
       guard: stubGuard({
@@ -225,7 +225,7 @@ test.group('managed HTTP dispatch', () => {
         updateProfile: async () => user,
       },
     } as unknown as AccountKit
-    registerManagedRoutes(router, {
+    new ManagedRoutes().register(router, {
       prefix: '/api/v1',
       kit: async () => kit,
       guard: stubGuard({
@@ -285,7 +285,7 @@ test.group('managed HTTP dispatch', () => {
         },
       },
     } as unknown as AccountKit
-    registerManagedRoutes(router, {
+    new ManagedRoutes().register(router, {
       prefix: '/api/v1',
       kit: async () => kit,
       guard: stubGuard({
@@ -309,7 +309,7 @@ test.group('managed HTTP dispatch', () => {
     assert,
   }) => {
     const { router, routes, context } = fakeManagedHttp()
-    registerManagedRoutes(router, {
+    new ManagedRoutes().register(router, {
       prefix: '/api/v1',
       kit: async () =>
         ({
@@ -357,7 +357,7 @@ test.group('managed HTTP dispatch', () => {
 
   test('negotiated errors preserve an existing Vary value', async ({ assert }) => {
     const { router, routes, context } = fakeManagedHttp()
-    registerManagedRoutes(router, {
+    new ManagedRoutes().register(router, {
       prefix: '/api/v1',
       kit: async () => ({ managedHttp: { assertGuard: () => {} } }) as unknown as AccountKit,
       guard: stubGuard({

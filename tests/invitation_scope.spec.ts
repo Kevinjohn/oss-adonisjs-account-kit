@@ -4,7 +4,7 @@ import { test } from '@japa/runner'
 import { transaction } from '../src/db.ts'
 import { E_ACCOUNT_KIT_INVALID_INPUT, E_ACCOUNT_KIT_INVITATION_PENDING } from '../src/errors.ts'
 import { matchInvitation } from '../src/invitation_match.ts'
-import { registerManagedRoutes } from '../src/http/managed.ts'
+import { ManagedRoutes } from '../src/http/route_registration.ts'
 import type { AccountKitConfig, AuthorizationContext, LifecycleNotification } from '../src/types.ts'
 import { useTestApp } from './helpers/app.ts'
 import { allowAll, insertUser, makeService, tokenFrom } from './helpers/fakes.ts'
@@ -317,7 +317,7 @@ test.group('invitation scope', (group) => {
       authentication: { strategy: 'session', guard: 'web' },
     })
     const { router, routes, context } = fakeManagedHttp()
-    registerManagedRoutes(router, {
+    new ManagedRoutes().register(router, {
       prefix: '/api/v1',
       kit: async () => account,
       guard: stubGuard({ current: async () => ({ userId: actor.id, revision: null }) }),

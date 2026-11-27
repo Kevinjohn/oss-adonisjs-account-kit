@@ -165,7 +165,7 @@ Tested on SQLite and PostgreSQL 16. MySQL 8.4 is experimental. See the
 | Export account data     | `accountData.export`                         | `POST account/export`                   | none                                        | Per user                      |
 | Delete account          | `accountData.delete`                         | `DELETE account`                        | `accountDeleted`                            | Per user                      |
 
-The managed-route paths are relative to the prefix configured with `registerManagedRoutes`. For
+The managed-route paths are relative to the prefix configured with `managedRoutes.register`. For
 example, with `prefix: '/api/v1'`, `POST auth/password-reset` is `POST /api/v1/auth/password-reset`.
 The `account-kit:prune` command and public `PruneCounts` result retain the legacy key `recovery`
 for expired password-reset tokens. The full route lists are in the
