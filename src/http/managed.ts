@@ -146,6 +146,7 @@ class ManagedRouteRegistration<Credential> extends Array<ManagedRoute> {
     })
   }
 
+  /** @throws {AggregateError} If work and its transaction or credential cleanup both fail, or multiple cleanup steps fail. */
   async #dispatch(route: ManagedRoute, context: HttpContext) {
     try {
       return await executeManagedRequest({

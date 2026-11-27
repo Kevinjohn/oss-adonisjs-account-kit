@@ -12,6 +12,7 @@ import { confirmActor, requireUser } from './actor_confirmation.ts'
 import type { ChangePasswordInput } from './types.ts'
 import type { ServiceDependencies } from './service_dependencies.ts'
 
+/** @throws {AggregateError} If transaction work and cleanup fail before a commit is confirmed. */
 export async function changePassword(
   deps: ServiceDependencies,
   input: ChangePasswordInput

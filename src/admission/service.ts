@@ -79,6 +79,8 @@ export class AccountAdmission {
    * ```ts
    * const { account, decision } = await admission.current(current)
    * ```
+   *
+   * @throws {AggregateError} If transaction work and cleanup fail before a commit is confirmed.
    */
   current(
     input: CurrentAccountInput
@@ -103,6 +105,8 @@ export class AccountAdmission {
    * ```ts
    * const { account } = await admission.require(current)
    * ```
+   *
+   * @throws {AggregateError} If transaction work and cleanup fail before a commit is confirmed.
    */
   async require(
     input: CurrentAccountInput,
@@ -173,6 +177,8 @@ export class AccountAdmission {
    * ```ts
    * const record = await admission.request(current)
    * ```
+   *
+   * @throws {AggregateError} If transaction work and cleanup fail before a commit is confirmed.
    */
   request(input: CurrentAccountInput): Promise<AdmissionRecord> {
     return requestAdmission(this.#deps, input)
@@ -185,6 +191,8 @@ export class AccountAdmission {
    * ```ts
    * await admission.approve({ actorId, userId })
    * ```
+   *
+   * @throws {AggregateError} If transaction work and cleanup fail before a commit is confirmed.
    */
   approve(input: { actorId: UserId; userId: UserId }): Promise<AdmissionRecord> {
     return decideAdmission(this.#deps, input, 'approve')
@@ -197,6 +205,8 @@ export class AccountAdmission {
    * ```ts
    * await admission.reject({ actorId, userId })
    * ```
+   *
+   * @throws {AggregateError} If transaction work and cleanup fail before a commit is confirmed.
    */
   reject(input: { actorId: UserId; userId: UserId }): Promise<AdmissionRecord> {
     return decideAdmission(this.#deps, input, 'reject')
@@ -209,6 +219,8 @@ export class AccountAdmission {
    * ```ts
    * await admission.revoke({ actorId, userId })
    * ```
+   *
+   * @throws {AggregateError} If transaction work and cleanup fail before a commit is confirmed.
    */
   revoke(input: { actorId: UserId; userId: UserId }): Promise<AdmissionRecord> {
     return decideAdmission(this.#deps, input, 'revoke')
@@ -244,6 +256,7 @@ export class AccountAdmission {
        * ```ts
        * await admission.operator.approve({ email: 'sam@example.test' })
        * ```
+       * @throws {AggregateError} If transaction work and cleanup fail before a commit is confirmed.
        */
       approve: (input: { email: string }): Promise<AdmissionRecord> =>
         applyOperatorDecision(this.#deps, input, 'approve'),
@@ -254,6 +267,7 @@ export class AccountAdmission {
        * ```ts
        * await admission.operator.revoke({ email: 'sam@example.test' })
        * ```
+       * @throws {AggregateError} If transaction work and cleanup fail before a commit is confirmed.
        */
       revoke: (input: { email: string }): Promise<AdmissionRecord> =>
         applyOperatorDecision(this.#deps, input, 'revoke'),
@@ -264,6 +278,8 @@ export class AccountAdmission {
        * ```ts
        * await admission.operator.grantInvitation({ email: 'sam@example.test' })
        * ```
+       *
+       * @throws {AggregateError} If transaction work and cleanup fail before a commit is confirmed.
        */
       grantInvitation: (input: { email: string; role?: string }): Promise<AdmissionRecord> =>
         grantOperatorInvitation(this.#deps, input),
@@ -275,6 +291,8 @@ export class AccountAdmission {
        * ```ts
        * await admission.operator.bootstrap({ email: 'sam@example.test', role: 'admin' })
        * ```
+       *
+       * @throws {AggregateError} If transaction work and cleanup fail before a commit is confirmed.
        */
       bootstrap: (input: { email: string; role: string }): Promise<OperatorInviteResult> =>
         bootstrapOperatorInvitation(this.#deps, input),

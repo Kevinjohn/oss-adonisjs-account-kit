@@ -16,6 +16,8 @@ import type { AdmissionRecord } from './types.ts'
  * Records that the signed-in person asked for approval, once. Idempotent: a repeat returns the
  * record unchanged and emits nothing; so does a request from an account that already has a
  * decision. Refuses an unconfirmed account.
+ *
+ * @throws {AggregateError} If transaction work and cleanup fail before a commit is confirmed.
  */
 export async function requestAdmission(
   deps: AdmissionContext,

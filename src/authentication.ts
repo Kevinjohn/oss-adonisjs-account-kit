@@ -264,6 +264,8 @@ export function createAuthenticationService(deps: ServiceDependencies) {
      * ```ts
      * await kit.authentication.current(current)
      * ```
+     *
+     * @throws {AggregateError} If transaction work and cleanup fail before a commit is confirmed.
      */
     current(input: CurrentAccountInput): Promise<CurrentAccount> {
       return transaction(deps.db, (trx) => requireCurrentAccountInTransaction(deps, input, trx))
@@ -276,6 +278,8 @@ export function createAuthenticationService(deps: ServiceDependencies) {
      * ```ts
      * await kit.authentication.requireActive(current)
      * ```
+     *
+     * @throws {AggregateError} If transaction work and cleanup fail before a commit is confirmed.
      */
     async requireActive(input: CurrentAccountInput): Promise<CurrentAccount> {
       const account = await transaction(deps.db, (trx) =>
@@ -301,6 +305,8 @@ export function createAuthenticationService(deps: ServiceDependencies) {
      *   await trx.from('user_preferences').where('user_id', account.id).update({ theme: 'dark' })
      * })
      * ```
+     *
+     * @throws {AggregateError} If transaction work and cleanup fail before a commit is confirmed.
      */
     withCurrent<T>(
       input: CurrentAccountInput,
@@ -332,6 +338,8 @@ export function createAuthenticationService(deps: ServiceDependencies) {
      * ```ts
      * await kit.authentication.inspectAccountAccess({ userId, requireActive: true })
      * ```
+     *
+     * @throws {AggregateError} If transaction work and cleanup fail before a commit is confirmed.
      */
     inspectAccountAccess(input: AccountAccessInput): Promise<AccountAccessSnapshot> {
       return inspectAccountAccess(deps, input)
@@ -373,6 +381,8 @@ export function createAuthenticationService(deps: ServiceDependencies) {
      *   },
      * })
      * ```
+     *
+     * @throws {AggregateError} If transaction work and cleanup fail before a commit is confirmed.
      */
     async changeRestriction(input: {
       userId: UserId

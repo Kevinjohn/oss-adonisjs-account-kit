@@ -7,6 +7,11 @@ callbacks may propagate as their original error; callback failures after commit 
 of the committed failure types below. Import package errors from `@kevinjohn/adonisjs-account-kit` or
 `@kevinjohn/adonisjs-account-kit/errors`.
 
+If transaction work and cleanup fail before a commit is confirmed, an `AggregateError` can
+propagate with the underlying failures. Once a commit is confirmed, a later transaction cleanup
+failure is reported as `E_ACCOUNT_KIT_POST_COMMIT` with its cleanup causes. A native
+`AggregateError` is not a package exception and is not mapped by `accountErrorResponse`.
+
 ## Mapping errors to responses
 
 `accountErrorResponse(error, options?)` turns an `E_ACCOUNT_KIT` into a safe response and returns

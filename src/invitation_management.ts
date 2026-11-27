@@ -70,6 +70,7 @@ async function lockResendable(
   return current
 }
 
+/** @throws {AggregateError} If transaction work and cleanup fail before a commit is confirmed. */
 export async function resendInvitation(
   deps: ServiceDependencies,
   input: InvitationsResendInput
@@ -133,6 +134,7 @@ export async function resendInvitation(
   return invitation
 }
 
+/** @throws {AggregateError} If transaction work and cleanup fail before a commit is confirmed. */
 export async function revokeInvitation(
   deps: Pick<ServiceDependencies, 'config' | 'db'>,
   input: InvitationsRevokeInput

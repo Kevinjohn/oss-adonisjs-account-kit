@@ -8,6 +8,7 @@ import { endSessionAfterCommit } from './session_end.ts'
 import { accountProofValidator } from './validators.ts'
 
 export const accountDataHandlers = {
+  /** @throws {AggregateError} If transaction work and cleanup fail before a commit is confirmed. */
   'account.data.export': async ({ context, kit, actorId, route }) => {
     const { currentPassword, recentProof } =
       await context.request.validateUsing(accountProofValidator)
@@ -22,6 +23,7 @@ export const accountDataHandlers = {
     context.response.header('Content-Disposition', 'attachment; filename="account-export.json"')
     return context.response.ok(document)
   },
+  /** @throws {AggregateError} If transaction work and cleanup fail before a commit is confirmed. */
   'account.delete': async ({ context, kit, actorId, options, route }) => {
     const { currentPassword, recentProof } =
       await context.request.validateUsing(accountProofValidator)

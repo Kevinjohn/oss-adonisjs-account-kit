@@ -12,12 +12,14 @@ export const emailPasswordManagementHandlers = {
     (await kit.emailPasswordManagement.inspectEmailChange({ token: context.params.token }))
       ? context.response.ok({ valid: true })
       : sendInvalidProofResponse(context, 'email', options.extensions?.message),
+  /** @throws {AggregateError} If transaction work and cleanup fail before a commit is confirmed. */
   'auth.emailChange.complete': async ({ context, kit, representIssued }) => {
     const user = await kit.emailPasswordManagement.completeEmailChange({
       token: context.params.token,
     })
     return context.response.ok({ account: await representIssued(buildAccountProjection(user)) })
   },
+  /** @throws {AggregateError} If transaction work and cleanup fail before a commit is confirmed. */
   'account.profile.update': async ({
     context,
     kit,
@@ -59,6 +61,7 @@ export const emailPasswordManagementHandlers = {
     await keepSession(user)
     return response.ok({ account: await representIssued(buildAccountProjection(user)) })
   },
+  /** @throws {AggregateError} If transaction work and cleanup fail before a commit is confirmed. */
   'account.password.change': async ({ context, kit, options, actorId, accountInput }) => {
     const { request, response } = context
     const { currentPassword, recentProof, newPassword } =

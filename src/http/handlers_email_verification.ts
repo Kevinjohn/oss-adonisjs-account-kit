@@ -9,6 +9,7 @@ export const emailVerificationHandlers = {
     (await kit.emailVerification.inspect({ token: context.params.token }))
       ? context.response.ok({ valid: true })
       : sendInvalidProofResponse(context, 'email', options.extensions?.message),
+  /** @throws {AggregateError} If transaction work and cleanup fail before a commit is confirmed. */
   'auth.emailVerification.complete': async ({ context, kit }) => {
     const { request, response, params } = context
     const { password } = await request.validateUsing(newPasswordValidator)
@@ -17,6 +18,7 @@ export const emailVerificationHandlers = {
     await kit.emailVerification.complete({ token: params.token, password })
     return response.ok({ verified: true })
   },
+  /** @throws {AggregateError} If transaction work and cleanup fail before a commit is confirmed. */
   'account.emailVerification.send': async ({ context, kit, actorId }) => {
     const result = await kit.emailVerification.send({ userId: actorId! })
     return context.response.ok({ result })

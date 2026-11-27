@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Export optional auth types through `/types/auth`, document transaction cleanup errors and exercise admission provider boot in focused tests.
+
 - Name migration placeholder helpers `migrationTemplateData` and place migration templates under `stubs/make/migration/`.
 - Run the pre-install change classifier with native Node 24 TypeScript support.
 - Move the auth, HTTP and transaction subpath entries under `src/` and keep their public export keys.

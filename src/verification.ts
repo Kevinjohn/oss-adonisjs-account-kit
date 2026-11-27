@@ -44,6 +44,7 @@ export async function inspectVerification(
   return user !== null && activationMatches(proof, user)
 }
 
+/** @throws {AggregateError} If transaction work and cleanup fail before a commit is confirmed. */
 export async function sendVerification(
   deps: ServiceDependencies,
   input: VerificationSendInput
@@ -122,6 +123,7 @@ export async function sendVerification(
   return 'sent'
 }
 
+/** @throws {AggregateError} If transaction work and cleanup fail before a commit is confirmed. */
 export async function completeVerification(
   deps: Pick<ServiceDependencies, 'config' | 'db'>,
   input: VerificationCompleteInput

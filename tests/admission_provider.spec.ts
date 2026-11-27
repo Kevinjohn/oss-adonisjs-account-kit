@@ -1,7 +1,6 @@
 import { test } from '@japa/runner'
 import { E_ACCOUNT_KIT_INVALID_CONFIGURATION } from '../src/errors.ts'
 import { defineConfig as defineAdmissionConfig } from '../src/admission/config.ts'
-import AdmissionProvider from '../providers/account_admission_provider.ts'
 import { AccountAdmission } from '../src/admission/service.ts'
 import { AccountKit, defineConfig } from '../src/account_kit.ts'
 import { bootTestApp } from './helpers/app.ts'
@@ -12,9 +11,8 @@ test.group('admission provider', () => {
   test('binds one admission service after boot, built on the account service', async ({
     assert,
   }) => {
-    const app = await bootTestApp({ accountKitProvider: 'source' })
+    const app = await bootTestApp({ accountKitProvider: 'source', admissionProvider: true })
     try {
-      new AdmissionProvider(app.app).register()
       app.app.config.set(
         'account_kit',
         defineConfig(makeConfig({ users: makeUsersAdapter(app.db, app.hash) }))
@@ -34,9 +32,8 @@ test.group('admission provider', () => {
   })
 
   test('refuses to build without config/admission.ts', async ({ assert }) => {
-    const app = await bootTestApp({ accountKitProvider: 'source' })
+    const app = await bootTestApp({ accountKitProvider: 'source', admissionProvider: true })
     try {
-      new AdmissionProvider(app.app).register()
       app.app.config.set(
         'account_kit',
         defineConfig(makeConfig({ users: makeUsersAdapter(app.db, app.hash) }))

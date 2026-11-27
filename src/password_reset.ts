@@ -37,6 +37,7 @@ export async function inspectPasswordReset(
   return user !== null && user.email === row.email
 }
 
+/** @throws {AggregateError} If transaction work and cleanup fail before a commit is confirmed. */
 export async function completePasswordReset(
   deps: Pick<ServiceDependencies, 'config' | 'db'>,
   input: PasswordResetCompleteInput

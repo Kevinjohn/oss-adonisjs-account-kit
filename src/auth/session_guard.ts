@@ -31,7 +31,7 @@ const handleKey = 'accountKitSession'
  *
  * @example
  * ```ts
- * import type { AccountKitSessionGuard } from '@kevinjohn/adonisjs-account-kit/auth'
+ * import type { AccountKitSessionGuard } from '@kevinjohn/adonisjs-account-kit/types/auth'
  *
  * const web: AccountKitSessionGuard<typeof userProvider> = auth.use('web')
  * const user = await web.authenticate()
@@ -81,6 +81,8 @@ export class AccountKitSessionGuard<
    * ```ts
    * const user = await guard.authenticate()
    * ```
+   *
+   * @throws {AggregateError} If transaction work and cleanup fail before a commit is confirmed.
    */
   async authenticate(): Promise<RealUser<UserProvider>> {
     if (this.authenticationAttempted) return this.getUserOrFail()
@@ -121,7 +123,7 @@ export class AccountKitSessionGuard<
    * const { session } = await guard.authenticateAsClient(user)
    * ```
    *
-   * @throws {AggregateError} If credential issuance and cleanup both fail, or multiple cleanup steps fail.
+   * @throws {AggregateError} If transaction or credential issuance work and cleanup both fail, or multiple credential cleanup steps fail.
    */
   async authenticateAsClient(user: RealUser<UserProvider>): Promise<AuthClientResponse> {
     const guardUser = await this.#provider.createUserForGuard(user)

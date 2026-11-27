@@ -91,6 +91,7 @@ async function listExportedSessions(trx: Trx, userId: UserId) {
   }))
 }
 
+/** @throws {AggregateError} If transaction work and cleanup fail before a commit is confirmed. */
 export async function exportAccountData(
   deps: ServiceDependencies,
   input: AccountDataInput

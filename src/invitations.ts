@@ -42,6 +42,7 @@ import type { ServiceDependencies } from './service_dependencies.ts'
 
 export { resendInvitation, revokeInvitation, paginateInvitations } from './invitation_management.ts'
 
+/** @throws {AggregateError} If transaction work and cleanup fail before a commit is confirmed. */
 export async function acceptInvitation(
   deps: Pick<ServiceDependencies, 'config' | 'db'>,
   input: InvitationsAcceptInput
@@ -140,6 +141,7 @@ export async function inspectInvitation(
   return row ? { email: row.email, role: row.role } : null
 }
 
+/** @throws {AggregateError} If transaction work and cleanup fail before a commit is confirmed. */
 export async function sendInvitation(
   deps: ServiceDependencies,
   input: InvitationsSendInput
@@ -199,6 +201,8 @@ export async function sendInvitation(
  * the actor and operator paths; a pending invitation otherwise surfaces as E_ACCOUNT_KIT_INVITATION_PENDING.
  * `recheckInvite` locks the inviter row and runs `authorize.invite` again with `trx` and the
  * scope. Lock order: inviter, invitation, then whatever the application locks in `invite`.
+ *
+ * @throws {AggregateError} If transaction work and cleanup fail before a commit is confirmed.
  */
 export async function storeInvitation(
   deps: Pick<ServiceDependencies, 'config' | 'db'>,

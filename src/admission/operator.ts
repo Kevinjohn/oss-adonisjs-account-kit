@@ -36,7 +36,11 @@ async function lockSubject(
   return subject
 }
 
-/** Approve or revoke by email, with the same transitions as an approver and no actor. */
+/**
+ * Approve or revoke by email, with the same transitions as an approver and no actor.
+ *
+ * @throws {AggregateError} If transaction work and cleanup fail before a commit is confirmed.
+ */
 export async function applyOperatorDecision(
   deps: AdmissionContext,
   input: { email: string },
@@ -63,6 +67,8 @@ export async function applyOperatorDecision(
 /**
  * Record operator invitation evidence for an existing account. `role` is stored on the record
  * only; it grants nothing. Refuses an account that already has evidence.
+ *
+ * @throws {AggregateError} If transaction work and cleanup fail before a commit is confirmed.
  */
 export async function grantOperatorInvitation(
   deps: AdmissionContext,
