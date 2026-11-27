@@ -38,10 +38,9 @@ test('packs the build and top-level documents, not docs, examples or planning do
       'CHANGELOG.md',
     ]
     const privateFiles = [
-      'build/auth/main.js',
-      'build/http/main.js',
-      'build/transaction/main.js',
       'build/bin/check_changed.js',
+      'build/examples/hypermedia/app/validators/old_input.d.ts',
+      'build/.prepare-complete',
       'build/tests/package_exports.spec.js',
       'docs/guide/usage.md',
       'examples/api/README.md',

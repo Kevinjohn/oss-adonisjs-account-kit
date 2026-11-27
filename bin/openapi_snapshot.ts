@@ -1,10 +1,9 @@
 // Regenerates the committed OpenAPI snapshots from the built package: `pnpm build` first.
 // tests/managed_openapi_snapshot.spec.ts fails until a schema change is regenerated and reviewed.
 import { readFile, writeFile } from 'node:fs/promises'
+import type * as Http from '../src/http/main.ts'
 const builtHttp = '../build/src/http/main.js'
-const { generateManagedOpenApi, planManagedRoutes } = (await import(
-  builtHttp
-)) as typeof import('../src/http/main.ts')
+const { generateManagedOpenApi, planManagedRoutes } = (await import(builtHttp)) as typeof Http
 
 const directory = new URL('../tests/fixtures/openapi/', import.meta.url)
 const input = JSON.parse(await readFile(new URL('snapshot_input.json', directory), 'utf8'))
