@@ -38,61 +38,58 @@ export function addAuthenticationDiagnostics(
       'features',
       'Account deletion sends a confirmation email; also select an email service such as passwordReset'
     )
-  if (choices.authentication) {
-    if (!state.guards.includes(choices.authentication.guard))
-      addSetupDiagnostic(
-        diagnostics,
-        'authentication.guard',
-        'Named existing guard was not found in config/auth.ts; add it yourself before activation'
-      )
-    else if (
-      state.guardStrategies[choices.authentication.guard] !== choices.authentication.strategy
+  if (!choices.authentication) return
+  if (!state.guards.includes(choices.authentication.guard))
+    addSetupDiagnostic(
+      diagnostics,
+      'authentication.guard',
+      'Named existing guard was not found in config/auth.ts; add it yourself before activation'
     )
-      addSetupDiagnostic(
-        diagnostics,
-        'authentication.guard',
-        'Selected guard must use the matching conventional sessionGuard or tokensGuard driver'
-      )
-    else if (state.guardModels[choices.authentication.guard] !== choices.user.model)
-      addSetupDiagnostic(
-        diagnostics,
-        'authentication.guard',
-        'Selected guard must load the selected user model through its conventional user provider'
-      )
-    if (
-      choices.authentication.strategy === 'access_tokens' &&
-      state.guardTokenProviders[choices.authentication.guard] !== 'accessTokens'
+  else if (state.guardStrategies[choices.authentication.guard] !== choices.authentication.strategy)
+    addSetupDiagnostic(
+      diagnostics,
+      'authentication.guard',
+      'Selected guard must use the matching conventional sessionGuard or tokensGuard driver'
     )
+  else if (state.guardModels[choices.authentication.guard] !== choices.user.model)
+    addSetupDiagnostic(
+      diagnostics,
+      'authentication.guard',
+      'Selected guard must load the selected user model through its conventional user provider'
+    )
+  if (
+    choices.authentication.strategy === 'access_tokens' &&
+    state.guardTokenProviders[choices.authentication.guard] !== 'accessTokens'
+  )
+    addSetupDiagnostic(
+      diagnostics,
+      'authentication.guard',
+      'Selected token guard must use the model accessTokens provider'
+    )
+  if (choices.authentication.strategy === 'session') {
+    if (!choices.authentication.session)
       addSetupDiagnostic(
         diagnostics,
-        'authentication.guard',
-        'Selected token guard must use the model accessTokens provider'
+        'authentication.session',
+        'Describe cookie, CSRF, origin and session storage checks'
       )
-    if (choices.authentication.strategy === 'session') {
-      if (!choices.authentication.session)
-        addSetupDiagnostic(
-          diagnostics,
-          'authentication.session',
-          'Describe cookie, CSRF, origin and session storage checks'
-        )
-      else if (production && Object.values(choices.authentication.session).some((v) => v !== true))
-        addSetupDiagnostic(
-          diagnostics,
-          'authentication.session',
-          'Production requires secure cookie, CSRF, trusted origin and persistent storage verification'
-        )
-    } else if (!choices.authentication.token?.revocation)
+    else if (production && Object.values(choices.authentication.session).some((v) => v !== true))
       addSetupDiagnostic(
         diagnostics,
-        'authentication.token.revocation',
-        'Token revocation must be configured'
+        'authentication.session',
+        'Production requires secure cookie, CSRF, trusted origin and persistent storage verification'
       )
-    if (!choices.authentication.applicationRouteRevocation)
-      addSetupDiagnostic(
-        diagnostics,
-        'authentication.applicationRouteRevocation',
-        'Generated managed routes remain disabled until application-owned protected routes use the account-access middleware and revocation is verified; rerun setup with this choice true to activate',
-        'action'
-      )
-  }
+  } else if (!choices.authentication.token?.revocation)
+    addSetupDiagnostic(
+      diagnostics,
+      'authentication.token.revocation',
+      'Token revocation must be configured'
+    )
+  if (!choices.authentication.applicationRouteRevocation)
+    addSetupDiagnostic(
+      diagnostics,
+      'authentication.applicationRouteRevocation',
+      'Generated managed routes remain disabled until application-owned protected routes use the account-access middleware and revocation is verified; rerun setup with this choice true to activate',
+      'action'
+    )
 }
