@@ -46,7 +46,7 @@ class InvalidConfigurationException extends RuntimeException {
     message: string,
     options?: ErrorOptions
   ) {
-    super(message, options && 'cause' in options ? { cause: options.cause } : undefined)
+    super(message, options)
   }
 }
 
