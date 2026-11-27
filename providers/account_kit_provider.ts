@@ -2,7 +2,7 @@ import { RuntimeException } from '@adonisjs/core/exceptions'
 import type { ApplicationService } from '@adonisjs/core/types'
 import { AccountKit } from '../src/account_kit.ts'
 import { AccountKitCallbackConfiguration } from '../src/account_kit_callback_configuration.ts'
-import { resolveAccountKitConfig } from '../src/config_resolution.ts'
+import { AccountKitConfigResolution, resolveAccountKitConfig } from '../src/config_resolution.ts'
 
 declare module '@adonisjs/core/types' {
   interface ContainerBindings {
@@ -15,6 +15,7 @@ export default class AccountKitProvider {
   constructor(protected app: ApplicationService) {}
 
   register(): void {
+    this.app.container.singleton(AccountKitConfigResolution, () => new AccountKitConfigResolution())
     this.app.container.singleton(
       AccountKitCallbackConfiguration,
       () => new AccountKitCallbackConfiguration()

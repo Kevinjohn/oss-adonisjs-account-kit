@@ -87,6 +87,17 @@ test.group('callback registry', () => {
     })
   })
 
+  test('a config with registered callbacks resolves once per application', async ({ assert }) => {
+    await withApp(async (app) => {
+      const registered = callbacks(app)
+      app.app.config.set('account_kit', defineConfig(plainConfig()))
+      const registry = await app.app.container.make('account_kit.callbacks')
+      registry.register(async () => registered)
+      const first = await resolveAccountKitConfig(app.app)
+      assert.equal(await resolveAccountKitConfig(app.app), first)
+    })
+  })
+
   test('registered callbacks reach the built admission service', async ({ assert }) => {
     await withApp(async (app) => {
       const onAdmissionNotification = async () => {}
