@@ -3,7 +3,7 @@
 import type { BaseCommand } from '@adonisjs/core/ace'
 import { AccountAdmission } from './service.ts'
 
-export const ADMISSION_NOT_INSTALLED =
+const ADMISSION_NOT_INSTALLED =
   'Admission is not installed. Run node ace account-kit:admission:install'
 
 /**
