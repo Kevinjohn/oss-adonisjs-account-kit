@@ -7,7 +7,10 @@ import { isPasswordAllowed as matchesPasswordRules } from './password.ts'
 import type { ServiceDependencies } from './service_dependencies.ts'
 import type { AccountExport } from './types.ts'
 
-type Dependencies = Pick<ServiceDependencies, 'config' | 'throttler' | 'exportFaults'>
+type Dependencies = Pick<
+  ServiceDependencies,
+  'config' | 'throttler' | 'exportFaults' | 'revocationOutcomes'
+>
 
 export function createManagedHttpService(deps: Dependencies) {
   const computeMagicLinkExpiry = (): number =>
@@ -18,6 +21,8 @@ export function createManagedHttpService(deps: Dependencies) {
   return {
     /** The fault raised after `document` was exported and committed, if any. */
     exportFault: (document: AccountExport) => deps.exportFaults.get(document),
+    /** The outcome of a revocation that committed before `error` was thrown, if any. */
+    revocationOutcome: (error: unknown) => deps.revocationOutcomes.get(error),
     /** Local retention deadline for acknowledged managed magic-link requests. */
     magicLinkExpiresAt: computeMagicLinkExpiry,
     /** Whether `value` is a string that meets the configured password policy. */

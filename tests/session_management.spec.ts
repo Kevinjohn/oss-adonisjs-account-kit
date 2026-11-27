@@ -6,7 +6,6 @@ import {
   E_ACCOUNT_KIT_POST_COMMIT,
   E_ACCOUNT_KIT_SESSION_NOT_FOUND,
 } from '../src/errors.ts'
-import { getRevocationOutcome } from '../src/session_revocation.ts'
 import type {
   AccountKitConfig,
   CredentialChangeContext,
@@ -377,9 +376,11 @@ test.group('sign-in management with sessions', (group) => {
       .revoke({ current: mine, id: row.id })
       .catch((caught: unknown) => caught)
     assert.instanceOf(error, E_ACCOUNT_KIT_POST_COMMIT)
-    assert.deepEqual(getRevocationOutcome(error), { current: true })
+    assert.deepEqual(account.managedHttp.revocationOutcome(error), { current: true })
     assert.lengthOf(await kit.db.from('account_sessions'), 0)
-    assert.isUndefined(getRevocationOutcome(new E_ACCOUNT_KIT_POST_COMMIT('unrelated')))
+    assert.isUndefined(
+      account.managedHttp.revocationOutcome(new E_ACCOUNT_KIT_POST_COMMIT('unrelated'))
+    )
   })
 
   test('every operation needs the capability', async ({ assert }) => {
