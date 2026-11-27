@@ -34,7 +34,7 @@ flowchart TD
 
 ```mermaid
 flowchart TD
-    A["Host provider boot calls CallbackRegistry.register(factory)"] --> B{"Factory already registered or resolution started?"}
+    A["Host provider boot calls CallbackConfiguration.register(factory)"] --> B{"Factory already registered or resolution started?"}
     B -->|Yes| X["Throw E_ACCOUNT_KIT_INVALID_CONFIGURATION"]
     B -->|No| C["Store factory for lazy resolution"]
     C --> D{"Which entry resolves the configuration?"}
@@ -59,9 +59,9 @@ flowchart TD
     V -->|Failure| I
     V -->|Success| H
     J -->|Service provider| H["Construct service with resolved configuration"]
-    J -->|Doctor| K["AccountKitDoctor passes merged config to runDoctor"]
+    J -->|Doctor| K["AccountKitDoctor passes resolved config to runDoctor"]
 ```
 
 For the diagnostic checks after config resolution, see [US-ACCOUNT-32](US-ACCOUNT-32-diagnose-account-kit.md).
 
-**Code references:** [CallbackRegistry](../src/callback_configuration.ts), [Account Kit provider](../providers/account_kit_provider.ts), [doctor command](../commands/doctor.ts), [resolveAccountKitConfig](../src/config_resolution.ts), [resolveConfig](../src/config.ts), [admission provider](../providers/account_admission_provider.ts), [resolveAdmissionConfig](../src/admission/config.ts)
+**Code references:** [CallbackConfiguration](../src/callback_configuration.ts), [Account Kit provider](../providers/account_kit_provider.ts), [doctor command](../commands/doctor.ts), [resolveAccountKitConfig](../src/config_resolution.ts), [resolveConfig](../src/config.ts), [admission provider](../providers/account_admission_provider.ts), [resolveAdmissionConfig](../src/admission/config.ts)

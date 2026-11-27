@@ -41,7 +41,7 @@ flowchart TD
  C -->|Yes| D{"resolveNextApprovalStatus permits transition?"}
  D -->|No| X
  D -->|Yes| E["applyTransition stores revoked status, decision time and null actor ID"]
- E --> F["Commit; withAdmissionEvent invokes configured admission.revoked observer"]
+ E --> F["Commit; withAdmissionNotification invokes configured admission.revoked observer"]
  F --> G{"Follow-ups succeed?"}
  G -->|No| H["Ace retains E_ACCOUNT_KIT_POST_COMMIT; completed prints one diagnostic and exits nonzero"]
  G -->|Yes| I["Service returns AdmissionRecord and writeResult prints revoked, userId and email"]

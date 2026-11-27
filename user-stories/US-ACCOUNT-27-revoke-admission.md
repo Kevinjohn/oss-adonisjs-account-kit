@@ -45,7 +45,7 @@ flowchart TD
  E -->|Yes| G{"resolveNextApprovalStatus sees approved?"}
  G -->|No| H["Throw E_ACCOUNT_KIT_ADMISSION_DECISION"]
  G -->|Yes| I["applyTransition upserts revoked decision, actor and time"]
- I --> J["Commit; withAdmissionEvent invokes configured observer"]
+ I --> J["Commit; withAdmissionNotification invokes configured observer"]
  J --> K{"Follow-ups succeed?"}
  K -->|Yes| L["Return updated AdmissionRecord"]
  K -->|No| M["Throw E_ACCOUNT_KIT_POST_COMMIT with revocation saved"]

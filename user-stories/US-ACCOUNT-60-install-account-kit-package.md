@@ -58,9 +58,11 @@ flowchart TD
     M -->|No| D
     M -->|Yes| H["makeUsingStub writes config and migrations; existing files are kept"]
     H --> I["updateRcFile adds provider if absent and commands entry unless detected"]
-    I --> J["defineEnvValidations declares APP_URL and ACCOUNT_KIT_FRONTEND_URL"]
+    I --> P["registerMiddleware adds early accountKitProofHeaders server middleware"]
+    P --> J["defineEnvValidations declares APP_URL and ACCOUNT_KIT_FRONTEND_URL"]
     H -->|Later failure| X["Propagate error; earlier writes may remain"]
     I -->|Failure| X
+    P -->|Failure| X
     J -->|Failure| X
 ```
 

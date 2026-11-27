@@ -11,7 +11,7 @@ As an application integrator, I want to connect Account Kit to a supported user 
 
 ## Acceptance criteria
 
-- **Inputs and result:** The adapter contract lets `AccountKit` read, create, update and delete the application user inside supplied database transactions. The generated config selects Lucid; Drizzle, Prisma and SQL factories are included. Set `users` in config or supply it through the [provider callback registry](US-ACCOUNT-65-register-provider-callbacks.md), then use the same service API; schema/driver compatibility follows the adapter guide and contract suite.
+- **Inputs and result:** The adapter contract lets `AccountKit` read, create, update and delete the application user inside supplied database transactions. Setup generates a Lucid adapter when `lucid` is selected or imports the host user adapter when `custom` is selected; Drizzle, Prisma and SQL factories are included. Set `users` in config or supply it through the [provider callback registry](US-ACCOUNT-65-register-provider-callbacks.md), then use the same service API; schema/driver compatibility follows the adapter guide and contract suite.
 
 - With prepared hashing, Lucid create/save hooks observe the initial null password. A transaction-bound query stores the hash and updates the returned model. Both writes commit together. The instance update/save hooks do not observe prepared hash replacement. Supplying verifyPassword alone leaves hashing to the model inside the transaction. See [adapter semantics](../docs/guide/adapters.md) and [hash timing tests](../tests/password_hash_timing.spec.ts).
 
@@ -19,7 +19,7 @@ As an application integrator, I want to connect Account Kit to a supported user 
 
 ```mermaid
 flowchart TD
- A["Integrator selects an adapter matching the app user model and database"] --> B{"Does adapter meet user/transaction contract?"}
+ A["Integrator selects an adapter matching the app user model and database"] --> B{"Has the integrator checked the adapter and transaction contract?"}
  B -->|No| C["Fix mapping or schema integration before enabling account flows"]
  B -->|Yes| D["Account services use configured adapter for user operations"]
 ```
@@ -30,10 +30,10 @@ Scope: this is the Account Kit service/command path. Host UI, route policy and e
 
 ```mermaid
 flowchart TD
- A["Supply users to defineConfig or AccountKitCallbackRegistry"] --> B{"resolveConfig accepts the adapter for the selected capabilities?"}
+ A["Supply users to defineConfig or AccountKitCallbackConfiguration"] --> B{"resolveConfig accepts the adapter shape and required callbacks?"}
  B -->|No| X["Reject configuration before the service is used"]
- B -->|Yes| C["Account service passes transaction to adapter at write boundary"]
- C --> D["Lucid, Drizzle, Prisma or SQL adapter persists application user"]
+ B -->|Yes| C["Account service passes the transaction to adapter writes; host verifies schema and transaction behavior"]
+ C --> D["Configured built-in or custom adapter persists application user"]
 ```
 
-**Code references:** [adapter validation](../src/config.ts), [config resolution](../src/config_resolution.ts), [Lucid implementation](../src/adapters/lucid.ts), [`tests/drizzle_adapter.spec.ts`](../tests/drizzle_adapter.spec.ts), [`tests/prisma_adapter.spec.ts`](../tests/prisma_adapter.spec.ts), [`tests/sql_adapter.spec.ts`](../tests/sql_adapter.spec.ts)
+**Code references:** [adapter validation](../src/config.ts), [config resolution](../src/config_resolution.ts), [setup adapter selection](../src/setup/generated_account_config.ts), [Lucid implementation](../src/adapters/lucid.ts), [`tests/drizzle_adapter.spec.ts`](../tests/drizzle_adapter.spec.ts), [`tests/prisma_adapter.spec.ts`](../tests/prisma_adapter.spec.ts), [`tests/sql_adapter.spec.ts`](../tests/sql_adapter.spec.ts)

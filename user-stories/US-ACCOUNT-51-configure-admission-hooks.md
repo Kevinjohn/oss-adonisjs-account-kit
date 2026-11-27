@@ -4,7 +4,7 @@ As an application integrator, I want admission evidence to follow invitation acc
 
 **Status:** Current when admission is installed and host selects the wrappers
 **Access:** The host configures lifecycle callbacks; wrappers write through the transaction supplied by Account Kit.
-**Entry:** Wrap `onInvitationAccepted` with `withInvitationEvidence(...)` and set `onAccountDeletingTransaction: withAdmissionCleanup(...)` in `config/account_kit.ts` or register those callbacks through `AccountKitCallbackRegistry`.
+**Entry:** Wrap `onInvitationAccepted` with `withInvitationEvidence(...)` and set `onAccountDeletingTransaction: withAdmissionCleanup(...)` in `config/account_kit.ts` or register those callbacks through `AccountKitCallbackConfiguration`.
 **Documentation:** [Admission lifecycle hooks](../docs/guide/admission.md)
 **Source:** [`src/admission/invitation_evidence.ts`](../src/admission/invitation_evidence.ts)
 **Coverage:** [`tests/admission_cleanup.spec.ts`](../tests/admission_cleanup.spec.ts), [`tests/admission_invitation_evidence.spec.ts`](../tests/admission_invitation_evidence.spec.ts)

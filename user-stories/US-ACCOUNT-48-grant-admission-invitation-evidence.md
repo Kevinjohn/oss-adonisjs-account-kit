@@ -40,7 +40,7 @@ flowchart TD
  C -->|Yes| D{"No existing invitation evidence?"}
  D -->|No| X
  D -->|Yes| E["Upsert invitation evidence with operator source and decision preserved"]
- E --> F["Commit; withAdmissionEvent invokes configured admission.invitation_granted observer"]
+ E --> F["Commit; withAdmissionNotification invokes configured admission.invitation_granted observer"]
  F --> G{"Follow-ups succeed?"}
  G -->|No| H["Ace retains E_ACCOUNT_KIT_POST_COMMIT; completed prints one diagnostic and exits nonzero"]
  G -->|Yes| I["Service returns AdmissionRecord and writeResult prints granted, userId and email, role"]
