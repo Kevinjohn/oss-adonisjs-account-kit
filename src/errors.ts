@@ -287,6 +287,22 @@ class PostCommitException extends AccountKitException {
 export const E_ACCOUNT_KIT_POST_COMMIT = PostCommitException
 
 /**
+ * Single-use rows changed between the locked read and the delete that consumes them, so the
+ * delete removed a different number of rows. The transaction rolls back; retry the operation.
+ */
+class ConsumedRowsChangedException extends AccountKitException {
+  static code = 'E_ACCOUNT_KIT_CONSUMED_ROWS_CHANGED'
+  static status = 500
+
+  constructor(table: string) {
+    super(`account_kit: ${table} rows changed while they were consumed`)
+  }
+}
+
+/** @reexport */
+export const E_ACCOUNT_KIT_CONSUMED_ROWS_CHANGED = ConsumedRowsChangedException
+
+/**
  * Whether Account Kit reported a follow-up failure after committing the transaction.
  * Recovery depends on the operation. A committed mutation should never be replayed.
  *
