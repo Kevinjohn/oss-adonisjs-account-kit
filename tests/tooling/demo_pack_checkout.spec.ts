@@ -2,6 +2,7 @@ import { test } from '@japa/runner'
 import assert from 'node:assert/strict'
 import { createHash } from 'node:crypto'
 import { spawn } from 'node:child_process'
+import { existsSync } from 'node:fs'
 import { chmod, mkdtemp, mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { basename, join } from 'node:path'
@@ -164,6 +165,12 @@ test.group('demo checkout archive', (group) => {
       assert.equal(retainedBytes.equals(bytes), true)
       const candidateMetadata = await readFile(join(folders[0]!, 'candidate.json'), 'utf8')
       assert.equal(candidateMetadata.includes(digest), true)
+      if (name === 'feature') {
+        assert.equal(existsSync(join(appDir, 'config/account_kit.ts')), true)
+        assert.equal(existsSync(join(appDir, 'start/account_kit_routes.ts')), true)
+        assert.equal(existsSync(join(appDir, 'config/account_kit.ts.stub')), false)
+        assert.equal(existsSync(join(appDir, 'start/account_kit_routes.ts.stub')), false)
+      }
     })
   }
 
