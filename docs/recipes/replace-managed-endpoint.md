@@ -26,11 +26,13 @@ only `account.profile.show`:
 import app from '@adonisjs/core/services/app'
 import router from '@adonisjs/core/services/router'
 import { AccountKit } from '@kevinjohn/adonisjs-account-kit'
-import { createManagedGuard, registerManagedRoutes } from '@kevinjohn/adonisjs-account-kit/http'
+import { createManagedGuard } from '@kevinjohn/adonisjs-account-kit/http'
 import { middleware } from '#start/kernel'
 import AccountProfileController from '#controllers/account_profile_controller'
 
-registerManagedRoutes(router, {
+const managedRoutes = await app.container.make('account_kit.managed_routes')
+
+managedRoutes.register(router, {
   prefix: '/account-kit',
   kit: () => app.container.make(AccountKit),
   guard: createManagedGuard({

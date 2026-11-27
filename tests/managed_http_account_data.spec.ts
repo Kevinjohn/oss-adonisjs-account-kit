@@ -1,5 +1,5 @@
 import { test } from '@japa/runner'
-import { registerManagedRoutes } from '../src/http/managed.ts'
+import { ManagedRoutes } from '../src/http/route_registration.ts'
 import type { AccountKitConfig, AccountUser, CurrentAccountInput, Trx } from '../src/types.ts'
 import { useTestApp } from './helpers/app.ts'
 import { accessTokenDefaults } from './helpers/access_tokens.ts'
@@ -38,7 +38,7 @@ test.group('managed account data routes', (group) => {
       publicCredential: (credential: string) => credential,
     })
     const { router, routes, context } = fakeManagedHttp()
-    registerManagedRoutes(router, {
+    new ManagedRoutes().register(router, {
       prefix: '/api/v1',
       kit: async () => service.account,
       guard,

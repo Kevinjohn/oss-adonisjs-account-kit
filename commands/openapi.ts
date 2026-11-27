@@ -3,7 +3,6 @@ import { resolve } from 'node:path'
 import { BaseCommand, flags } from '@adonisjs/core/ace'
 import { configProvider } from '@adonisjs/core'
 import { generateManagedOpenApi } from '../src/http/openapi.ts'
-import { managedRouteRegistration } from '../src/http/route_registration.ts'
 
 export default class ManagedOpenApi extends BaseCommand {
   static commandName = 'account-kit:openapi'
@@ -26,10 +25,11 @@ export default class ManagedOpenApi extends BaseCommand {
     const router = await this.app.container.make('router')
     // Routes are queued until commit; committing also runs the managed collision checks.
     if (!router.commited) router.commit()
-    const registration = managedRouteRegistration(router)
+    const managedRoutes = await this.app.container.make('account_kit.managed_routes')
+    const registration = managedRoutes.registration(router)
     if (!registration) {
       this.logger.error(
-        'No Account Kit managed routes are registered. Call registerManagedRoutes in start/routes.ts.'
+        'No Account Kit managed routes are registered. Register them with ManagedRoutes.register in start/routes.ts.'
       )
       this.exitCode = 1
       return

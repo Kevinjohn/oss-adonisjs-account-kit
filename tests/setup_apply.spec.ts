@@ -355,12 +355,12 @@ test.group('setup apply', (group) => {
     assert.isFalse(
       plan.changes
         .find(({ path }) => path === 'start/account_kit_routes.ts')
-        ?.content.includes('registerManagedRoutes(')
+        ?.content.includes('managedRoutes.register(')
     )
     await applySetup(root, plan)
     assert.notInclude(
       await readFile(join(root, 'start/account_kit_routes.ts'), 'utf8'),
-      'registerManagedRoutes('
+      'managedRoutes.register('
     )
     const replay = await planSetup(choices, await inspectSetup(root), {
       apply: true,
@@ -384,7 +384,7 @@ test.group('setup apply', (group) => {
     )
     assert.include(
       activation.changes.find(({ path }) => path === 'start/account_kit_routes.ts')?.content,
-      'registerManagedRoutes('
+      'managedRoutes.register('
     )
     assert.equal(
       activation.changes.find(({ path }) => path === 'start/account_kit_routes.ts')?.action,
@@ -393,7 +393,7 @@ test.group('setup apply', (group) => {
     await applySetup(root, activation)
     assert.include(
       await readFile(join(root, 'start/account_kit_routes.ts'), 'utf8'),
-      'registerManagedRoutes('
+      'managedRoutes.register('
     )
     assert.isFalse(activation.readiness.workflowVerified)
     const tokenChoices = structuredClone(activeChoices)
@@ -587,7 +587,7 @@ test.group('setup apply', (group) => {
     })
     const mount = next.changes.find(({ path }) => path === 'start/account_kit_routes.ts')!
     assert.equal(mount.action, 'update')
-    assert.notInclude(mount.content, 'registerManagedRoutes')
+    assert.notInclude(mount.content, 'managedRoutes.register')
     await applySetup(root, next)
     assert.equal(await readFile(join(root, 'start/routes.ts'), 'utf8'), routesBefore)
     assert.equal(await readFile(join(root, 'start/account_kit_routes.ts'), 'utf8'), mount.content)
@@ -608,7 +608,7 @@ test.group('setup apply', (group) => {
     await applySetup(root, enabled)
     assert.include(
       await readFile(join(root, 'start/account_kit_routes.ts'), 'utf8'),
-      'registerManagedRoutes'
+      'managedRoutes.register'
     )
   })
 

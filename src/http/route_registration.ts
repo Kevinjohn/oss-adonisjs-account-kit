@@ -1,6 +1,9 @@
-/** What `registerManagedRoutes` mounted on a router, recorded for documentation and duplicate checks. */
+/** The managed routes an application mounted, recorded per router for documentation and duplicate checks. */
 import type { Router } from '@adonisjs/core/http'
+import { mountManagedRoutes } from './managed.ts'
+import type { ManagedRoutesOptions } from './managed_types.ts'
 import type { ManagedRouteRegistration } from './openapi_types.ts'
+import type { ManagedRoute } from './routes.ts'
 
 export type {
   JsonSchema,
@@ -9,28 +12,54 @@ export type {
   ReplaceableRequestEndpoint,
 } from './openapi_types.ts'
 
-const registrationKey = Symbol('account_kit.managed_route_registration')
-
-type RegisteredRouter = Router & { [registrationKey]?: ManagedRouteRegistration }
-
-export function recordManagedRegistration(
-  router: Router,
-  registration: ManagedRouteRegistration
-): void {
-  Object.defineProperty(router, registrationKey, { value: registration, configurable: true })
+declare module '@adonisjs/core/types' {
+  interface ContainerBindings {
+    'account_kit.managed_routes': ManagedRoutes
+  }
 }
 
 /**
- * The managed routes registered on this router, or `undefined` when none were registered.
- *
- * @example
- * ```ts
- * import { managedRouteRegistration } from '@kevinjohn/adonisjs-account-kit/http'
- * import router from '@adonisjs/core/services/router'
- *
- * const registration = managedRouteRegistration(router)
- * ```
+ * Mounts the managed routes and records what each router received. The provider binds one
+ * instance as `account_kit.managed_routes`; resolve it from the container.
  */
-export function managedRouteRegistration(router: Router): ManagedRouteRegistration | undefined {
-  return (router as RegisteredRouter)[registrationKey]
+export class ManagedRoutes {
+  readonly #registrations = new WeakMap<Router, ManagedRouteRegistration>()
+
+  /**
+   * Explicitly register one selected managed route group. Never called by the package root.
+   *
+   * @example
+   * ```ts
+   * managedRoutes.register(router, {
+   *   prefix: '/account',
+   *   enabled: ['passwordReset'],
+   *   kit: () => app.container.make(AccountKit),
+   *   guard,
+   * })
+   * ```
+   */
+  register<Credential>(
+    router: Router,
+    options: ManagedRoutesOptions<Credential>
+  ): readonly ManagedRoute[] {
+    const { routes, registration } = mountManagedRoutes(
+      router,
+      options,
+      this.#registrations.has(router)
+    )
+    this.#registrations.set(router, registration)
+    return routes
+  }
+
+  /**
+   * The managed routes registered on this router, or `undefined` when none were registered.
+   *
+   * @example
+   * ```ts
+   * const registration = managedRoutes.registration(router)
+   * ```
+   */
+  registration(router: Router): ManagedRouteRegistration | undefined {
+    return this.#registrations.get(router)
+  }
 }

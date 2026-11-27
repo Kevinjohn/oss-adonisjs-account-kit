@@ -58,9 +58,11 @@ route. The example uses the package's public service and HTTP exports:
 import app from '@adonisjs/core/services/app'
 import router from '@adonisjs/core/services/router'
 import { AccountKit } from '@kevinjohn/adonisjs-account-kit'
-import { createManagedGuard, registerManagedRoutes } from '@kevinjohn/adonisjs-account-kit/http'
+import { createManagedGuard } from '@kevinjohn/adonisjs-account-kit/http'
 
-registerManagedRoutes(router, {
+const managedRoutes = await app.container.make('account_kit.managed_routes')
+
+managedRoutes.register(router, {
   prefix: '/account-kit',
   enabled: ['passwordReset'],
   kit: () => app.container.make(AccountKit),

@@ -299,7 +299,7 @@ test.group('setup social providers', (group) => {
       assert.deepEqual(inert.endpointLocations, [])
       assert.notInclude(
         inert.changes.find(({ path }) => path === 'start/account_kit_routes.ts')!.content,
-        'registerManagedRoutes('
+        'managedRoutes.register('
       )
       const inertHeaders = inert.changes.find(
         ({ path }) => path === 'app/middleware/account_kit_proof_headers_middleware.ts'
@@ -329,7 +329,7 @@ test.group('setup social providers', (group) => {
       assert.notInclude(active.endpoints, 'auth.oauth.redirect')
       assert.include(
         active.changes.find(({ path }) => path === 'start/account_kit_routes.ts')!.content,
-        'registerManagedRoutes('
+        'managedRoutes.register('
       )
       assert.equal(
         active.changes.find(({ path }) => path === 'start/account_kit_routes.ts')!.action,

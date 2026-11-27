@@ -1,9 +1,11 @@
 import router from '@adonisjs/core/services/router'
 import app from '@adonisjs/core/services/app'
 import { AccountKit } from '@kevinjohn/adonisjs-account-kit'
-import { createManagedGuard, registerManagedRoutes } from '@kevinjohn/adonisjs-account-kit/http'
+import { createManagedGuard } from '@kevinjohn/adonisjs-account-kit/http'
 
-registerManagedRoutes(router, {
+const managedRoutes = await app.container.make('account_kit.managed_routes')
+
+managedRoutes.register(router, {
   prefix: '/api',
   enabled: [
     'authentication',

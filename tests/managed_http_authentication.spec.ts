@@ -2,7 +2,8 @@ import { test } from '@japa/runner'
 import type { HttpContext } from '@adonisjs/core/http'
 import { AccountKit } from '../src/account_kit.ts'
 import { E_ACCOUNT_KIT_INVALID_SESSION } from '../src/errors.ts'
-import { registerManagedRoutes, type ManagedRoutesOptions } from '../src/http/managed.ts'
+import { type ManagedRoutesOptions } from '../src/http/managed.ts'
+import { ManagedRoutes } from '../src/http/route_registration.ts'
 import { fakeManagedHttp, stubGuard } from './helpers/managed_http_fakes.ts'
 
 test.group('managed HTTP dispatch', () => {
@@ -32,7 +33,7 @@ test.group('managed HTTP dispatch', () => {
     } as unknown as AccountKit
     for (const verificationRequired of [undefined, false]) {
       const { router, routes, context } = fakeManagedHttp()
-      registerManagedRoutes(router, {
+      new ManagedRoutes().register(router, {
         prefix: '/api/v1',
         kit: async () => kit,
         guard: stubGuard({
@@ -75,7 +76,7 @@ test.group('managed HTTP dispatch', () => {
         authentication: { guard: 'web', strategy: 'session' },
       },
     } as never)
-    registerManagedRoutes(router, {
+    new ManagedRoutes().register(router, {
       prefix: '/api/v1',
       kit: async () => kit,
       guard: stubGuard(),
@@ -108,7 +109,7 @@ test.group('managed HTTP dispatch', () => {
         },
       },
     } as unknown as AccountKit
-    registerManagedRoutes(router, {
+    new ManagedRoutes().register(router, {
       prefix: '/api/v1',
       kit: async () => kit,
       guard: stubGuard({
@@ -138,7 +139,7 @@ test.group('managed HTTP dispatch', () => {
   test('missing guard evidence gives 401 without calling account services', async ({ assert }) => {
     const { router, routes, context } = fakeManagedHttp()
     let serviceCalled = false
-    registerManagedRoutes(router, {
+    new ManagedRoutes().register(router, {
       prefix: '/api/v1',
       kit: async () =>
         ({
@@ -165,7 +166,7 @@ test.group('managed HTTP dispatch', () => {
 
   test('token login returns only the opaque bearer value', async ({ assert }) => {
     const { router, routes, context } = fakeManagedHttp()
-    registerManagedRoutes(router, {
+    new ManagedRoutes().register(router, {
       prefix: '/api/v1',
       kit: async () =>
         ({
@@ -226,7 +227,7 @@ test.group('managed HTTP dispatch', () => {
       },
       socialAuthentication: {},
     } as unknown as AccountKit
-    registerManagedRoutes(router, {
+    new ManagedRoutes().register(router, {
       prefix: '/api/v1',
       kit: async () => kit,
       guard: stubGuard({
@@ -267,7 +268,7 @@ test.group('managed HTTP dispatch', () => {
         managedHttp: { assertGuard: () => {} },
         authentication: { login: async () => ({ account, credential: {} }) },
       } as unknown as AccountKit
-      registerManagedRoutes(router, {
+      new ManagedRoutes().register(router, {
         prefix: '/api/v1',
         kit: async () => kit,
         guard: stubGuard({
@@ -307,7 +308,7 @@ test.group('managed HTTP dispatch', () => {
   test('session login fails closed without Shield CSRF state', async ({ assert }) => {
     const { router, routes, context } = fakeManagedHttp()
     let loggedIn = false
-    registerManagedRoutes(router, {
+    new ManagedRoutes().register(router, {
       prefix: '/api/v1',
       kit: async () =>
         ({

@@ -64,7 +64,7 @@ const { account, credential } = await kit.magicLink.complete({ token, verifier }
 
 ## Managed routes
 
-With `registerManagedRoutes`, add `magicLinkLogin` to `enabled`:
+With `managedRoutes.register`, add `magicLinkLogin` to `enabled`:
 
 | Method | Path                      | Body                          | Success                             |
 | ------ | ------------------------- | ----------------------------- | ----------------------------------- |

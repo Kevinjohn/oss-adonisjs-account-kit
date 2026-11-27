@@ -31,7 +31,7 @@ Scope: public managed route and visitor-local hint resolution; the host owns the
 
 ```mermaid
 flowchart TD
-    A["registerManagedRoutes selects socialAuthentication without excluding auth.methods"] --> B["GET auth/methods reaches public social methods handler"]
+    A["managedRoutes.register selects socialAuthentication without excluding auth.methods"] --> B["GET auth/methods reaches public social methods handler"]
     B --> D["auth.methods reads server-session hint; if configured, use lastUsedMethod extension result"]
     D -->|Read fails| X["Propagate methods-request failure"]
     D --> C["Allowlist selected value to password or extensions.social.providers; return that host inventory and nullable lastUsedMethod with 200"]

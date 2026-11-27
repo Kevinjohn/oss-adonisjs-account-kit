@@ -3,7 +3,6 @@ import {
   getDefaultImportName,
   hasAmbiguousRuntimeModuleImports,
   hasUnsafeBindingReferences,
-  getImportedBindingName,
   parseSetupSource,
   walk,
   type SetupSource,
@@ -37,34 +36,32 @@ export async function planRouteImport(
     )
     return
   }
-  let directMount = false
+  const httpEntry = '@kevinjohn/adonisjs-account-kit/http'
   const mountImports = source.file.statements
     .filter(source.ts.isImportDeclaration)
     .filter(
       (node) =>
         source.ts.isStringLiteral(node.moduleSpecifier) &&
-        node.moduleSpecifier.text === '@kevinjohn/adonisjs-account-kit/http' &&
+        node.moduleSpecifier.text === httpEntry &&
         !node.importClause?.isTypeOnly
     )
-  const namedMounts = mountImports.flatMap((node) => {
+  // A direct mount resolves the managed routes service or uses the ManagedRoutes class.
+  let directMount = mountImports.some((node) => {
     const bindings = node.importClause?.namedBindings
-    return bindings && source.ts.isNamedImports(bindings)
-      ? bindings.elements.filter(
-          (element) =>
-            !element.isTypeOnly &&
-            (element.propertyName?.text ?? element.name.text) === 'registerManagedRoutes'
-        )
-      : []
+    return (
+      !!bindings &&
+      source.ts.isNamedImports(bindings) &&
+      bindings.elements.some(
+        (element) =>
+          !element.isTypeOnly &&
+          (element.propertyName?.text ?? element.name.text) === 'ManagedRoutes'
+      )
+    )
   })
   const namespaceMounts = mountImports.flatMap((node) => {
     const bindings = node.importClause?.namedBindings
     return bindings && source.ts.isNamespaceImport(bindings) ? [bindings.name.text] : []
   })
-  const mountBinding = getImportedBindingName(
-    source,
-    '@kevinjohn/adonisjs-account-kit/http',
-    'registerManagedRoutes'
-  )
   const routeRouter = getDefaultImportName(source, '@adonisjs/core/services/router')
   if (
     hasAmbiguousRuntimeModuleImports(source, '@adonisjs/core/services/router') ||
@@ -99,37 +96,15 @@ export async function planRouteImport(
     )
     return
   }
-  let isMountSupported =
-    !hasAmbiguousRuntimeModuleImports(source, '@kevinjohn/adonisjs-account-kit/http') &&
-    namedMounts.length <= 1 &&
+  const isMountSupported =
+    !hasAmbiguousRuntimeModuleImports(source, httpEntry) &&
     !namespaceMounts.some((name) => hasUnsafeBindingReferences(source, name, () => false))
   walk(source, (node) => {
-    if (mountBinding && source.ts.isIdentifier(node) && node.text === mountBinding) {
-      const parent = node.parent
-      const declaration = source.ts.isImportSpecifier(parent) && parent.name === node
-      const call = source.ts.isCallExpression(parent) && parent.expression === node
-      const propertyName = source.ts.isPropertyAccessExpression(parent) && parent.name === node
-      if (!declaration && !call && !propertyName) isMountSupported = false
-    }
     if (
-      source.ts.isCallExpression(node) &&
-      source.ts.isIdentifier(node.expression) &&
-      node.expression.text === mountBinding
+      (source.ts.isStringLiteral(node) || source.ts.isNoSubstitutionTemplateLiteral(node)) &&
+      node.text === 'account_kit.managed_routes'
     )
       directMount = true
-    if (
-      source.ts.isCallExpression(node) &&
-      source.ts.isIdentifier(node.expression) &&
-      node.expression.text === 'registerManagedRoutes' &&
-      !mountBinding
-    )
-      isMountSupported = false
-    if (
-      source.ts.isCallExpression(node) &&
-      source.ts.isPropertyAccessExpression(node.expression) &&
-      node.expression.name.text === 'registerManagedRoutes'
-    )
-      isMountSupported = false
   })
   if (directMount || !isMountSupported) {
     addSetupDiagnostic(

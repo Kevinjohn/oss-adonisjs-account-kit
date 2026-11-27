@@ -12,7 +12,6 @@ import { magicLinkHandlers } from './handlers_magic_link.ts'
 import { passwordResetHandlers } from './handlers_password_reset.ts'
 import { registrationHandlers } from './handlers_registration.ts'
 import { sessionManagementHandlers } from './handlers_session_management.ts'
-import { managedRouteRegistration, recordManagedRegistration } from './route_registration.ts'
 import {
   assertManagedRouteCollisions,
   planManagedRoutes,
@@ -21,6 +20,7 @@ import {
 } from './routes.ts'
 import { assertManagedRoutesOptions } from './managed_options.ts'
 import type { ManagedHandler, ManagedRoutesOptions } from './managed_types.ts'
+import type { ManagedRouteRegistration as ManagedRouteRecord } from './openapi_types.ts'
 import { executeManagedRequest } from './managed_execution.ts'
 
 export type {
@@ -59,29 +59,31 @@ export const managedHandlers: Record<ManagedEndpointName, ManagedHandler> = {
   ...accountDataHandlers,
 }
 
-/**
- * Explicitly register one selected managed route group. Never called by the package root.
- *
- * @example
- * ```ts
- * import { registerManagedRoutes } from '@kevinjohn/adonisjs-account-kit/http'
- * import router from '@adonisjs/core/services/router'
- * import app from '@adonisjs/core/services/app'
- * import { AccountKit } from '@kevinjohn/adonisjs-account-kit'
- *
- * registerManagedRoutes(router, {
- *   prefix: '/account',
- *   enabled: ['passwordReset'],
- *   kit: () => app.container.make(AccountKit),
- *   guard,
- * })
- * ```
- */
-export function registerManagedRoutes<Credential>(
+/** Mount one selected managed route group on the router; `ManagedRoutes.register` records it. */
+export function mountManagedRoutes<Credential>(
   router: Router,
-  options: ManagedRoutesOptions<Credential>
-): readonly ManagedRoute[] {
-  return new ManagedRouteRegistration(router, options)
+  options: ManagedRoutesOptions<Credential>,
+  alreadyRegistered: boolean
+): { routes: readonly ManagedRoute[]; registration: ManagedRouteRecord } {
+  const routes = new ManagedRouteRegistration(router, options, alreadyRegistered)
+  return {
+    routes,
+    registration: {
+      routes,
+      strategy: options.guard.strategy,
+      prefix: options.prefix,
+      socialProviders: options.enabled.includes('socialAuthentication')
+        ? (options.extensions?.social?.providers ?? [])
+        : [],
+      replaced: {
+        registration: Boolean(options.extensions?.registration),
+        invitationAcceptance: Boolean(options.extensions?.invitationAcceptance),
+        profile: Boolean(options.extensions?.profile),
+        representAccount: Boolean(options.extensions?.representAccount),
+      },
+      openapi: options.openapi,
+    },
+  }
 }
 
 class ManagedRouteRegistration<Credential> extends Array<ManagedRoute> {
@@ -93,7 +95,11 @@ class ManagedRouteRegistration<Credential> extends Array<ManagedRoute> {
     return Array
   }
 
-  constructor(router: Router, options: ManagedRoutesOptions<Credential>) {
+  constructor(
+    router: Router,
+    options: ManagedRoutesOptions<Credential>,
+    alreadyRegistered: boolean
+  ) {
     if (router.commited)
       throw new InvalidArgumentsException(
         'Managed routes must be registered before the router commits'
@@ -108,7 +114,7 @@ class ManagedRouteRegistration<Credential> extends Array<ManagedRoute> {
         except: options.except,
       },
       existing,
-      managedRouteRegistration(router) !== undefined
+      alreadyRegistered
     )
     super(...routes)
 
@@ -129,21 +135,6 @@ class ManagedRouteRegistration<Credential> extends Array<ManagedRoute> {
       assertManagedRouteCollisions(registeredRoutes, committed)
       return result
     }
-    recordManagedRegistration(router, {
-      routes: this,
-      strategy: options.guard.strategy,
-      prefix: options.prefix,
-      socialProviders: options.enabled.includes('socialAuthentication')
-        ? (options.extensions?.social?.providers ?? [])
-        : [],
-      replaced: {
-        registration: Boolean(options.extensions?.registration),
-        invitationAcceptance: Boolean(options.extensions?.invitationAcceptance),
-        profile: Boolean(options.extensions?.profile),
-        representAccount: Boolean(options.extensions?.representAccount),
-      },
-      openapi: options.openapi,
-    })
   }
 
   /** @throws {AggregateError} If work and its transaction or credential cleanup both fail, or multiple cleanup steps fail. */

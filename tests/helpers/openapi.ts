@@ -1,7 +1,7 @@
 import type { AccountKit } from '../../src/account_kit.ts'
 import { generateManagedOpenApi, type OpenApiDocument } from '../../src/http/openapi.ts'
-import { registerManagedRoutes, type ManagedRoutesOptions } from '../../src/http/managed.ts'
-import { managedRouteRegistration } from '../../src/http/route_registration.ts'
+import type { ManagedRoutesOptions } from '../../src/http/managed.ts'
+import { ManagedRoutes } from '../../src/http/route_registration.ts'
 import type { ManagedCapability } from '../../src/http/routes.ts'
 import { fakeManagedHttp } from './managed_http_fakes.ts'
 
@@ -36,7 +36,8 @@ export function registered(
   options: Partial<ManagedRoutesOptions<unknown>> = {}
 ) {
   const { router } = fakeManagedHttp()
-  registerManagedRoutes(router, {
+  const managedRoutes = new ManagedRoutes()
+  managedRoutes.register(router, {
     prefix: '/api/v1',
     kit: async () => ({}) as AccountKit,
     guard: {
@@ -51,7 +52,7 @@ export function registered(
     ...options,
     extensions: { social: { providers: ['google', 'github'] }, ...options.extensions },
   })
-  return managedRouteRegistration(router)!
+  return managedRoutes.registration(router)!
 }
 
 export function documentFor(

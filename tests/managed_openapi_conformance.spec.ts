@@ -13,10 +13,10 @@ import {
   E_ACCOUNT_KIT_THROTTLED,
   E_ACCOUNT_KIT_UNVERIFIED_EMAIL,
 } from '../src/errors.ts'
-import { registerManagedRoutes, type ManagedRoutesOptions } from '../src/http/managed.ts'
+import type { ManagedRoutesOptions } from '../src/http/managed.ts'
+import { ManagedRoutes } from '../src/http/route_registration.ts'
 import { generateManagedOpenApi } from '../src/http/openapi.ts'
 import { mapManagedErrorResponse } from '../src/http/responses.ts'
-import { managedRouteRegistration } from '../src/http/route_registration.ts'
 import { signupValidator } from '../src/http/validators.ts'
 import type { CurrentAccount } from '../src/types.ts'
 import { useTestApp } from './helpers/app.ts'
@@ -35,7 +35,8 @@ function mount(
 ) {
   const { router, routes, context } = fakeManagedHttp()
   const guardName = strategy === 'session' ? 'web' : 'api'
-  registerManagedRoutes(router, {
+  const managedRoutes = new ManagedRoutes()
+  managedRoutes.register(router, {
     prefix: '/api/v1',
     kit: async () => kit,
     guard: {
@@ -56,7 +57,7 @@ function mount(
     ...options,
   })
   const document = generateManagedOpenApi({
-    registration: managedRouteRegistration(router)!,
+    registration: managedRoutes.registration(router)!,
     info: { title: 'Conformance', version: '1.0.0' },
   })
   /** Run a route with a JSON body, path params and an optional `Accept` header. */

@@ -11,10 +11,11 @@ export function generateManagedRoutesSource(choices: SetupChoices): string {
     "import router from '@adonisjs/core/services/router'",
     "import app from '@adonisjs/core/services/app'",
     "import { AccountKit } from '@kevinjohn/adonisjs-account-kit'",
-    "import { registerManagedRoutes } from '@kevinjohn/adonisjs-account-kit/http'",
     "import { accountKitGuard } from '#services/account_kit_guard'",
     '',
-    'registerManagedRoutes(router, {',
+    "const managedRoutes = await app.container.make('account_kit.managed_routes')",
+    '',
+    'managedRoutes.register(router, {',
     `  prefix: ${JSON.stringify(choices.routePrefix)},`,
     `  enabled: ${JSON.stringify(choices.managed)},`,
     ...('managedExcept' in choices || listManagedExclusions(choices).length

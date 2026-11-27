@@ -31,7 +31,7 @@ Scope: this is the Account Kit service/command path. Host UI, route policy and e
 
 ```mermaid
 flowchart TD
- A["account-kit:openapi"] --> B["Commit queued router and inspect managedRouteRegistration"]
+ A["account-kit:openapi"] --> B["Commit queued router and inspect ManagedRoutes.registration"]
  B --> C{"Registration exists?"}
  C -->|No| D["Log error and set exitCode 1"]
  C -->|Yes| S["Resolve session cookie and host package defaults"]

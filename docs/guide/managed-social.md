@@ -8,7 +8,7 @@ and prove a recent sign-in for sensitive changes. For the services underneath, s
 
 To turn the routes on:
 
-- Add `socialAuthentication` to the explicit `enabled` list in `registerManagedRoutes`.
+- Add `socialAuthentication` to the explicit `enabled` list in `managedRoutes.register`.
 - Supply `extensions.social.providers` with the selected lowercase `google` and/or `github` names.
 - Configure the same providers through the public `defineConfig({ socialAuthentication })` service
   contract and request-scoped Ally adapters.

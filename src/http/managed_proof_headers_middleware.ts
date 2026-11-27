@@ -1,7 +1,7 @@
 import type { HttpContext } from '@adonisjs/core/http'
 import { planManagedRoutes, type ManagedRoute, type ManagedRouteSelection } from './routes.ts'
 import { applyProofHeaders } from './proof_headers.ts'
-import { managedRouteRegistration } from './route_registration.ts'
+import type { ManagedRoutes } from './route_registration.ts'
 
 function matchesPath(pattern: string, path: string): boolean {
   const splitPathSegments = (value: string) => value.replace(/\/+$/, '').split('/').filter(Boolean)
@@ -53,7 +53,10 @@ export default class ManagedProofHeadersMiddleware {
     const path = context.request.url().split('?')[0]
     const routes =
       this.#proofs ??
-      managedRouteRegistration(await context.containerResolver.make('router'))?.routes
+      // The request resolver is untyped; the provider binds a ManagedRoutes instance.
+      (
+        (await context.containerResolver.make('account_kit.managed_routes')) as ManagedRoutes
+      ).registration(await context.containerResolver.make('router'))?.routes
     if (
       routes?.some(
         (route) => route.proof && route.method === method && matchesPath(route.path, path)

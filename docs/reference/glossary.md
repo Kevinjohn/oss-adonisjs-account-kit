@@ -49,7 +49,7 @@ only when the link is still valid. Every proof flow has `inspect` and a completi
 **Limited account.** Signed in but email not yet confirmed. It may fix its address or resend the
 link but cannot use routes that need an _active account_.
 
-**Managed mode.** Account Kit mounts its own JSON routes with `registerManagedRoutes`. You still
+**Managed mode.** Account Kit mounts its own JSON routes with `managedRoutes.register`. You still
 own the frontend, guard and policies. See [managed endpoints](endpoints.md).
 
 **Operation ID.** A UUID for one account operation, passed to hooks and events so you can correlate

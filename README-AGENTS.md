@@ -72,8 +72,8 @@ Integration modes:
 | Application-owned   | The app has its own controllers, validation, pages or Inertia views | [Application-owned integration](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/main/docs/guide/application-owned-integration.md) |
 | Managed JSON routes | An API or SPA wants ready-made endpoints under a prefix             | [Managed HTTP](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/main/docs/guide/managed-http.md)                                   |
 
-Both call the same service. Managed routes are registered with `registerManagedRoutes` from
-`@kevinjohn/adonisjs-account-kit/http`, and `account-kit:openapi` writes their OpenAPI 3.1 document.
+Both call the same service. Managed routes are registered with the `account_kit.managed_routes` container service
+(typed as `ManagedRoutes` from `@kevinjohn/adonisjs-account-kit/http`), and `account-kit:openapi` writes their OpenAPI 3.1 document.
 
 Users adapters:
 

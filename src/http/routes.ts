@@ -329,7 +329,7 @@ const definitions: readonly (Omit<ManagedRoute, 'path'> & { suffix: string })[] 
 ]
 
 /**
- * Lists the routes `registerManagedRoutes` would mount, and throws if one collides with an existing
+ * Lists the routes `ManagedRoutes.register` would mount, and throws if one collides with an existing
  * route.
  *
  * @example

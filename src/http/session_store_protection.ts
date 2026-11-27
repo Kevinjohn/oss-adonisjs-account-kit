@@ -13,10 +13,6 @@ export type {
   ManagedSessionStoreFactory,
 } from './session_store_types.ts'
 
-const verifiedRequests = new WeakMap<
-  object,
-  { config: object; factory: ManagedSessionStoreFactory }
->()
 const setupError =
   'Managed session authentication requires protectManagedSessionConfig with a revocable server-side store'
 
@@ -53,11 +49,36 @@ export function protectManagedSessionConfig<Config extends ManagedSessionConfigu
     if (!config || !cookieFactory) throw new InvalidArgumentsException(setupError)
     const selected = config.stores[config.store]
     if (typeof selected !== 'function') throw new InvalidArgumentsException(setupError)
+    return new ProtectedSessionConfig(
+      config,
+      selected,
+      cookieFactory,
+      options.verifyStore
+    ) as unknown as Config
+  })
+}
 
-    const createVerifiedStore: ManagedSessionStoreFactory = (context, sessionConfig) => {
+/**
+ * The resolved session config with its selected store replaced by a checked factory. It records
+ * each request whose store that factory checked, so the managed guard can fail closed.
+ */
+class ProtectedSessionConfig implements ManagedSessionConfiguration {
+  declare store: string
+  declare stores: Record<string, ManagedSessionStoreFactory>
+  readonly #verified = new WeakMap<object, object>()
+  readonly #createVerifiedStore: ManagedSessionStoreFactory
+
+  constructor(
+    config: ManagedSessionConfiguration,
+    selected: ManagedSessionStoreFactory,
+    cookieFactory: ManagedSessionStoreFactory,
+    verifyStore: (store: unknown) => boolean
+  ) {
+    Object.assign(this, config)
+    this.#createVerifiedStore = (context, sessionConfig) => {
       // Native SessionCollection passes null; it needs the same store check but no request marker.
       const httpContext = context && typeof context === 'object' ? context : null
-      if (httpContext) verifiedRequests.delete(httpContext)
+      if (httpContext) this.#verified.delete(httpContext)
       const store = selected(context, sessionConfig)
       const nativeCookie = cookieFactory(context, sessionConfig)
       const cookieConstructor =
@@ -65,36 +86,30 @@ export function protectManagedSessionConfig<Config extends ManagedSessionConfigu
           ? Object.getPrototypeOf(nativeCookie)?.constructor
           : undefined
       if (typeof cookieConstructor !== 'function') throw new InvalidArgumentsException(setupError)
-      if (store instanceof cookieConstructor || options.verifyStore(store) !== true)
+      if (store instanceof cookieConstructor || verifyStore(store) !== true)
         throw new InvalidArgumentsException(
           'Managed session authentication requires a revocable server-side store'
         )
-      if (httpContext)
-        verifiedRequests.set(httpContext, { config: sessionConfig, factory: createVerifiedStore })
+      if (httpContext) this.#verified.set(httpContext, sessionConfig)
       return store
     }
-    config.stores[config.store] = createVerifiedStore
-    return config
-  })
+    this.stores = { ...config.stores, [config.store]: this.#createVerifiedStore }
+  }
+
+  /** Whether this request's session was built from this config through its checked factory. */
+  static verified(context: object, config: unknown): boolean {
+    return (
+      config instanceof ProtectedSessionConfig &&
+      config.#verified.get(context) === config &&
+      config.stores[config.store] === config.#createVerifiedStore
+    )
+  }
 }
 
 /** Fail closed if the actual request Session did not use the protected selected factory. */
 export function assertManagedSessionStore(
   context: HttpContext & { session?: { config?: unknown } }
 ) {
-  const marker = verifiedRequests.get(context)
-  const config = context.session?.config
-  if (
-    !marker ||
-    !config ||
-    config !== marker.config ||
-    typeof config !== 'object' ||
-    !('store' in config) ||
-    !('stores' in config) ||
-    typeof config.store !== 'string' ||
-    !config.stores ||
-    typeof config.stores !== 'object' ||
-    (config.stores as Record<string, unknown>)[config.store] !== marker.factory
-  )
+  if (!ProtectedSessionConfig.verified(context, context.session?.config))
     throw new InvalidArgumentsException(setupError)
 }

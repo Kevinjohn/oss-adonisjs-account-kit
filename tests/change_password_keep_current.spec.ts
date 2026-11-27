@@ -1,6 +1,6 @@
 import { test } from '@japa/runner'
 import { DateTime } from 'luxon'
-import { registerManagedRoutes } from '../src/http/managed.ts'
+import { ManagedRoutes } from '../src/http/route_registration.ts'
 import { E_ACCOUNT_KIT_INVALID_SESSION, E_ACCOUNT_KIT_POST_COMMIT } from '../src/errors.ts'
 import { passwordChangeRevision } from '../src/password_change_revision.ts'
 import type { AccountKitConfig, CurrentAccountInput, UserId } from '../src/types.ts'
@@ -250,7 +250,7 @@ test.group('managed password change keeps the caller signed in', (group) => {
       publicCredential: (credential: string) => `public:${credential}`,
     })
     const { router, routes, context } = fakeManagedHttp()
-    registerManagedRoutes(router, {
+    new ManagedRoutes().register(router, {
       prefix: '/api/v1',
       kit: async () => service.account,
       guard,

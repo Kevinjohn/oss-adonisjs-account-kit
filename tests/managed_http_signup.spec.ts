@@ -1,7 +1,7 @@
 import { test } from '@japa/runner'
 import { AccountKit } from '../src/account_kit.ts'
 import { E_ACCOUNT_KIT_DELIVERY, E_ACCOUNT_KIT_THROTTLED } from '../src/errors.ts'
-import { registerManagedRoutes } from '../src/http/managed.ts'
+import { ManagedRoutes } from '../src/http/route_registration.ts'
 import { fakeManagedHttp, stubGuard } from './helpers/managed_http_fakes.ts'
 
 test.group('managed HTTP dispatch', () => {
@@ -28,7 +28,7 @@ test.group('managed HTTP dispatch', () => {
         authentication: { guard: 'web', strategy: 'session' },
       },
     } as never)
-    registerManagedRoutes(router, {
+    new ManagedRoutes().register(router, {
       prefix: '/api/v1',
       kit: async () =>
         ({
@@ -88,7 +88,7 @@ test.group('managed HTTP dispatch', () => {
   test('signup exhaustion rejects before account creation', async ({ assert }) => {
     const { router, routes, context } = fakeManagedHttp()
     let created = false
-    registerManagedRoutes(router, {
+    new ManagedRoutes().register(router, {
       prefix: '/api/v1',
       kit: async () =>
         ({
@@ -136,7 +136,7 @@ test.group('managed HTTP dispatch', () => {
         },
       },
     } as never)
-    registerManagedRoutes(router, {
+    new ManagedRoutes().register(router, {
       prefix: '/api/v1',
       kit: async () =>
         ({
@@ -183,7 +183,7 @@ test.group('managed HTTP dispatch', () => {
     const { router, routes, context } = fakeManagedHttp()
     const calls: string[] = []
     const credential = { userId: 7, identifier: 42, value: 'opaque' }
-    registerManagedRoutes(router, {
+    new ManagedRoutes().register(router, {
       prefix: '/api/v1',
       kit: async () =>
         ({
@@ -241,7 +241,7 @@ test.group('managed HTTP dispatch', () => {
     assert,
   }) => {
     const { router, routes, context } = fakeManagedHttp()
-    registerManagedRoutes(router, {
+    new ManagedRoutes().register(router, {
       prefix: '/api/v1',
       kit: async () =>
         ({
@@ -285,7 +285,7 @@ test.group('managed HTTP dispatch', () => {
     assert,
   }) => {
     const { router, routes, context } = fakeManagedHttp()
-    registerManagedRoutes(router, {
+    new ManagedRoutes().register(router, {
       prefix: '/api/v1',
       kit: async () =>
         ({
