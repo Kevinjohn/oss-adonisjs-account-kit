@@ -37,7 +37,7 @@ flowchart TD
  B -->|No| F
  B -->|Yes| C{"planManagedRoutes accepts selection and existing routes?"}
  C -->|No| F["Reject registration before serving requests"]
- C -->|Yes| H["Register selected handlers and recordManagedRegistration"]
+ C -->|Yes| H["mountManagedRoutes registers selected handlers; ManagedRoutes records the registration"]
  H --> D["Router commit runs managed collision checks"]
  D --> E{"Committed route inventory valid?"}
  E -->|No| F["Reject registration before serving requests"]

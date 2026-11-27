@@ -45,7 +45,7 @@ flowchart TD
  E -->|Yes| F["upsertAdmissionRow sets requested_at"]
  E -->|No| G["Build record from existing row"]
  F --> H["Build updated record"]
- G --> I["Commit; withAdmissionEvent invokes the configured observer only for a first undecided request"]
+ G --> I["Commit; withAdmissionNotification invokes the configured observer only for a first undecided request"]
  H --> I
  I --> J{"Post-commit follow-ups succeed?"}
  J -->|Yes| K["Return AdmissionRecord"]

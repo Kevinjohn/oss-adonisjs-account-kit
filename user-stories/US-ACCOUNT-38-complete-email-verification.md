@@ -39,7 +39,8 @@ flowchart TD
   A --> Q["Return boolean or managed proof response"]
   N["Managed POST checks password and confirmation; host may call directly"] --> E["emailVerification.complete checks capability, password and token, then prepares password"]
   E --> F["Transaction consumes live matching activation proof"]
-  F -->|Refused| R["Roll back and surface invalid token"]
+  F -->|Proof invalid or no longer valid| R["Roll back and surface invalid token"]
+  F -->|Consumption or storage fault| X["Roll back and propagate the fault"]
   F -->|Accepted| G["Store password; activateClaim confirms email, invokes host callbacks for live invitations, and clears password reset proofs and pending social state as configured"]
   G --> H["invalidateChangedCredentials invalidates prior credentials; commit"]
   H --> I["Run credential observer, lifecycle and invitation follow-ups"]
@@ -47,4 +48,4 @@ flowchart TD
   I -->|Failure| L["Surface follow-up failure with activation and consumption committed"]
 ```
 
-**Code references:** [`inspectVerification` and `completeVerification`](../src/verification.ts), [`verification tests`](../tests/verification.spec.ts), [managed verification](../src/http/handlers_email_verification.ts), [activation transaction](../src/activation_claim.ts), [managed committed-failure response](../src/http/managed.ts)
+**Code references:** [`inspectVerification` and `completeVerification`](../src/verification.ts), [`verification tests`](../tests/verification.spec.ts), [managed verification](../src/http/handlers_email_verification.ts), [activation transaction](../src/activation_claim.ts), [token consumption](../src/token_consumption.ts), [single-use row deletion](../src/consume_rows.ts), [managed committed-failure response](../src/http/managed.ts)
