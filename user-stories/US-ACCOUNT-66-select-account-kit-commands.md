@@ -12,7 +12,7 @@ As an application operator, I want to leave out selected Account Kit commands so
 ## Acceptance criteria
 
 - The optional `exclude` list contains unique [main-loader command names](PATHS.md#ace-commands). Omit it or use an empty list to retain all main commands. An unknown or repeated name throws `E_ACCOUNT_KIT_INVALID_CONFIGURATION` for `commands.exclude` when `defineCommands` is called.
-- Ace does not list or resolve excluded commands through this loader. Existing unrelated command entries stay in `adonisrc.ts`. The separate `./admission/commands` loader and service APIs have their own entry points. After [rerunning configure](US-ACCOUNT-60-install-account-kit-package.md#acceptance-criteria), check that the default loader has not been added alongside the filtered loader.
+- Ace does not list or resolve excluded commands through this loader. Existing unrelated command entries stay in `adonisrc.ts`. The four admission runtime commands are in this loader and can be excluded like any other; service APIs have their own entry points. After [rerunning configure](US-ACCOUNT-60-install-account-kit-package.md#acceptance-criteria), check that the default loader has not been added alongside the filtered loader.
 
 ## User flow
 
@@ -38,4 +38,4 @@ flowchart TD
     G -->|No| I["Delegate to default loader getCommand"]
 ```
 
-**Code references:** [defineCommands](../src/define_commands.ts), [default command loader](../commands/main.ts), [admission command loader](../src/admission/commands/main.ts)
+**Code references:** [defineCommands](../src/define_commands.ts), [default command loader](../commands/main.ts)

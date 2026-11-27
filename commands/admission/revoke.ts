@@ -1,6 +1,6 @@
 import { BaseCommand, args } from '@adonisjs/core/ace'
 import { completeOperatorCommand, writeResult } from '../operator_output.ts'
-import { AccountAdmission } from '../../src/admission/service.ts'
+import { operatorAdmission } from '../../src/admission/operator_service.ts'
 import type { AdmissionRecord } from '../../src/admission/types.ts'
 
 /** Operator revocation: the account keeps signing in but no longer passes the admission gate. */
@@ -17,7 +17,8 @@ export default class RevokeAdmission extends BaseCommand {
 
   /** @throws {AggregateError} If transaction work and cleanup fail before a commit is confirmed. */
   async run(): Promise<void> {
-    const admission = await this.app.container.make(AccountAdmission)
+    const admission = await operatorAdmission(this)
+    if (!admission) return
     this.result = await admission.operator.revoke({ email: this.email })
     writeResult(this, {
       result: 'revoked',

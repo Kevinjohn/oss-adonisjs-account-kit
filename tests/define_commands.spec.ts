@@ -15,7 +15,7 @@ const metadata = async (options?: Parameters<typeof defineCommands>[0]) => {
 test.group('defineCommands', () => {
   test('lists exactly the commands the ./commands loader registers', async ({ assert }) => {
     const registered = names(await commandLoader.getMetaData()) as AccountKitCommandName[]
-    assert.lengthOf(registered, 8)
+    assert.lengthOf(registered, 12)
     assert.deepEqual(names(await metadata()), registered)
     // Every registered name is a known name, so a new command cannot be missed.
     assert.deepEqual(await metadata({ exclude: registered }), [])
@@ -25,7 +25,7 @@ test.group('defineCommands', () => {
     const loader = await defineCommands({ exclude: ['account-kit:reset-link'] })()
     const kept = names(await loader.getMetaData())
     assert.notInclude(kept, 'account-kit:reset-link')
-    assert.lengthOf(kept, 7)
+    assert.lengthOf(kept, 11)
     const all = await commandLoader.getMetaData()
     const resetLink = all.find((command) => command.commandName === 'account-kit:reset-link')!
     const prune = all.find((command) => command.commandName === 'account-kit:prune')!

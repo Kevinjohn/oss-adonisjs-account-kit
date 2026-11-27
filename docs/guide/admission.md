@@ -246,13 +246,13 @@ opaque and checked; a forged one is `E_ACCOUNT_KIT_INVALID_INPUT`.
 
 ## Commands
 
-| Command                                                                                  | Does                                                                                                                                            |
-| ---------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| `account-kit:admission:install [--users-table] [--user-id-type] [--migration-directory]` | Writes the migration and `config/admission.ts` (never overwriting), registers the provider and the command loader, and prints the manual steps. |
-| `account-kit:admission:approve <email>`                                                  | Operator approval, through the same transitions. For the first administrator and for recovery.                                                  |
-| `account-kit:admission:revoke <email>`                                                   | Operator revocation.                                                                                                                            |
-| `account-kit:admission:grant-invitation <email> [--role]`                                | Records operator invitation evidence for an existing account; refused when evidence exists. `--role` is stored only; it grants nothing.         |
-| `account-kit:admission:bootstrap <email> --role <role>`                                  | Issues an operator invitation, prints its link and writes an approval for the account it creates. `--cancel` deletes that approval instead.     |
+| Command                                                                                  | Does                                                                                                                                        |
+| ---------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| `account-kit:admission:install [--users-table] [--user-id-type] [--migration-directory]` | Writes the migration and `config/admission.ts` (never overwriting), registers the provider and prints the manual steps.                     |
+| `account-kit:admission:approve <email>`                                                  | Operator approval, through the same transitions. For the first administrator and for recovery.                                              |
+| `account-kit:admission:revoke <email>`                                                   | Operator revocation.                                                                                                                        |
+| `account-kit:admission:grant-invitation <email> [--role]`                                | Records operator invitation evidence for an existing account; refused when evidence exists. `--role` is stored only; it grants nothing.     |
+| `account-kit:admission:bootstrap <email> --role <role>`                                  | Issues an operator invitation, prints its link and writes an approval for the account it creates. `--cancel` deletes that approval instead. |
 
 If `config/database.ts` selects its Lucid connection from a value supplied only in the shell,
 pass it to install explicitly, for example `--env=DB_CONNECTION=postgres`. Install accepts the same
@@ -356,8 +356,11 @@ Callbacks resolve admission when called, for the reason given in
 - `config/admission.ts`, from the stub, when it does not exist;
 - `<timestamp>_account_kit_admission_create_account_admissions.ts` in the primary Lucid
   connection's migration directory, when no admission migration already exists;
-- the provider `@kevinjohn/adonisjs-account-kit/admission/provider` and the command loader
-  `@kevinjohn/adonisjs-account-kit/admission/commands` in `adonisrc.ts`.
+- the provider `@kevinjohn/adonisjs-account-kit/admission/provider` in `adonisrc.ts`.
+
+The approve, revoke, grant-invitation and bootstrap commands are in the package's `./commands`
+loader and are always listed. Until the provider is registered, each one writes
+`Admission is not installed. Run node ace account-kit:admission:install` to stderr and exits 1.
 
 The installer follows the [setup migration path rules](setup.md), including the application
 default when the primary connection has no paths. It allocates the new migration after existing

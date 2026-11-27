@@ -3,7 +3,11 @@ import type { CommandMetaData } from '@adonisjs/core/types/ace'
 
 /** Every command name the package's `./commands` loader registers. */
 export type AccountKitCommandName =
+  | 'account-kit:admission:approve'
+  | 'account-kit:admission:bootstrap'
+  | 'account-kit:admission:grant-invitation'
   | 'account-kit:admission:install'
+  | 'account-kit:admission:revoke'
   | 'account-kit:doctor'
   | 'account-kit:invite'
   | 'account-kit:openapi'

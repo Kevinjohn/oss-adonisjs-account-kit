@@ -47,7 +47,6 @@
     "./auth": "./build/src/auth/main.js",
     "./admission": "./build/src/admission/main.js",
     "./admission/provider": "./build/providers/account_admission_provider.js",
-    "./admission/commands": "./build/src/admission/commands/main.js",
     "./middleware/managed_account": "./build/src/http/managed_account_middleware.js",
     "./middleware/proof_headers": "./build/src/http/managed_proof_headers_middleware.js",
     "./middleware/admission": "./build/src/admission/middleware.js"
@@ -203,8 +202,11 @@
       "./commands/openapi.ts",
       "./src/admission/main.ts",
       "./providers/account_admission_provider.ts",
-      "./src/admission/commands/main.ts",
       "./commands/admission_install.ts",
+      "./commands/admission/approve.ts",
+      "./commands/admission/revoke.ts",
+      "./commands/admission/grant_invitation.ts",
+      "./commands/admission/bootstrap.ts",
       "./src/http/managed_account_middleware.ts",
       "./src/http/managed_proof_headers_middleware.ts",
       "./src/admission/middleware.ts"

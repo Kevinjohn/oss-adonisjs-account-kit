@@ -29,7 +29,6 @@ export default defineConfig({
     () => import('@adonisjs/lucid/commands'),
     () => import('@adonisjs/session/commands'),
     () => import('@kevinjohn/adonisjs-account-kit/commands'),
-    () => import('@kevinjohn/adonisjs-account-kit/admission/commands'),
   ],
 
   /*

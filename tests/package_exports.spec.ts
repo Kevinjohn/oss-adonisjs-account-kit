@@ -34,7 +34,6 @@ if (process.env.TEST_BUILT_EXPORTS === '1')
     const capture = await import('@kevinjohn/adonisjs-account-kit/testing/notifications')
     const admission = await import('@kevinjohn/adonisjs-account-kit/admission')
     const admissionProvider = await import('@kevinjohn/adonisjs-account-kit/admission/provider')
-    const admissionCommands = await import('@kevinjohn/adonisjs-account-kit/admission/commands')
     assert.isFunction(root.AccountKit)
     assert.isFunction(root.defineConfig)
     assert.isFunction(root.AccountKitCallbackConfiguration)
@@ -100,9 +99,12 @@ if (process.env.TEST_BUILT_EXPORTS === '1')
     assert.instanceOf(new admission.E_ACCOUNT_KIT_ADMISSION_DECISION(), root.E_ACCOUNT_KIT)
     assert.isFunction(admissionProvider.default)
     const rootCommandList = await commands.getMetaData()
-    const admissionCommandList = await admissionCommands.getMetaData()
     assert.deepEqual(rootCommandList.map((command) => command.commandName).sort(), [
+      'account-kit:admission:approve',
+      'account-kit:admission:bootstrap',
+      'account-kit:admission:grant-invitation',
       'account-kit:admission:install',
+      'account-kit:admission:revoke',
       'account-kit:doctor',
       'account-kit:invite',
       'account-kit:openapi',
@@ -111,21 +113,9 @@ if (process.env.TEST_BUILT_EXPORTS === '1')
       'account-kit:retirement-impact',
       'account-kit:setup',
     ])
-    assert.deepEqual(admissionCommandList.map((command) => command.commandName).sort(), [
-      'account-kit:admission:approve',
-      'account-kit:admission:bootstrap',
-      'account-kit:admission:grant-invitation',
-      'account-kit:admission:revoke',
-    ])
     for (const metadata of rootCommandList) {
       const command = await commands.getCommand(metadata)
       assert.equal(command?.commandName, metadata.commandName)
-      assert.isNull(await admissionCommands.getCommand(metadata))
-    }
-    for (const metadata of admissionCommandList) {
-      const command = await admissionCommands.getCommand(metadata)
-      assert.equal(command?.commandName, metadata.commandName)
-      assert.isNull(await commands.getCommand(metadata))
     }
     const filtered = await defineCommands.defineCommands({ exclude: ['account-kit:prune'] })()
     assert.deepEqual(

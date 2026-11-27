@@ -8,6 +8,10 @@ import InviteAccount from './invite.ts'
 import ResetLink from './reset_link.ts'
 import ManagedOpenApi from './openapi.ts'
 import InstallAdmission from './admission_install.ts'
+import ApproveAdmission from './admission/approve.ts'
+import RevokeAdmission from './admission/revoke.ts'
+import GrantInvitationEvidence from './admission/grant_invitation.ts'
+import BootstrapAdmission from './admission/bootstrap.ts'
 
 const loader = new ListLoader([
   PruneAccountKit,
@@ -18,6 +22,10 @@ const loader = new ListLoader([
   ResetLink,
   ManagedOpenApi,
   InstallAdmission,
+  ApproveAdmission,
+  RevokeAdmission,
+  GrantInvitationEvidence,
+  BootstrapAdmission,
 ])
 export const getMetaData = loader.getMetaData.bind(loader)
 export const getCommand = loader.getCommand.bind(loader)
