@@ -3,7 +3,6 @@ import type { ManagedEndpointName } from './routes.ts'
 import type { ManagedHandler } from './managed_types.ts'
 import { buildAccountProjection } from '../account_projection.ts'
 import { passwordChangeRevision } from '../password_change_revision.ts'
-import { takeCorrectionRevision } from '../profile_correction_revision.ts'
 import { sendInvalidProofResponse, sendPasswordRulesErrorResponse } from './response_helpers.ts'
 import { passwordChangeValidator, profileUpdateValidator } from './validators.ts'
 
@@ -36,7 +35,7 @@ export const emailPasswordManagementHandlers = {
     // A new address on an account that is not yet active advances the credential revision; the
     // caller keeps this sign-in, so a session stores the revision the correction committed.
     const keepSession = async (outcome: unknown) => {
-      const committed = takeCorrectionRevision(outcome)
+      const committed = kit.managedHttp.takeCorrectionRevision(outcome)
       if (committed !== undefined && guard.strategy === 'session') await guard.refresh?.(committed)
     }
     const user = await kit.emailPasswordManagement

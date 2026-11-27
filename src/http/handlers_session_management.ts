@@ -1,6 +1,5 @@
 /** Managed handlers for session management: list sign-ins, revoke one, others, or all. */
 import { isCommittedFailure } from '../errors.ts'
-import { getRevocationOutcome } from '../session_revocation.ts'
 import type { ManagedEndpointName } from './routes.ts'
 import type { ManagedHandler } from './managed_types.ts'
 import { endSessionAfterCommit } from './session_end.ts'
@@ -21,7 +20,7 @@ export const sessionManagementHandlers = {
       })
     } catch (error) {
       // The revocation committed; end this session before reporting the follow-up failure.
-      if (getRevocationOutcome(error)?.current)
+      if (kit.managedHttp.revocationOutcome(error)?.current)
         await endSessionAfterCommit(options.guard, context, route.name)
       throw error
     }

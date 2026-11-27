@@ -13,13 +13,18 @@ import { decodeScopeColumn } from './invitation_scope.ts'
 import { packageTables } from './package_tables.ts'
 import { isSessionTrackingEnabled } from './session_tracking.ts'
 
-const faults = new WeakMap<AccountExport, InstanceType<typeof E_ACCOUNT_KIT_POST_COMMIT>>()
+/** Faults raised after an export committed, kept for the managed handler that sends the document. */
+export class ExportFaults {
+  #faults = new WeakMap<AccountExport, InstanceType<typeof E_ACCOUNT_KIT_POST_COMMIT>>()
 
-/** The fault raised after an export committed, if any. The document is still complete. */
-export function exportFault(
-  document: AccountExport
-): InstanceType<typeof E_ACCOUNT_KIT_POST_COMMIT> | undefined {
-  return faults.get(document)
+  record(document: AccountExport, fault: InstanceType<typeof E_ACCOUNT_KIT_POST_COMMIT>): void {
+    this.#faults.set(document, fault)
+  }
+
+  /** The fault raised after an export committed, if any. The document is still complete. */
+  get(document: AccountExport): InstanceType<typeof E_ACCOUNT_KIT_POST_COMMIT> | undefined {
+    return this.#faults.get(document)
+  }
 }
 
 /** Round-trip through JSON so the document holds exactly what a download would contain. */
@@ -159,6 +164,6 @@ export async function exportAccountData(
       }
     })
   )
-  if (fault) faults.set(document, fault)
+  if (fault) deps.exportFaults.record(document, fault)
   return document
 }

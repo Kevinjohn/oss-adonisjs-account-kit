@@ -8,7 +8,23 @@ import type {
   ResolvedAdmissionConfig,
 } from './types.ts'
 
-const admissionInputs = new WeakMap<ResolvedAdmissionConfig, AdmissionConfig>()
+/** A config `defineConfig` built, keeping its input for the checks that need the callbacks. */
+class DefinedAdmissionConfig implements ResolvedAdmissionConfig {
+  declare domain: ResolvedAdmissionConfig['domain']
+  declare invitation: boolean
+  declare approval: ResolvedAdmissionConfig['approval']
+  declare onAdmissionNotification?: ResolvedAdmissionConfig['onAdmissionNotification']
+  #input: AdmissionConfig
+
+  constructor(resolved: ResolvedAdmissionConfig, input: AdmissionConfig) {
+    Object.assign(this, resolved)
+    this.#input = input
+  }
+
+  static inputOf(config: ResolvedAdmissionConfig): AdmissionConfig | undefined {
+    return config instanceof DefinedAdmissionConfig ? config.#input : undefined
+  }
+}
 
 const isObject = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value)
@@ -30,9 +46,7 @@ function fail(field: string, message: string): never {
  * ```
  */
 export function defineConfig(config: AdmissionConfig): ResolvedAdmissionConfig {
-  const resolved = checkAdmission(config, true)
-  admissionInputs.set(resolved, config)
-  return resolved
+  return new DefinedAdmissionConfig(checkAdmission(config, true), config)
 }
 
 /**
@@ -43,7 +57,7 @@ export function resolveAdmissionConfig(
   config: ResolvedAdmissionConfig,
   callbacks: AdmissionCallbacks | undefined
 ): ResolvedAdmissionConfig {
-  const input = admissionInputs.get(config)
+  const input = DefinedAdmissionConfig.inputOf(config)
   if (!input) return config
   if (!callbacks) {
     checkAdmission(input, false)

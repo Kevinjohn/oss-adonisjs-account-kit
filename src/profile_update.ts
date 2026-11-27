@@ -19,7 +19,6 @@ import { generateToken, hashToken } from './tokens.ts'
 import { isRecentIssue, reopenResendOnFailure } from './token_reuse.ts'
 import { expiresAt } from './ttl.ts'
 import { invalidateChangedCredentials, revision } from './credential_revision.ts'
-import { rememberCorrectionRevision } from './profile_correction_revision.ts'
 import type { AccountUser, RequestEmailChangeInput, UpdateProfileInput } from './types.ts'
 import type { ServiceDependencies } from './service_dependencies.ts'
 
@@ -164,7 +163,7 @@ export async function updateProfile(
   if (newEmail === undefined) throw new RuntimeException('Missing email for issued profile proof')
   const context = { operation: 'email_change' as const, operationId, userId: actor.id }
   const committed = issued.revision
-  if (committed !== undefined) rememberCorrectionRevision(actor, committed)
+  if (committed !== undefined) deps.correctionRevisions.remember(actor, committed)
   try {
     await finishCommitted(fault, 'Email change committed but follow-ups failed', () =>
       postCommit('Email change follow-up failed', [
@@ -199,7 +198,7 @@ export async function updateProfile(
   } catch (error) {
     // The correction committed: the caller still needs the revision to keep its own session.
     if (committed !== undefined && error !== null && typeof error === 'object')
-      rememberCorrectionRevision(error, committed)
+      deps.correctionRevisions.remember(error, committed)
     throw error
   }
   return actor

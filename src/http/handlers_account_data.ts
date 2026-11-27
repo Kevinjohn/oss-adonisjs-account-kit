@@ -1,5 +1,4 @@
 /** Managed handlers for the account export and account deletion capabilities. */
-import { exportFault } from '../account_export.ts'
 import { isCommittedFailure } from '../errors.ts'
 import type { ManagedEndpointName } from './routes.ts'
 import type { ManagedHandler } from './managed_types.ts'
@@ -18,7 +17,8 @@ export const accountDataHandlers = {
       recentProof,
     })
     // Only the proof was consumed before the fault; the document is complete, so send it.
-    if (exportFault(document)) logRecoveryDiagnostic(context, route.name, 'followup_failed')
+    if (kit.managedHttp.exportFault(document))
+      logRecoveryDiagnostic(context, route.name, 'followup_failed')
     context.response.header('Cache-Control', 'no-store')
     context.response.header('Content-Disposition', 'attachment; filename="account-export.json"')
     return context.response.ok(document)

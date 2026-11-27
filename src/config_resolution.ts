@@ -7,11 +7,6 @@ import { resolveConfig, type defineConfig } from './config.ts'
 import { E_ACCOUNT_KIT_INVALID_CONFIGURATION } from './errors.ts'
 import type { AccountKitCallbacks, AccountKitConfig, ResolvedConfig } from './types.ts'
 
-const resolutions = new WeakMap<
-  ApplicationService,
-  { config: ReturnType<typeof defineConfig>; resolved: Promise<ResolvedConfig | undefined> }
->()
-
 function rejectDuplicateSetting(field: string): never {
   throw new E_ACCOUNT_KIT_INVALID_CONFIGURATION(
     field,
@@ -45,22 +40,34 @@ function mergeCallbacks(input: AccountKitConfig, callbacks: AccountKitCallbacks)
 }
 
 /**
+ * Resolves the `account_kit` config once per config value. `AccountKitProvider` registers it as a
+ * container singleton, so every resolution in one application shares it.
+ */
+export class AccountKitConfigResolution {
+  #memo?: { config: ReturnType<typeof defineConfig>; resolved: Promise<ResolvedConfig | undefined> }
+
+  resolve(app: ApplicationService): Promise<ResolvedConfig | undefined> {
+    const config = app.config.get<ReturnType<typeof defineConfig> | undefined>('account_kit')
+    if (!config) return Promise.resolve(undefined)
+    if (this.#memo?.config === config) return this.#memo.resolved
+    const resolved = configProvider
+      .resolve<ResolvedConfig>(app, config)
+      .then((value) => value ?? undefined)
+    this.#memo = { config, resolved }
+    return resolved
+  }
+}
+
+/**
  * The `account_kit` config merged with the callbacks registered through `account_kit.callbacks`,
  * with every `defineConfig` check run on the result. Undefined when the config file is missing.
  * Built once per application and config.
  */
-export function resolveAccountKitConfig(
+export async function resolveAccountKitConfig(
   app: ApplicationService
 ): Promise<ResolvedConfig | undefined> {
-  const config = app.config.get<ReturnType<typeof defineConfig> | undefined>('account_kit')
-  if (!config) return Promise.resolve(undefined)
-  const memo = resolutions.get(app)
-  if (memo?.config === config) return memo.resolved
-  const resolved = configProvider
-    .resolve<ResolvedConfig>(app, config)
-    .then((value) => value ?? undefined)
-  resolutions.set(app, { config, resolved })
-  return resolved
+  const resolution = await app.container.make(AccountKitConfigResolution)
+  return resolution.resolve(app)
 }
 
 /** Completes validation after the application has registered its callbacks. */

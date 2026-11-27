@@ -1,7 +1,7 @@
 import { configProvider } from '@adonisjs/core'
 import { resolveRegisteredCallbacks } from './config_resolution.ts'
 import { DateTime } from 'luxon'
-import { actionUrlBackendOrigins } from './action_urls.ts'
+import { ActionUrls } from './action_urls.ts'
 import { E_ACCOUNT_KIT_CAPABILITY_DISABLED, E_ACCOUNT_KIT_INVALID_CONFIGURATION } from './errors.ts'
 import { resolveThrottleBudget } from './config_budget.ts'
 import { assertObject } from './config_assert.ts'
@@ -308,9 +308,11 @@ export function resolveConfig(config: AccountKitConfig, deferCallbacks = true): 
       'account_kit: usersTable must be a plain SQL identifier'
     )
   const { mapFields } = config.registration
-  const urls = bindCallbacks<UrlCallbacks>(config.urls, disabledUrls)
-  const backendOrigin = actionUrlBackendOrigins.get(config.urls)
-  if (backendOrigin) actionUrlBackendOrigins.set(urls, backendOrigin)
+  // Action URLs fill every callback and keep the backend origin `doctor` reports.
+  const urls =
+    config.urls instanceof ActionUrls
+      ? freezeResolved(config.urls)
+      : bindCallbacks<UrlCallbacks>(config.urls, disabledUrls)
   return freezeResolved({
     // Deferred only by `defineConfig`, whose result `resolveAccountKitConfig` checks again.
     users: config.users!,

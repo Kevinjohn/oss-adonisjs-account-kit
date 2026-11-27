@@ -11,7 +11,6 @@ import {
   E_ACCOUNT_KIT_INVALID_SESSION,
   E_ACCOUNT_KIT_SESSION_NOT_FOUND,
 } from './errors.ts'
-import { recordRevocation } from './session_revocation.ts'
 import { sessionTable } from './session_tracking.ts'
 import { readIsoTimestamp } from './timestamps.ts'
 import { hashToken } from './tokens.ts'
@@ -25,7 +24,7 @@ import type {
 import type { ServiceDependencies } from './service_dependencies.ts'
 
 function requireSessionManagement(
-  deps: Pick<ServiceDependencies, 'config' | 'db'>
+  deps: Pick<ServiceDependencies, 'config' | 'db' | 'revocationOutcomes'>
 ): ResolvedAuthenticationConfig {
   if (!deps.config.enabled.includes('sessionManagement'))
     throw new E_ACCOUNT_KIT_CAPABILITY_DISABLED('Session management is disabled')
@@ -107,7 +106,9 @@ async function deleteSignIns(
   return ids
 }
 
-export function createSessionManagementService(deps: Pick<ServiceDependencies, 'config' | 'db'>) {
+export function createSessionManagementService(
+  deps: Pick<ServiceDependencies, 'config' | 'db' | 'revocationOutcomes'>
+) {
   /**
    * Authenticate the caller and run `mutate` in one transaction under the account lock.
    *
@@ -207,7 +208,7 @@ export function createSessionManagementService(deps: Pick<ServiceDependencies, '
         })
       )
       const result = { current: value.current }
-      await recordRevocation(result, () =>
+      await deps.revocationOutcomes.record(result, () =>
         finishCommitted(fault, 'Sign-in revoked but follow-ups failed', () =>
           announce(value.userId, 1, operationId)
         )

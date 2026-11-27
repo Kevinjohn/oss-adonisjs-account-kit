@@ -4,10 +4,13 @@ import { DateTime } from 'luxon'
 import { expiresAt } from './ttl.ts'
 import { E_ACCOUNT_KIT_AUTHORIZATION } from './errors.ts'
 import { isPasswordAllowed as matchesPasswordRules } from './password.ts'
-import type { Throttler } from './throttle.ts'
-import type { ResolvedConfig } from './types.ts'
+import type { ServiceDependencies } from './service_dependencies.ts'
+import type { AccountExport } from './types.ts'
 
-type Dependencies = { config: ResolvedConfig; throttler: Throttler }
+type Dependencies = Pick<
+  ServiceDependencies,
+  'config' | 'throttler' | 'exportFaults' | 'revocationOutcomes' | 'correctionRevisions'
+>
 
 export function createManagedHttpService(deps: Dependencies) {
   const computeMagicLinkExpiry = (): number =>
@@ -16,6 +19,12 @@ export function createManagedHttpService(deps: Dependencies) {
     matchesPasswordRules(value, deps.config.passwordPolicy)
 
   return {
+    /** The fault raised after `document` was exported and committed, if any. */
+    exportFault: (document: AccountExport) => deps.exportFaults.get(document),
+    /** The outcome of a revocation that committed before `error` was thrown, if any. */
+    revocationOutcome: (error: unknown) => deps.revocationOutcomes.get(error),
+    /** The revision a profile correction committed for `outcome`, read once; `undefined` otherwise. */
+    takeCorrectionRevision: (outcome: unknown) => deps.correctionRevisions.take(outcome),
     /** Local retention deadline for acknowledged managed magic-link requests. */
     magicLinkExpiresAt: computeMagicLinkExpiry,
     /** Whether `value` is a string that meets the configured password policy. */

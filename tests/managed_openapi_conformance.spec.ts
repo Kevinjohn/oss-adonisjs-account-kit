@@ -315,6 +315,7 @@ test.group('managed responses conform to the OpenAPI document', (group) => {
     let allowed = true
     const kit = {
       managedHttp: {
+        takeCorrectionRevision: () => undefined,
         assertGuard: () => {},
         assertPublicRegistration: () => {},
         consume: async () => {},
